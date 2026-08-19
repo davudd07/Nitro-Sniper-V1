@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Plus, Swords } from "lucide-react";
+import { sound } from "../lib/sound";
 import { ModeSelector, ToggleRow } from "../components/battles/ModeSelector";
 import { AddCasesModal } from "../components/battles/AddCasesModal";
 import { CaseThumb } from "../components/cases/CaseThumb";
@@ -39,11 +40,11 @@ export function CreateBattle() {
       push("Add at least one case to the battle.", "warning");
       return;
     }
-    if (!spend(totalCost)) {
-      push(`You need ${formatCredits(totalCost)} SH to fund this battle.`, "danger");
+    if (!spend(costPerPlayer)) {
+      push(`You need ${formatCredits(costPerPlayer)} SH to join your own seat.`, "danger");
       return;
     }
-    const id = createBattle({ modeId, crazy, jackpot, goldSpin, cases });
+    const id = createBattle({ modeId, crazy, jackpot, goldSpin, cases, costPerPlayer });
     push("Battle created! Fill the remaining slots to start.", "success");
     navigate(`/battles/${id}`);
   }
@@ -65,8 +66,11 @@ export function CreateBattle() {
               Cases ({totalCaseCount}/50)
             </p>
             <button
-              onClick={() => setModalOpen(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white hover:bg-white/5"
+              onClick={() => {
+                sound.click();
+                setModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
             >
               <Plus className="h-3.5 w-3.5" /> Add Cases
             </button>
@@ -100,22 +104,26 @@ export function CreateBattle() {
             <p className="font-mono text-lg font-bold text-white">{players}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">Cost / player</p>
+            <p className="text-xs text-slate-500">Cost / seat</p>
             <p className="font-mono text-lg font-bold text-white">{formatCredits(costPerPlayer)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">You fund (total pot)</p>
-            <p className="font-mono text-lg font-bold text-amber-300">{formatCredits(totalCost)}</p>
+            <p className="text-xs text-slate-500">Your cost to join</p>
+            <p className="font-mono text-lg font-bold text-amber-300">{formatCredits(costPerPlayer)}</p>
           </div>
         </div>
         <p className="-mt-3 text-center text-[11px] text-slate-500">
-          In this demo, the battle creator funds every seat so bots can play. Win your team's share of the pot back
-          by winning the battle.
+          Everyone pays their own seat cost ({formatCredits(costPerPlayer)} SH) — you're only charged for your own
+          seat here. Bots and other joining players cover their own seats when they fill in. Total pot once every
+          seat is filled: {formatCredits(totalCost)} SH.
         </p>
 
         <button
-          onClick={handleCreate}
-          className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform hover:scale-[1.01]"
+          onClick={() => {
+            sound.click();
+            handleCreate();
+          }}
+          className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]"
         >
           Create Battle
         </button>

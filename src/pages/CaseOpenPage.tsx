@@ -4,6 +4,7 @@ import { ArrowLeft, Sparkles } from "lucide-react";
 import { getCase, rollCaseItem } from "../data/cases";
 import { CaseReel } from "../components/cases/CaseReel";
 import { CaseThumb } from "../components/cases/CaseThumb";
+import { RiskBadge } from "../components/cases/RiskBadge";
 import { ItemCard } from "../components/ui/ItemCard";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
@@ -71,7 +72,10 @@ export function CaseOpenPage() {
         <CaseThumb c={c} className="h-40 sm:h-48" />
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
-            <h1 className="text-xl font-bold text-white">{c.name}</h1>
+            <div className="flex items-center gap-2">
+              <h1 className="text-xl font-bold text-white">{c.name}</h1>
+              <RiskBadge risk={c.risk} />
+            </div>
             <p className="text-sm text-slate-400">{c.blurb}</p>
           </div>
           <InfoButton title={`${c.name} — Odds & House Edge`}>

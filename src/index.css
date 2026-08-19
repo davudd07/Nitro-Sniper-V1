@@ -68,3 +68,14 @@ body {
   width: 6px;
   height: 6px;
 }
+
+.jackpot-seg {
+  filter: brightness(0.85);
+  transform: scale(1);
+}
+.jackpot-seg-active {
+  filter: brightness(1.4) saturate(1.2);
+  transform: scale(1.04);
+  z-index: 5;
+  box-shadow: 0 0 16px rgba(255, 255, 255, 0.35);
+}

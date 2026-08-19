@@ -68,6 +68,54 @@ export const ITEMS: Record<string, CaseItem> = {
   void_reaper: { id: "void_reaper", name: "Void Reaper", value: 8000, rarity: "epic", icon: "skull" },
   infinity_relic: { id: "infinity_relic", name: "Infinity Relic", value: 20000, rarity: "mythic", icon: "infinity" },
 
+  // --- Pocket Case pool (low risk / low volatility) ---
+  rusty_washer: { id: "rusty_washer", name: "Rusty Washer", value: 7, rarity: "common", icon: "hexagon" },
+  chipped_coin: { id: "chipped_coin", name: "Chipped Coin", value: 10, rarity: "common", icon: "gem" },
+  tarnished_ring: { id: "tarnished_ring", name: "Tarnished Ring", value: 12, rarity: "common", icon: "moon" },
+  faded_medal: { id: "faded_medal", name: "Faded Medal", value: 14, rarity: "uncommon", icon: "star" },
+  polished_stone: { id: "polished_stone", name: "Polished Stone", value: 17, rarity: "uncommon", icon: "gem" },
+  bright_trinket: { id: "bright_trinket", name: "Bright Trinket", value: 20, rarity: "rare", icon: "sparkles" },
+  lucky_charm: { id: "lucky_charm", name: "Lucky Charm", value: 23, rarity: "rare", icon: "clover" },
+  silver_whistle: { id: "silver_whistle", name: "Silver Whistle", value: 28, rarity: "epic", icon: "zap" },
+  golden_button: { id: "golden_button", name: "Golden Button", value: 33, rarity: "epic", icon: "sun" },
+  mini_treasure: { id: "mini_treasure", name: "Mini Treasure", value: 39, rarity: "mythic", icon: "trophy" },
+
+  // --- Steady Cache pool (low risk / low volatility) ---
+  ledger_chip: { id: "ledger_chip", name: "Ledger Chip", value: 400, rarity: "common", icon: "hexagon" },
+  vault_token: { id: "vault_token", name: "Vault Token", value: 520, rarity: "common", icon: "key" },
+  stable_ingot: { id: "stable_ingot", name: "Stable Ingot", value: 640, rarity: "common", icon: "gem" },
+  balanced_orb: { id: "balanced_orb", name: "Balanced Orb", value: 760, rarity: "uncommon", icon: "orbit" },
+  measured_gem: { id: "measured_gem", name: "Measured Gem", value: 880, rarity: "uncommon", icon: "gem" },
+  even_keel_charm: { id: "even_keel_charm", name: "Even Keel Charm", value: 1040, rarity: "rare", icon: "anchor" },
+  anchor_stone: { id: "anchor_stone", name: "Anchor Stone", value: 1240, rarity: "rare", icon: "shield" },
+  steady_beacon: { id: "steady_beacon", name: "Steady Beacon", value: 1480, rarity: "epic", icon: "sun" },
+  guardian_seal: { id: "guardian_seal", name: "Guardian Seal", value: 1760, rarity: "epic", icon: "shield" },
+  fortune_ledger: { id: "fortune_ledger", name: "Fortune Ledger", value: 2080, rarity: "mythic", icon: "trophy" },
+
+  // --- Chaos Case pool (high risk / high volatility) ---
+  static_spark: { id: "static_spark", name: "Static Spark", value: 24, rarity: "common", icon: "zap" },
+  feral_coin: { id: "feral_coin", name: "Feral Coin", value: 90, rarity: "common", icon: "gem" },
+  frenzy_shard: { id: "frenzy_shard", name: "Frenzy Shard", value: 240, rarity: "uncommon", icon: "flame" },
+  rift_ember: { id: "rift_ember", name: "Rift Ember", value: 600, rarity: "uncommon", icon: "flame" },
+  wildfire_core: { id: "wildfire_core", name: "Wildfire Core", value: 1800, rarity: "rare", icon: "flame" },
+  volt_surge: { id: "volt_surge", name: "Volt Surge", value: 4800, rarity: "rare", icon: "zap" },
+  rogue_comet: { id: "rogue_comet", name: "Rogue Comet", value: 12000, rarity: "epic", icon: "meteor" },
+  chaos_engine: { id: "chaos_engine", name: "Chaos Engine", value: 36000, rarity: "epic", icon: "atom" },
+  havoc_core: { id: "havoc_core", name: "Havoc Core", value: 90000, rarity: "mythic", icon: "skull" },
+  chaos_singularity: { id: "chaos_singularity", name: "Chaos Singularity", value: 240000, rarity: "mythic", icon: "infinity" },
+
+  // --- Whale's Vault pool (high risk / high volatility) ---
+  barnacle_coin: { id: "barnacle_coin", name: "Barnacle Coin", value: 200, rarity: "common", icon: "gem" },
+  driftnet_charm: { id: "driftnet_charm", name: "Driftnet Charm", value: 750, rarity: "common", icon: "anchor" },
+  coral_shard: { id: "coral_shard", name: "Coral Shard", value: 2000, rarity: "uncommon", icon: "gem" },
+  deep_current_orb: { id: "deep_current_orb", name: "Deep Current Orb", value: 5000, rarity: "uncommon", icon: "orbit" },
+  abyss_pearl: { id: "abyss_pearl", name: "Abyss Pearl", value: 15000, rarity: "rare", icon: "gem" },
+  leviathan_scale: { id: "leviathan_scale", name: "Leviathan Scale", value: 40000, rarity: "rare", icon: "shield" },
+  kraken_heart: { id: "kraken_heart", name: "Kraken Heart", value: 100000, rarity: "epic", icon: "flame" },
+  tidal_monarch: { id: "tidal_monarch", name: "Tidal Monarch", value: 300000, rarity: "epic", icon: "crown" },
+  maelstrom_core: { id: "maelstrom_core", name: "Maelstrom Core", value: 750000, rarity: "mythic", icon: "atom" },
+  leviathans_crown: { id: "leviathans_crown", name: "Leviathan's Crown", value: 2000000, rarity: "mythic", icon: "crown" },
+
   // --- Apex Cache pool ---
   gilded_skull: { id: "gilded_skull", name: "Gilded Skull", value: 400, rarity: "common", icon: "skull" },
   rocket_badge: { id: "rocket_badge", name: "Rocket Badge", value: 750, rarity: "common", icon: "rocket" },

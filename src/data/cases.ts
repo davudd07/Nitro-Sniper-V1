@@ -8,6 +8,8 @@ export interface CaseOddsEntry {
   goldTier: boolean;
 }
 
+export type RiskLevel = "low" | "medium" | "high";
+
 export interface CaseDef {
   id: string;
   name: string;
@@ -16,11 +18,34 @@ export interface CaseDef {
   from: string;
   to: string;
   targetRtp: number;
+  risk: RiskLevel;
   /** [itemId, relativeWeight][] — the last entry's weight is solved automatically. */
   raw: [string, number][];
 }
 
 const CASE_DEFS: CaseDef[] = [
+  {
+    id: "pocket",
+    name: "Pocket Case",
+    price: 15,
+    blurb: "Pocket change stakes with a tight, low-volatility payout spread.",
+    from: "#475569",
+    to: "#1e293b",
+    targetRtp: 0.96,
+    risk: "low",
+    raw: [
+      ["chipped_coin", 1500],
+      ["tarnished_ring", 1500],
+      ["faded_medal", 1300],
+      ["polished_stone", 900],
+      ["bright_trinket", 600],
+      ["lucky_charm", 350],
+      ["silver_whistle", 150],
+      ["golden_button", 70],
+      ["mini_treasure", 20],
+      ["rusty_washer", 0], // solved filler (most common, lowest value)
+    ],
+  },
   {
     id: "starter",
     name: "Starter Cache",
@@ -28,7 +53,8 @@ const CASE_DEFS: CaseDef[] = [
     blurb: "A low-stakes case for warming up the RNG gods.",
     from: "#334155",
     to: "#0f172a",
-    targetRtp: 0.93,
+    targetRtp: 0.96,
+    risk: "medium",
     raw: [
       ["copper_coil", 1500],
       ["clay_bead", 1000],
@@ -39,7 +65,7 @@ const CASE_DEFS: CaseDef[] = [
       ["ember_core", 250],
       ["solar_ingot", 150],
       ["starlit_crown", 100],
-      ["pebble_charm", 0], // solved filler (most common, lowest value)
+      ["pebble_charm", 0],
     ],
   },
   {
@@ -49,7 +75,8 @@ const CASE_DEFS: CaseDef[] = [
     blurb: "A step up in stakes, with a shot at an Epic centerpiece.",
     from: "#0f766e",
     to: "#042f2e",
-    targetRtp: 0.92,
+    targetRtp: 0.96,
+    risk: "medium",
     raw: [
       ["silver_fang", 1500],
       ["driftwood_charm", 1000],
@@ -64,13 +91,36 @@ const CASE_DEFS: CaseDef[] = [
     ],
   },
   {
+    id: "chaos",
+    name: "Chaos Case",
+    price: 600,
+    blurb: "High-volatility gamble — mostly scraps, but a shot at 400x.",
+    from: "#c2410c",
+    to: "#431407",
+    targetRtp: 0.96,
+    risk: "high",
+    raw: [
+      ["feral_coin", 1300],
+      ["frenzy_shard", 900],
+      ["rift_ember", 500],
+      ["wildfire_core", 220],
+      ["volt_surge", 80],
+      ["rogue_comet", 25],
+      ["chaos_engine", 6],
+      ["havoc_core", 1.5],
+      ["chaos_singularity", 0.35],
+      ["static_spark", 0],
+    ],
+  },
+  {
     id: "prime",
     name: "Prime Cache",
     price: 400,
     blurb: "Mid-tier vault with a deep pool of Rare and Epic pulls.",
     from: "#a16207",
     to: "#422006",
-    targetRtp: 0.92,
+    targetRtp: 0.96,
+    risk: "medium",
     raw: [
       ["ranger_arrow", 1500],
       ["dune_shard", 1000],
@@ -85,13 +135,36 @@ const CASE_DEFS: CaseDef[] = [
     ],
   },
   {
+    id: "steady",
+    name: "Steady Cache",
+    price: 800,
+    blurb: "Bigger stakes, same tight low-volatility spread as the Pocket Case.",
+    from: "#0e7490",
+    to: "#083344",
+    targetRtp: 0.96,
+    risk: "low",
+    raw: [
+      ["vault_token", 1500],
+      ["stable_ingot", 1500],
+      ["balanced_orb", 1300],
+      ["measured_gem", 900],
+      ["even_keel_charm", 600],
+      ["anchor_stone", 350],
+      ["steady_beacon", 150],
+      ["guardian_seal", 70],
+      ["fortune_ledger", 20],
+      ["ledger_chip", 0],
+    ],
+  },
+  {
     id: "elite",
     name: "Elite Cache",
     price: 1000,
     blurb: "High-roller case — Mythic hits actually mean something here.",
     from: "#6d28d9",
     to: "#2e1065",
-    targetRtp: 0.91,
+    targetRtp: 0.96,
+    risk: "medium",
     raw: [
       ["crimson_talon", 1500],
       ["iron_sentinel", 1000],
@@ -112,7 +185,8 @@ const CASE_DEFS: CaseDef[] = [
     blurb: "The top of the vault. Biggest swings, biggest Gold Spins.",
     from: "#be123c",
     to: "#4c0519",
-    targetRtp: 0.9,
+    targetRtp: 0.96,
+    risk: "medium",
     raw: [
       ["rocket_badge", 1500],
       ["storm_sigil", 1000],
@@ -124,6 +198,28 @@ const CASE_DEFS: CaseDef[] = [
       ["void_monarch", 150],
       ["apex_singularity", 100],
       ["gilded_skull", 0],
+    ],
+  },
+  {
+    id: "whale",
+    name: "Whale's Vault",
+    price: 5000,
+    blurb: "The riskiest case in the vault — long odds, legendary upside.",
+    from: "#155e75",
+    to: "#020617",
+    targetRtp: 0.96,
+    risk: "high",
+    raw: [
+      ["driftnet_charm", 1300],
+      ["coral_shard", 900],
+      ["deep_current_orb", 500],
+      ["abyss_pearl", 220],
+      ["leviathan_scale", 80],
+      ["kraken_heart", 25],
+      ["tidal_monarch", 6],
+      ["maelstrom_core", 1.5],
+      ["leviathans_crown", 0.35],
+      ["barnacle_coin", 0],
     ],
   },
 ];

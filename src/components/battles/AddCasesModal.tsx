@@ -1,10 +1,13 @@
 import { useState } from "react";
 import { createPortal } from "react-dom";
+import { clsx } from "clsx";
 import { X, Plus, Minus } from "lucide-react";
 import { CASES } from "../../data/cases";
 import { CaseThumb } from "../cases/CaseThumb";
+import { RiskBadge } from "../cases/RiskBadge";
 import { formatCredits } from "../../lib/format";
 import type { BattleCaseEntry } from "../../store/battleStore";
+import { sound } from "../../lib/sound";
 
 export const MAX_CASES_PER_BATTLE = 50;
 
@@ -55,7 +58,13 @@ export function AddCasesModal({
               Up to {MAX_CASES_PER_BATTLE} cases per battle · {totalCount}/{MAX_CASES_PER_BATTLE} selected
             </p>
           </div>
-          <button onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-white/10">
+          <button
+            onClick={() => {
+              sound.click();
+              onClose();
+            }}
+            className="rounded-lg p-1 text-slate-400 transition-all duration-150 hover:bg-white/10 active:scale-90"
+          >
             <X className="h-5 w-5" />
           </button>
         </div>
@@ -64,23 +73,36 @@ export function AddCasesModal({
           {CASES.map((c) => {
             const count = countFor(c.id);
             return (
-              <div key={c.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-bg-800/60 p-3">
+              <div
+                key={c.id}
+                className={clsx(
+                  "flex items-center gap-3 rounded-xl border p-3 transition-colors duration-150",
+                  count > 0 ? "border-fuchsia-400/40 bg-fuchsia-500/5" : "border-white/10 bg-bg-800/60",
+                )}
+              >
                 <CaseThumb c={c} className="h-16 w-16 shrink-0 rounded-lg" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">{c.name}</p>
                   <p className="text-xs text-slate-500">{formatCredits(c.price)} SH each</p>
+                  <RiskBadge risk={c.risk} className="mt-1" />
                 </div>
                 <div className="flex items-center gap-1.5">
                   <button
-                    onClick={() => setCount(c.id, count - 1)}
-                    className="rounded-lg border border-white/10 p-1.5 text-slate-300 hover:bg-white/5"
+                    onClick={() => {
+                      sound.click();
+                      setCount(c.id, count - 1);
+                    }}
+                    className="rounded-lg border border-white/10 p-1.5 text-slate-300 transition-all duration-150 hover:bg-white/5 active:scale-90"
                   >
                     <Minus className="h-3.5 w-3.5" />
                   </button>
                   <span className="w-6 text-center font-mono text-sm text-white">{count}</span>
                   <button
-                    onClick={() => setCount(c.id, count + 1)}
-                    className="rounded-lg border border-white/10 p-1.5 text-slate-300 hover:bg-white/5"
+                    onClick={() => {
+                      sound.click();
+                      setCount(c.id, count + 1);
+                    }}
+                    className="rounded-lg border border-white/10 p-1.5 text-slate-300 transition-all duration-150 hover:bg-white/5 active:scale-90"
                   >
                     <Plus className="h-3.5 w-3.5" />
                   </button>
@@ -99,10 +121,11 @@ export function AddCasesModal({
           </p>
           <button
             onClick={() => {
+              sound.click();
               onChange(draft);
               onClose();
             }}
-            className="rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-6 py-2.5 font-bold text-bg-950"
+            className="rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-6 py-2.5 font-bold text-bg-950 transition-transform duration-150 hover:scale-[1.03] active:scale-95"
           >
             Confirm
           </button>

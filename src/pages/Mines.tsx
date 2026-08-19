@@ -10,7 +10,7 @@ import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 
 const GRID_SIZE = 25;
-const RTP = 0.97;
+const RTP = 0.96;
 
 function fairMultiplier(reveals: number, mines: number): number {
   let m = 1;
@@ -113,8 +113,8 @@ export function Mines() {
               <StatRow label="House edge" value={formatPercent(1 - RTP)} />
               <p>
                 Multipliers use the standard fair-mines formula (based on hypergeometric odds of avoiding every mine
-                you've revealed so far), then scaled by the {formatPercent(RTP)} RTP factor above. Mine positions are
-                derived from the provably-fair seed for this round.
+                you&apos;ve revealed so far), then scaled by the {formatPercent(RTP)} RTP factor above. Mine
+                positions are derived from the provably-fair seed for this round.
               </p>
             </InfoButton>
           </div>

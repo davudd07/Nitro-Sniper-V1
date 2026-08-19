@@ -1,6 +1,7 @@
 import { clsx } from "clsx";
 import { BATTLE_MODES } from "../../data/battleModes";
 import { Shuffle, Coins, Sparkles } from "lucide-react";
+import { sound } from "../../lib/sound";
 
 export function ModeSelector({ modeId, onChange }: { modeId: string; onChange: (id: string) => void }) {
   return (
@@ -10,12 +11,15 @@ export function ModeSelector({ modeId, onChange }: { modeId: string; onChange: (
         {BATTLE_MODES.map((m) => (
           <button
             key={m.id}
-            onClick={() => onChange(m.id)}
+            onClick={() => {
+              sound.click();
+              onChange(m.id);
+            }}
             className={clsx(
-              "rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors",
+              "rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-150 ease-out active:scale-95",
               modeId === m.id
-                ? "border-fuchsia-400/60 bg-fuchsia-500/20 text-white"
-                : "border-white/10 bg-bg-800/60 text-slate-300 hover:bg-white/5",
+                ? "border-fuchsia-400/60 bg-fuchsia-500/20 text-white shadow-[0_0_16px_rgba(217,70,239,0.25)]"
+                : "border-white/10 bg-bg-800/60 text-slate-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/5",
             )}
           >
             {m.label}
@@ -53,24 +57,32 @@ export function ToggleRow({
         {items.map((it) => (
           <button
             key={it.key}
-            onClick={() => it.set(!it.value)}
+            onClick={() => {
+              sound.click();
+              it.set(!it.value);
+            }}
             className={clsx(
-              "flex items-start gap-2.5 rounded-xl border p-3 text-left transition-colors",
-              it.value ? "border-white/20 bg-white/10" : "border-white/10 bg-bg-800/60 hover:bg-white/5",
+              "flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all duration-150 ease-out active:scale-[0.97]",
+              it.value ? "border-white/20 bg-white/10" : "border-white/10 bg-bg-800/60 hover:-translate-y-0.5 hover:bg-white/5",
             )}
           >
-            <it.icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: it.value ? it.color : "#64748b" }} />
+            <it.icon className="mt-0.5 h-4 w-4 shrink-0 transition-colors duration-150" style={{ color: it.value ? it.color : "#64748b" }} />
             <span>
               <span className="block text-sm font-semibold text-white">{it.label}</span>
               <span className="block text-[11px] text-slate-500">{it.desc}</span>
             </span>
             <span
               className={clsx(
-                "relative ml-auto h-5 w-9 shrink-0 rounded-full transition-colors",
+                "relative ml-auto h-5 w-9 shrink-0 rounded-full transition-colors duration-200",
                 it.value ? "bg-emerald-400" : "bg-white/10",
               )}
             >
-              <span className={clsx("absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform", it.value ? "translate-x-4" : "translate-x-0.5")} />
+              <span
+                className={clsx(
+                  "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-200 ease-out",
+                  it.value ? "translate-x-4" : "translate-x-0.5",
+                )}
+              />
             </span>
           </button>
         ))}

@@ -231,8 +231,8 @@ export function Blackjack() {
             <InfoButton title="Blackjack — RTP & House Edge">
               <StatRow label="Rules" value="Dealer stands on all 17s" />
               <StatRow label="Blackjack payout" value="3:2" />
-              <StatRow label="Est. RTP (optimal play)" value={formatPercent(0.994)} />
-              <StatRow label="House edge" value={formatPercent(0.006)} />
+              <StatRow label="Est. RTP (optimal play)" value={formatPercent(0.9941, 2)} />
+              <StatRow label="House edge" value={formatPercent(0.0059, 2)} />
               <p>
                 Single 52-card shoe reshuffled every hand, ordering derived from the provably-fair seed below. No
                 insurance or side bets — the house edge comes purely from standard blackjack rules.

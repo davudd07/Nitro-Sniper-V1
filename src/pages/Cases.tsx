@@ -1,19 +1,24 @@
 import { Link } from "react-router-dom";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
+import { RiskBadge } from "../components/cases/RiskBadge";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { formatCredits, formatPercent } from "../lib/format";
 import { RARITIES } from "../data/rarities";
+
+const SORTED_CASES = [...CASES].sort((a, b) => a.price - b.price);
 
 export function Cases() {
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-white">Cases</h1>
-        <p className="text-sm text-slate-400">Five original cases with fully transparent, price-derived odds.</p>
+        <p className="text-sm text-slate-400">
+          Nine original cases spanning low, medium, and high risk — all with fully transparent, price-derived odds.
+        </p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-        {CASES.map((c) => (
+        {SORTED_CASES.map((c) => (
           <div key={c.id} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-800/60">
             <Link to={`/cases/${c.id}`}>
               <CaseThumb c={c} className="h-36" />
@@ -44,6 +49,7 @@ export function Cases() {
                   </div>
                 </InfoButton>
               </div>
+              <RiskBadge risk={c.risk} className="mb-2" />
               <p className="mb-3 text-xs text-slate-500">{c.blurb}</p>
               <Link
                 to={`/cases/${c.id}`}

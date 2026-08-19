@@ -16,6 +16,7 @@ import { useToastStore } from "../store/toastStore";
 import { randomBotName } from "../data/botNames";
 import { formatCredits } from "../lib/format";
 import { sound } from "../lib/sound";
+import { computeJackpotWeights } from "../lib/jackpotOdds";
 
 type SlotKind = "you" | "empty" | "joining" | "bot" | "player";
 
@@ -74,6 +75,7 @@ export function BattleRoom() {
   const [jackpotWinnerId, setJackpotWinnerId] = useState<string | null>(null);
   const [jackpotSpinToken, setJackpotSpinToken] = useState(0);
   const [winningTeam, setWinningTeam] = useState<number | null>(null);
+  const [liveOdds, setLiveOdds] = useState<Record<number, number>>({});
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
@@ -82,8 +84,14 @@ export function BattleRoom() {
   useEffect(() => {
     setPlayers(initialPlayers);
     const init: Record<number, PlayerRoundState> = {};
-    initialPlayers.forEach((p) => (init[p.slotIndex] = { total: 0, history: [] }));
+    const evenOdds: Record<number, number> = {};
+    initialPlayers.forEach((p) => {
+      init[p.slotIndex] = { total: 0, history: [] };
+      evenOdds[p.slotIndex] = initialPlayers.length > 0 ? 100 / initialPlayers.length : 0;
+    });
     setRoundStates(init);
+    roundStatesRef.current = init;
+    setLiveOdds(evenOdds);
   }, [initialPlayers]);
 
   useEffect(() => {
@@ -161,6 +169,17 @@ export function BattleRoom() {
     });
     landedCountRef.current += 1;
     if (landedCountRef.current >= players.length) {
+      // Recompute live jackpot odds once every player has landed this round,
+      // so the % shown next to each name always reflects the latest pulls.
+      if (battle?.jackpot) {
+        setTimeout(() => {
+          const entries = players.map((p) => ({ key: String(p.slotIndex), value: roundStatesRef.current[p.slotIndex]?.total ?? 0 }));
+          const weights = computeJackpotWeights(entries, battle.crazy);
+          const next: Record<number, number> = {};
+          players.forEach((p, i) => (next[p.slotIndex] = weights[i] * 100));
+          setLiveOdds(next);
+        }, 350);
+      }
       setTimeout(() => {
         if (caseIndex + 1 < caseSequence.length) {
           setCaseIndex((i) => i + 1);
@@ -185,20 +204,15 @@ export function BattleRoom() {
     const pot = totals.reduce((s, t) => s + t.value, 0);
 
     if (battle.jackpot) {
-      const maxVal = Math.max(...totals.map((t) => t.value), 0);
-      const avg = pot / Math.max(1, totals.length);
-      const weights = totals.map((t) => {
-        if (battle.crazy) {
-          return Math.max(0.01, maxVal - t.value + avg * 0.15);
-        }
-        return Math.max(0.01, t.value + avg * 0.05);
-      });
-      const weightSum = weights.reduce((s, w) => s + w, 0);
+      const weights = computeJackpotWeights(
+        totals.map((t) => ({ key: String(t.p.slotIndex), value: t.value })),
+        battle.crazy,
+      );
       const tickets: JackpotTicket[] = totals.map((t, i) => ({
         playerId: String(t.p.slotIndex),
         name: t.p.kind === "you" ? "You" : t.p.name,
         color: t.p.color,
-        weight: weights[i] / weightSum,
+        weight: weights[i],
       }));
 
       void play(1).then(([roll]) => {
@@ -356,6 +370,8 @@ export function BattleRoom() {
             state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
             battleActive={phase === "running"}
             activeCase={currentCase ?? CASES[0]}
+            costPerPlayer={battle.costPerPlayer}
+            jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
             onLanded={(item) => handleLanded(p.slotIndex, item)}
             onCallBot={() => callBot(p.slotIndex)}
             onSimulateJoin={() => simulateJoin(p.slotIndex)}
@@ -390,7 +406,8 @@ export function BattleRoom() {
           <p className="mt-1 text-sm text-slate-300">Total pot: {formatCredits(pot)} SH</p>
           <Link
             to="/battles/create"
-            className="mt-4 inline-block rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-6 py-2.5 font-bold text-bg-950"
+            onClick={() => sound.click()}
+            className="mt-4 inline-block rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-6 py-2.5 font-bold text-bg-950 transition-transform duration-150 hover:scale-105 active:scale-95"
           >
             Start another battle
           </Link>
@@ -408,6 +425,8 @@ function PlayerColumn({
   state,
   battleActive,
   activeCase,
+  costPerPlayer,
+  jackpotOdds,
   onLanded,
   onCallBot,
   onSimulateJoin,
@@ -419,6 +438,8 @@ function PlayerColumn({
   state: PlayerRoundState;
   battleActive: boolean;
   activeCase: (typeof CASES)[number];
+  costPerPlayer: number;
+  jackpotOdds?: number;
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
   onSimulateJoin: () => void;
@@ -436,8 +457,13 @@ function PlayerColumn({
           {player.kind === "you" ? <User className="h-4 w-4" /> : player.kind === "bot" ? <Bot className="h-4 w-4" /> : (player.name || "?").slice(0, 1)}
         </span>
         <div className="min-w-0">
-          <p className="truncate text-sm font-semibold text-white">
+          <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
             {player.kind === "you" ? "You" : player.name || `Player ${player.slotIndex + 1}`}
+            {jackpotOdds !== undefined && (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
+                <Coins className="h-2.5 w-2.5" /> {jackpotOdds.toFixed(1)}%
+              </span>
+            )}
           </p>
           <p className="text-[11px] text-slate-500">
             Player {player.slotIndex + 1} · Team {player.teamIndex + 1}
@@ -452,17 +478,23 @@ function PlayerColumn({
             <p className="text-xs text-slate-400">Waiting for player to join…</p>
           ) : (
             <>
-              <p className="text-xs text-slate-500">Empty seat</p>
+              <p className="text-xs text-slate-500">Empty seat · {formatCredits(costPerPlayer)} SH to join</p>
               <div className="flex gap-2">
                 <button
-                  onClick={onCallBot}
-                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-white/5"
+                  onClick={() => {
+                    sound.click();
+                    onCallBot();
+                  }}
+                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
                 >
                   <Bot className="h-3.5 w-3.5" /> Call Bot
                 </button>
                 <button
-                  onClick={onSimulateJoin}
-                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-white/5"
+                  onClick={() => {
+                    sound.click();
+                    onSimulateJoin();
+                  }}
+                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
                 >
                   <UserPlus className="h-3.5 w-3.5" /> Simulate Join
                 </button>

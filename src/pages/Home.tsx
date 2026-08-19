@@ -10,7 +10,7 @@ const GAMES = [
     name: "Mines",
     desc: "Reveal safe tiles, cash out any time. The more mines you flag, the higher the multiplier climbs.",
     accent: "from-emerald-500/20 to-emerald-500/0",
-    tag: "~97% RTP",
+    tag: "96% RTP",
   },
   {
     to: "/blackjack",
@@ -18,7 +18,7 @@ const GAMES = [
     name: "Blackjack",
     desc: "Classic dealer-stands-on-17 blackjack with smooth card animations and 3:2 blackjack payouts.",
     accent: "from-sky-500/20 to-sky-500/0",
-    tag: "~99.4% RTP",
+    tag: "99.41% RTP",
   },
   {
     to: "/cases",

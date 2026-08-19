@@ -13,6 +13,8 @@ export interface BattleConfig {
   jackpot: boolean;
   goldSpin: boolean;
   cases: BattleCaseEntry[];
+  /** Cost of the full case list — what each individual seat pays to join. */
+  costPerPlayer: number;
   createdAt: number;
 }
 

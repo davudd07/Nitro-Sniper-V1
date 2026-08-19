@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Swords, Users, Shuffle, Coins, Sparkles, Bot } from "lucide-react";
+import { sound } from "../lib/sound";
 
 const FEATURES = [
   { icon: Users, title: "1v1 up to 3v3", desc: "1v1, 1v1v1, 1v1v1v1, 1v1v1v1v1, 2v2, 2v2v2, or 3v3." },
@@ -20,7 +21,8 @@ export function CaseBattlesLobby() {
         </p>
         <Link
           to="/battles/create"
-          className="mt-6 inline-block rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-8 py-3 font-bold text-bg-950 shadow-lg transition-transform hover:scale-105"
+          onClick={() => sound.click()}
+          className="mt-6 inline-block rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-8 py-3 font-bold text-bg-950 shadow-lg transition-transform duration-150 hover:scale-105 active:scale-95"
         >
           Create a Battle
         </Link>

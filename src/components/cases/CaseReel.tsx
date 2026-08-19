@@ -87,6 +87,7 @@ export function CaseReel({
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
     const mainStrip = buildStrip(pool, targetForMain, rand);
     setStrip(mainStrip);
+    setOffset(0);
     setPhase("main");
     lastTickIndexRef.current = -1;
     animateTo(seedBase, duration, () => {
@@ -98,6 +99,7 @@ export function CaseReel({
           const goldRand = mulberry32(seedBase * 104729 + 3);
           const goldStrip = buildStrip(goldPool.length ? goldPool : [result.item], result.item, goldRand);
           setStrip(goldStrip);
+          setOffset(0);
           setPhase("gold");
           lastTickIndexRef.current = -1;
           animateTo(seedBase + 1, goldDuration, () => {

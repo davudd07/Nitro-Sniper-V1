@@ -98,17 +98,20 @@ export function CaseOpenPage() {
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-bg-800/60 p-3">
-            <label className="flex items-center gap-2 text-sm text-slate-300">
-              <button
-                onClick={() => setGoldSpin((v) => !v)}
-                className={`relative h-6 w-11 rounded-full transition-colors ${goldSpin ? "bg-amber-400" : "bg-white/10"}`}
+            <button
+              type="button"
+              onClick={() => setGoldSpin((v) => !v)}
+              className="flex items-center gap-2 text-sm text-slate-300"
+            >
+              <span
+                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${goldSpin ? "bg-amber-400" : "bg-white/10"}`}
               >
                 <span
                   className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${goldSpin ? "translate-x-5" : "translate-x-0.5"}`}
                 />
-              </button>
+              </span>
               <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
-            </label>
+            </button>
             <button
               onClick={openCase}
               disabled={spinning}

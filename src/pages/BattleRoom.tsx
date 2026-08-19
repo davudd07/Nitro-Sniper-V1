@@ -83,6 +83,7 @@ export function BattleRoom() {
   const [jackpotSpinToken, setJackpotSpinToken] = useState(0);
   const [winningTeam, setWinningTeam] = useState<number | null>(null);
   const [liveOdds, setLiveOdds] = useState<Record<number, number>>({});
+  const [tieBreak, setTieBreak] = useState(false);
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
@@ -243,10 +244,45 @@ export function BattleRoom() {
         totals.filter((t) => t.p.teamIndex === teamIdx).reduce((s, t) => s + t.value, 0),
       );
       const best = battle.crazy ? Math.min(...teamTotals) : Math.max(...teamTotals);
-      const winnerTeam = teamTotals.indexOf(best);
-      setWinningTeam(winnerTeam);
-      settlePayout(winnerTeam, pot);
-      setPhase("finished");
+      const tiedTeams = teamTotals.reduce<number[]>((acc, v, i) => (v === best ? [...acc, i] : acc), []);
+
+      if (tiedTeams.length > 1) {
+        // Tie between two or more teams/players — settle it with an
+        // equal-odds tie-breaker jackpot spin among just the tied parties.
+        const tickets: JackpotTicket[] = tiedTeams.map((teamIdx) => {
+          const teamPlayers = players.filter((p) => p.teamIndex === teamIdx);
+          const label = teamPlayers.length > 1 ? `Team ${teamIdx + 1}` : teamPlayers[0]?.kind === "you" ? "You" : teamPlayers[0]?.name || `Team ${teamIdx + 1}`;
+          return {
+            playerId: `team-${teamIdx}`,
+            name: label,
+            color: teamPlayers[0]?.color ?? TEAM_COLORS[teamIdx % TEAM_COLORS.length],
+            weight: 1 / tiedTeams.length,
+          };
+        });
+
+        void play(1).then(([roll]) => {
+          let acc = 0;
+          let winnerIdx = tickets.length - 1;
+          for (let i = 0; i < tickets.length; i++) {
+            acc += tickets[i].weight;
+            if (roll < acc) {
+              winnerIdx = i;
+              break;
+            }
+          }
+          setTieBreak(true);
+          setJackpotTickets(tickets);
+          setJackpotWinnerId(tickets[winnerIdx].playerId);
+          setWinningTeam(tiedTeams[winnerIdx]);
+          setPhase("jackpot");
+          setJackpotSpinToken((t) => t + 1);
+        });
+      } else {
+        const winnerTeam = tiedTeams[0];
+        setWinningTeam(winnerTeam);
+        settlePayout(winnerTeam, pot);
+        setPhase("finished");
+      }
     }
   }
 
@@ -407,9 +443,15 @@ export function BattleRoom() {
 
       {phase === "jackpot" && jackpotTickets && (
         <div className="rounded-2xl border border-amber-400/30 bg-bg-800/60 p-4">
-          <p className="mb-3 flex items-center gap-2 text-sm font-semibold text-amber-300">
-            <Coins className="h-4 w-4" /> Jackpot Spin
+          <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-300">
+            <Coins className="h-4 w-4" /> {tieBreak ? "Tie-Breaker Jackpot" : "Jackpot Spin"}
           </p>
+          {tieBreak && (
+            <p className="mb-3 text-xs text-slate-400">
+              It's a tie! An equal-odds spin between the tied {jackpotTickets.length > 2 ? "parties" : "two"} decides
+              the winner.
+            </p>
+          )}
           <JackpotWheel
             tickets={jackpotTickets}
             spinToken={jackpotSpinToken}

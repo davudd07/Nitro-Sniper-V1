@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { freshDeck, shuffleDeck, handTotal, isBlackjack, type Card } from "../lib/blackjack";
+import {
+  freshDeck,
+  shuffleDeck,
+  handTotal,
+  isBlackjack,
+  evaluatePerfectPairs,
+  evaluateTwentyOnePlusThree,
+  type Card,
+} from "../lib/blackjack";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
@@ -13,22 +21,16 @@ import { PlayingCard } from "../components/ui/PlayingCard";
 type Phase = "betting" | "player-turn" | "dealer-turn" | "settled";
 type Outcome = "win" | "lose" | "push" | "blackjack" | null;
 
-// Traditional poker-chip denominations & colors — a generic, universal
-// casino convention (not tied to any specific brand).
-const CHIPS = [
-  { value: 10, from: "#f8fafc", to: "#cbd5e1", text: "#0f172a" },
-  { value: 50, from: "#fda4af", to: "#e11d48", text: "#fff" },
-  { value: 100, from: "#93c5fd", to: "#1d4ed8", text: "#fff" },
-  { value: 500, from: "#86efac", to: "#15803d", text: "#fff" },
-  { value: 1000, from: "#1f2937", to: "#000000", text: "#fff" },
-];
-
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
 export function Blackjack() {
   const [bet, setBet] = useState(100);
+  const [perfectPairsBet, setPerfectPairsBet] = useState(0);
+  const [twentyOnePlusThreeBet, setTwentyOnePlusThreeBet] = useState(0);
+  const [sideBetsEnabled, setSideBetsEnabled] = useState(false);
+  const [sideBetMessages, setSideBetMessages] = useState<string[]>([]);
   const [deck, setDeck] = useState<Card[]>([]);
   const [player, setPlayer] = useState<Card[]>([]);
   const [dealer, setDealer] = useState<Card[]>([]);
@@ -50,7 +52,8 @@ export function Blackjack() {
 
   async function deal() {
     if (busy || bet <= 0) return;
-    if (!spend(bet)) {
+    const sideBetsTotal = sideBetsEnabled ? perfectPairsBet + twentyOnePlusThreeBet : 0;
+    if (!spend(bet + sideBetsTotal)) {
       push("Not enough Shards for that bet.", "danger");
       return;
     }
@@ -58,6 +61,7 @@ export function Blackjack() {
     setDoubled(false);
     setOutcome(null);
     setMessage("");
+    setSideBetMessages([]);
     setDealerRevealed(false);
 
     const rolls = await playRoll(52);
@@ -93,10 +97,48 @@ export function Blackjack() {
     setPhase("player-turn");
     setBusy(false);
 
+    if (sideBetsEnabled && sideBetsTotal > 0) {
+      resolveSideBets(p as [Card, Card], dl[0]);
+    }
+
     if (isBlackjack(p)) {
       await sleep(500);
       await resolveRound(p, dl, d, true);
     }
+  }
+
+  function resolveSideBets(initialHand: [Card, Card], dealerUpCard: Card) {
+    const messages: string[] = [];
+    let totalWinnings = 0;
+
+    if (perfectPairsBet > 0) {
+      const pp = evaluatePerfectPairs(initialHand);
+      if (pp.tier !== "none") {
+        const winnings = perfectPairsBet * (pp.multiplier + 1);
+        totalWinnings += winnings;
+        messages.push(`Perfect Pairs (${pp.tier}): +${formatCredits(winnings)} SH`);
+      } else {
+        messages.push(`Perfect Pairs: no pair.`);
+      }
+    }
+
+    if (twentyOnePlusThreeBet > 0) {
+      const combo = evaluateTwentyOnePlusThree([initialHand[0], initialHand[1], dealerUpCard]);
+      if (combo.tier !== "none") {
+        const winnings = twentyOnePlusThreeBet * (combo.multiplier + 1);
+        totalWinnings += winnings;
+        messages.push(`21+3 (${combo.tier}): +${formatCredits(winnings)} SH`);
+      } else {
+        messages.push(`21+3: no hand.`);
+      }
+    }
+
+    if (totalWinnings > 0) {
+      credit(totalWinnings);
+      sound.win("small");
+    }
+    setSideBetMessages(messages);
+    messages.forEach((m) => push(m, m.includes("+") ? "success" : "info"));
   }
 
   async function hit() {
@@ -229,6 +271,7 @@ export function Blackjack() {
     setDealerRevealed(false);
     setDoubled(false);
     setMessage("");
+    setSideBetMessages([]);
   }
 
   return (
@@ -243,9 +286,17 @@ export function Blackjack() {
               <StatRow label="Est. RTP (optimal play)" value={formatPercent(0.9941, 2)} />
               <StatRow label="House edge" value={formatPercent(0.0059, 2)} />
               <p>
-                Single 52-card shoe reshuffled every hand, ordering derived from the provably-fair seed below. No
-                insurance or side bets — the house edge comes purely from standard blackjack rules.
+                Single 52-card shoe reshuffled every hand, ordering derived from the provably-fair seed below.
               </p>
+              <p className="pt-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Optional side bets</p>
+              <StatRow label="Perfect Pairs — mixed pair" value="6:1" />
+              <StatRow label="Perfect Pairs — colored pair" value="12:1" />
+              <StatRow label="Perfect Pairs — perfect pair" value="25:1" />
+              <StatRow label="21+3 — flush" value="5:1" />
+              <StatRow label="21+3 — straight" value="10:1" />
+              <StatRow label="21+3 — three of a kind" value="30:1" />
+              <StatRow label="21+3 — straight flush" value="40:1" />
+              <p>Side bets resolve immediately after the initial deal, independent of how the main hand plays out.</p>
             </InfoButton>
           </div>
           <label className="mb-1 block text-xs text-slate-400">Bet amount</label>
@@ -280,33 +331,54 @@ export function Blackjack() {
             </button>
           </div>
 
-          <p className="mb-1.5 text-[11px] text-slate-500">Add chips to your bet</p>
-          <div className="mb-4 flex flex-wrap gap-2">
-            {CHIPS.map((chip) => (
-              <button
-                key={chip.value}
-                disabled={phase !== "betting"}
-                onClick={() => {
-                  sound.chip();
-                  setBet((b) => b + chip.value);
-                }}
-                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-dashed border-white/40 text-[11px] font-bold shadow-md transition-all duration-150 hover:-translate-y-1 active:translate-y-0 active:scale-90 disabled:opacity-40"
-                style={{ background: `radial-gradient(circle at 35% 30%, ${chip.from}, ${chip.to})`, color: chip.text }}
-              >
-                {chip.value >= 1000 ? `${chip.value / 1000}k` : chip.value}
-              </button>
-            ))}
-            <button
-              disabled={phase !== "betting"}
-              onClick={() => {
-                sound.click();
-                setBet(0);
-              }}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/15 text-[10px] font-semibold text-slate-400 transition-all duration-150 hover:bg-white/5 active:scale-90 disabled:opacity-40"
+          <button
+            disabled={phase !== "betting"}
+            onClick={() => {
+              sound.click();
+              setSideBetsEnabled((v) => !v);
+            }}
+            className="mb-3 flex w-full items-center justify-between rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs font-semibold text-slate-300 transition-colors hover:bg-white/5 disabled:opacity-50"
+          >
+            Side bets (Perfect Pairs · 21+3)
+            <span
+              className={`relative h-5 w-9 shrink-0 rounded-full transition-colors duration-200 ${sideBetsEnabled ? "bg-emerald-400" : "bg-white/10"}`}
             >
-              Clear
-            </button>
-          </div>
+              <span
+                className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-200 ease-out ${sideBetsEnabled ? "translate-x-4" : "translate-x-0.5"}`}
+              />
+            </span>
+          </button>
+
+          {sideBetsEnabled && (
+            <div className="mb-4 space-y-2 rounded-lg border border-white/10 bg-black/20 p-3">
+              <div>
+                <label className="mb-1 flex items-center justify-between text-[11px] text-slate-400">
+                  Perfect Pairs <span>up to 25:1</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={perfectPairsBet}
+                  disabled={phase !== "betting"}
+                  onChange={(e) => setPerfectPairsBet(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full rounded-lg bg-black/30 px-3 py-1.5 font-mono text-sm text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/50 disabled:opacity-50"
+                />
+              </div>
+              <div>
+                <label className="mb-1 flex items-center justify-between text-[11px] text-slate-400">
+                  21+3 <span>up to 40:1</span>
+                </label>
+                <input
+                  type="number"
+                  min={0}
+                  value={twentyOnePlusThreeBet}
+                  disabled={phase !== "betting"}
+                  onChange={(e) => setTwentyOnePlusThreeBet(Math.max(0, Number(e.target.value) || 0))}
+                  className="w-full rounded-lg bg-black/30 px-3 py-1.5 font-mono text-sm text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/50 disabled:opacity-50"
+                />
+              </div>
+            </div>
+          )}
 
           {phase === "betting" || phase === "settled" ? (
             <button
@@ -366,6 +438,14 @@ export function Blackjack() {
               }`}
             >
               {message}
+            </div>
+          )}
+
+          {sideBetMessages.length > 0 && (
+            <div className="mt-2 space-y-1 rounded-lg bg-black/20 p-2 text-center text-xs text-slate-300">
+              {sideBetMessages.map((m, i) => (
+                <p key={i}>{m}</p>
+              ))}
             </div>
           )}
         </div>

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Bomb, Spade, Package, Swords, ShieldCheck, Sparkles } from "lucide-react";
 import { CASES } from "../data/cases";
+import { CaseThumb } from "../components/cases/CaseThumb";
 import { formatPercent } from "../lib/format";
 
 const GAMES = [
@@ -100,12 +101,7 @@ export function Home() {
               to={`/cases/${c.id}`}
               className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-800/60 transition-transform hover:-translate-y-1"
             >
-              <div
-                className="flex h-28 items-center justify-center text-3xl font-black text-white/90"
-                style={{ background: `linear-gradient(160deg, ${c.from}, ${c.to})` }}
-              >
-                <Package className="h-12 w-12 opacity-80 transition-transform group-hover:scale-110" />
-              </div>
+              <CaseThumb c={c} className="h-28" />
               <div className="p-3">
                 <p className="font-semibold text-white">{c.name}</p>
                 <div className="mt-1 flex items-center justify-between text-xs text-slate-400">

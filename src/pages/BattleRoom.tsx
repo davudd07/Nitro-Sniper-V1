@@ -363,7 +363,7 @@ export function BattleRoom() {
         </div>
       )}
 
-      <div className="flex flex-wrap items-stretch justify-center gap-3">
+      <div className="flex items-stretch justify-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
         {teams.map((teamPlayers, teamIdx) => {
           const isTeam = teamPlayers.length > 1;
           const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
@@ -550,11 +550,15 @@ function PlayerColumn({
         />
       )}
 
-      <div className="mt-2 flex min-h-[92px] gap-1.5 overflow-x-auto rounded-lg bg-black/20 p-1.5 scrollbar-thin">
+      <div className="mt-2 max-h-64 min-h-[92px] overflow-y-auto rounded-lg bg-black/20 p-1.5 scrollbar-thin">
         {state.history.length === 0 ? (
-          <p className="m-auto text-[11px] text-slate-600">No pulls yet</p>
+          <p className="grid h-full min-h-[80px] place-items-center text-[11px] text-slate-600">No pulls yet</p>
         ) : (
-          state.history.map((h) => <ItemCard key={h.id} item={h.item} size="sm" showChance={false} className="w-20 shrink-0" />)
+          <div className="grid grid-cols-2 gap-1.5">
+            {state.history.map((h) => (
+              <ItemCard key={h.id} item={h.item} size="sm" showChance={false} />
+            ))}
+          </div>
         )}
       </div>
     </div>

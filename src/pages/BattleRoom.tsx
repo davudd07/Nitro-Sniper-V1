@@ -399,15 +399,17 @@ export function BattleRoom() {
         </div>
       )}
 
-      <div className="flex items-stretch justify-center gap-3 overflow-x-auto pb-2 scrollbar-thin">
+      <div className="flex items-stretch justify-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
         {teams.map((teamPlayers, teamIdx) => {
           const isTeam = teamPlayers.length > 1;
           const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+          const columnWidthClass = players.length <= 2 ? "sm:w-60" : players.length <= 4 ? "sm:w-48" : "sm:w-40";
+          const reelSize = players.length <= 4 ? "lg" : "md";
           return (
             <Fragment key={teamIdx}>
               {teamIdx > 0 && <TeamDivider />}
               <div
-                className={clsx("flex flex-col gap-2", isTeam && "rounded-2xl border-2 border-dashed p-2.5")}
+                className={clsx("flex flex-col gap-2", isTeam && "rounded-2xl border-2 border-dashed p-2")}
                 style={isTeam ? { borderColor: `${teamColor}55`, background: `${teamColor}0d` } : undefined}
               >
                 {isTeam && (
@@ -415,9 +417,9 @@ export function BattleRoom() {
                     Team {teamIdx + 1}
                   </p>
                 )}
-                <div className="flex flex-col gap-3 sm:flex-row">
+                <div className="flex flex-col gap-2 sm:flex-row">
                   {teamPlayers.map((p) => (
-                    <div key={p.slotIndex} className="w-full sm:w-64">
+                    <div key={p.slotIndex} className={clsx("w-full", columnWidthClass)}>
                       <PlayerColumn
                         player={p}
                         result={pendingResults[p.slotIndex] ?? null}
@@ -428,6 +430,7 @@ export function BattleRoom() {
                         activeCase={currentCase ?? CASES[0]}
                         costPerPlayer={battle.costPerPlayer}
                         jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
+                        reelSize={reelSize}
                         onLanded={(item) => handleLanded(p.slotIndex, item)}
                         onCallBot={() => callBot(p.slotIndex)}
                         onSimulateJoin={() => simulateJoin(p.slotIndex)}
@@ -504,6 +507,7 @@ function PlayerColumn({
   activeCase,
   costPerPlayer,
   jackpotOdds,
+  reelSize = "lg",
   onLanded,
   onCallBot,
   onSimulateJoin,
@@ -517,6 +521,7 @@ function PlayerColumn({
   activeCase: (typeof CASES)[number];
   costPerPlayer: number;
   jackpotOdds?: number;
+  reelSize?: "md" | "lg";
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
   onSimulateJoin: () => void;
@@ -586,7 +591,8 @@ function PlayerColumn({
           result={result}
           spinToken={battleActive ? spinToken : 0}
           goldSpinEnabled={goldSpinEnabled}
-          size="lg"
+          size={reelSize}
+          orientation="vertical"
           laneSeed={player.slotIndex}
           onLanded={onLanded}
         />

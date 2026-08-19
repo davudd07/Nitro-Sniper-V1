@@ -1,5 +1,6 @@
 import { useEffect } from "react";
-import { Route, Routes, useParams } from "react-router-dom";
+import { Route, Routes, useLocation, useParams } from "react-router-dom";
+import { clsx } from "clsx";
 import { NavBar } from "./components/layout/NavBar";
 import { DemoBanner } from "./components/layout/DemoBanner";
 import { Toasts } from "./components/ui/Toasts";
@@ -25,6 +26,8 @@ export default function App() {
   const balance = useEconomyStore((s) => s.balance);
   const maybeTopUp = useEconomyStore((s) => s.maybeTopUp);
   const push = useToastStore((s) => s.push);
+  const location = useLocation();
+  const isBattleRoom = /^\/battles\/(?!create$)[^/]+$/.test(location.pathname);
 
   useEffect(() => {
     if (maybeTopUp()) {
@@ -37,7 +40,7 @@ export default function App() {
     <div className="flex min-h-full flex-col">
       <NavBar />
       <DemoBanner />
-      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6">
+      <main className={clsx("mx-auto w-full flex-1 px-4 py-6", isBattleRoom ? "max-w-[2000px]" : "max-w-7xl")}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mines" element={<Mines />} />

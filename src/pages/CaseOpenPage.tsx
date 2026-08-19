@@ -94,6 +94,7 @@ export function CaseOpenPage() {
             result={pendingResult}
             spinToken={spinToken}
             goldSpinEnabled={goldSpin}
+            orientation="horizontal"
             onLanded={handleLanded}
           />
 

@@ -6,14 +6,18 @@ import { GOLD_INDICATOR } from "../../data/goldItem";
 import { ItemIcon } from "../ui/ItemIcon";
 import { RARITIES } from "../../data/rarities";
 import { easeOutQuart } from "../../lib/easing";
+import { formatCredits } from "../../lib/format";
 import { sound } from "../../lib/sound";
 
 const REEL_LENGTH = 70;
 const LAND_INDEX = 58;
 
+// A vertical strip: items stack top-to-bottom and scroll upward past a
+// fixed horizontal pointer, so each player's reel takes up less side-by-side
+// width in a battle room while still showing plenty of scroll context.
 const SIZE_CONFIG = {
-  md: { itemWidth: 132, height: 108, icon: "md" as const },
-  lg: { itemWidth: 172, height: 140, icon: "lg" as const },
+  md: { itemHeight: 80, windowHeight: 256, icon: "md" as const },
+  lg: { itemHeight: 96, windowHeight: 304, icon: "lg" as const },
 };
 
 function buildStrip(pool: CaseItem[], landing: CaseItem, rand: () => number): CaseItem[] {
@@ -112,9 +116,9 @@ export function CaseReel({
   }, [spinToken]);
 
   function animateTo(seed: number, dur: number, done: () => void) {
-    const containerWidth = containerRef.current?.clientWidth ?? 320;
-    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemWidth * 0.55;
-    const targetOffset = LAND_INDEX * cfg.itemWidth + cfg.itemWidth / 2 - containerWidth / 2 + jitter;
+    const containerHeight = containerRef.current?.clientHeight ?? cfg.windowHeight;
+    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemHeight * 0.55;
+    const targetOffset = LAND_INDEX * cfg.itemHeight + cfg.itemHeight / 2 - containerHeight / 2 + jitter;
     const start = performance.now();
 
     function tick(now: number) {
@@ -123,7 +127,7 @@ export function CaseReel({
       const pos = targetOffset * eased;
       setOffset(pos);
 
-      const currentIndex = Math.floor((pos + containerWidth / 2) / cfg.itemWidth);
+      const currentIndex = Math.floor((pos + containerHeight / 2) / cfg.itemHeight);
       if (currentIndex !== lastTickIndexRef.current && t < 1) {
         lastTickIndexRef.current = currentIndex;
         sound.tick(1 - t);
@@ -154,25 +158,24 @@ export function CaseReel({
           "relative w-full overflow-hidden rounded-xl border bg-bg-950/70 transition-shadow",
           isGoldPhase ? "border-amber-400/60 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/10",
         )}
-        style={{ height: cfg.height }}
+        style={{ height: cfg.windowHeight }}
       >
-        <div className="pointer-events-none absolute left-1/2 top-0 z-10 h-full w-[3px] -translate-x-1/2 bg-gradient-to-b from-transparent via-fuchsia-400 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-bg-950 to-transparent" />
-        <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-bg-950 to-transparent" />
+        <div className="pointer-events-none absolute left-0 top-1/2 z-10 h-[3px] w-full -translate-y-1/2 bg-gradient-to-r from-transparent via-fuchsia-400 to-transparent" />
+        <div className="pointer-events-none absolute -top-1 left-1/2 z-10 h-3 w-3 -translate-x-1/2 rotate-45 bg-fuchsia-400" />
+        <div className="pointer-events-none absolute -bottom-1 left-1/2 z-10 h-3 w-3 -translate-x-1/2 rotate-45 bg-fuchsia-400" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-bg-950 to-transparent" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-bg-950 to-transparent" />
         {phase === "charge" && (
           <div className="gold-pulse absolute inset-0 z-20 flex items-center justify-center bg-amber-400/10 backdrop-blur-[1px]">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-300">Gold Spin!</span>
           </div>
         )}
-        <div className="absolute top-1/2 flex -translate-y-1/2 gap-0" style={{ transform: `translate(${-offset}px, -50%)` }}>
+        <div className="absolute left-0 top-0 flex w-full flex-col" style={{ transform: `translateY(${-offset}px)` }}>
           {strip.map((item, i) => (
-            <ReelSlot key={i} item={item} itemWidth={cfg.itemWidth} iconSize={cfg.icon} />
+            <ReelSlot key={i} item={item} itemHeight={cfg.itemHeight} iconSize={cfg.icon} />
           ))}
           {strip.length === 0 && (
-            <div
-              className="flex items-center justify-center py-8 text-xs text-slate-600"
-              style={{ width: containerRef.current?.clientWidth ?? 320 }}
-            >
+            <div className="flex items-center justify-center text-xs text-slate-600" style={{ height: cfg.windowHeight }}>
               Waiting to spin…
             </div>
           )}
@@ -184,23 +187,26 @@ export function CaseReel({
 
 function ReelSlot({
   item,
-  itemWidth,
+  itemHeight,
   iconSize,
 }: {
   item: CaseItem;
-  itemWidth: number;
+  itemHeight: number;
   iconSize: "md" | "lg";
 }) {
   const isIndicator = item.id === GOLD_INDICATOR.id;
   const r = RARITIES[item.rarity];
   return (
-    <div className="flex shrink-0 flex-col items-center justify-center gap-1 py-2" style={{ width: itemWidth }}>
-      <div className={clsx("rounded-lg", isIndicator && "gold-pulse")} style={{ boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined }}>
+    <div className="flex w-full shrink-0 items-center gap-2.5 px-3" style={{ height: itemHeight }}>
+      <div className={clsx("shrink-0 rounded-lg", isIndicator && "gold-pulse")} style={{ boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined }}>
         <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} />
       </div>
-      <span className="max-w-[85%] truncate text-[10px] font-medium" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
-        {item.name}
-      </span>
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-xs font-medium" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
+          {item.name}
+        </p>
+        {!isIndicator && <p className="text-[11px] text-slate-500">{formatCredits(item.value)} SH</p>}
+      </div>
     </div>
   );
 }

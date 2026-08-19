@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus, Plus } from "lucide-react";
 import { freshDeck, shuffleDeck, handTotal, isBlackjack, type Card } from "../lib/blackjack";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
@@ -13,6 +12,16 @@ import { PlayingCard } from "../components/ui/PlayingCard";
 
 type Phase = "betting" | "player-turn" | "dealer-turn" | "settled";
 type Outcome = "win" | "lose" | "push" | "blackjack" | null;
+
+// Traditional poker-chip denominations & colors — a generic, universal
+// casino convention (not tied to any specific brand).
+const CHIPS = [
+  { value: 10, from: "#f8fafc", to: "#cbd5e1", text: "#0f172a" },
+  { value: 50, from: "#fda4af", to: "#e11d48", text: "#fff" },
+  { value: 100, from: "#93c5fd", to: "#1d4ed8", text: "#fff" },
+  { value: 500, from: "#86efac", to: "#15803d", text: "#fff" },
+  { value: 1000, from: "#1f2937", to: "#000000", text: "#fff" },
+];
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -240,7 +249,7 @@ export function Blackjack() {
             </InfoButton>
           </div>
           <label className="mb-1 block text-xs text-slate-400">Bet amount</label>
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-3 flex items-center gap-2">
             <input
               type="number"
               min={1}
@@ -251,48 +260,95 @@ export function Blackjack() {
             />
             <button
               disabled={phase !== "betting"}
-              onClick={() => setBet((b) => Math.max(1, Math.floor(b / 2)))}
-              className="rounded-lg border border-white/10 p-2 text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              onClick={() => {
+                sound.click();
+                setBet((b) => Math.max(1, Math.floor(b / 2)));
+              }}
+              className="rounded-lg border border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 transition-all duration-150 hover:bg-white/5 active:scale-90 disabled:opacity-50"
             >
-              <Minus className="h-4 w-4" />
+              ½
             </button>
             <button
               disabled={phase !== "betting"}
-              onClick={() => setBet((b) => b * 2)}
-              className="rounded-lg border border-white/10 p-2 text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              onClick={() => {
+                sound.click();
+                setBet((b) => b * 2);
+              }}
+              className="rounded-lg border border-white/10 px-2.5 py-2 text-xs font-bold text-slate-300 transition-all duration-150 hover:bg-white/5 active:scale-90 disabled:opacity-50"
             >
-              <Plus className="h-4 w-4" />
+              2×
+            </button>
+          </div>
+
+          <p className="mb-1.5 text-[11px] text-slate-500">Add chips to your bet</p>
+          <div className="mb-4 flex flex-wrap gap-2">
+            {CHIPS.map((chip) => (
+              <button
+                key={chip.value}
+                disabled={phase !== "betting"}
+                onClick={() => {
+                  sound.chip();
+                  setBet((b) => b + chip.value);
+                }}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-full border-2 border-dashed border-white/40 text-[11px] font-bold shadow-md transition-all duration-150 hover:-translate-y-1 active:translate-y-0 active:scale-90 disabled:opacity-40"
+                style={{ background: `radial-gradient(circle at 35% 30%, ${chip.from}, ${chip.to})`, color: chip.text }}
+              >
+                {chip.value >= 1000 ? `${chip.value / 1000}k` : chip.value}
+              </button>
+            ))}
+            <button
+              disabled={phase !== "betting"}
+              onClick={() => {
+                sound.click();
+                setBet(0);
+              }}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/15 text-[10px] font-semibold text-slate-400 transition-all duration-150 hover:bg-white/5 active:scale-90 disabled:opacity-40"
+            >
+              Clear
             </button>
           </div>
 
           {phase === "betting" || phase === "settled" ? (
             <button
-              onClick={phase === "settled" ? newRound : deal}
-              disabled={busy}
-              className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-50"
+              onClick={() => {
+                sound.click();
+                if (phase === "settled") newRound();
+                else void deal();
+              }}
+              disabled={busy || (phase === "betting" && bet <= 0)}
+              className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
             >
               {phase === "settled" ? "New Round" : "Deal"}
             </button>
           ) : (
             <div className="grid grid-cols-3 gap-2">
               <button
-                onClick={hit}
+                onClick={() => {
+                  sound.click();
+                  void hit();
+                }}
                 disabled={busy || phase !== "player-turn"}
-                className="rounded-xl bg-emerald-500 py-2.5 font-semibold text-bg-950 disabled:opacity-40"
+                className="rounded-xl bg-emerald-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
               >
                 Hit
               </button>
               <button
-                onClick={stand}
+                onClick={() => {
+                  sound.click();
+                  void stand();
+                }}
                 disabled={busy || phase !== "player-turn"}
-                className="rounded-xl bg-sky-500 py-2.5 font-semibold text-bg-950 disabled:opacity-40"
+                className="rounded-xl bg-sky-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
               >
                 Stand
               </button>
               <button
-                onClick={double}
+                onClick={() => {
+                  sound.click();
+                  void double();
+                }}
                 disabled={busy || phase !== "player-turn" || player.length !== 2}
-                className="rounded-xl bg-amber-500 py-2.5 font-semibold text-bg-950 disabled:opacity-40"
+                className="rounded-xl bg-amber-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
               >
                 Double
               </button>
@@ -316,9 +372,25 @@ export function Blackjack() {
         <ProvablyFairPanel />
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-bg-800/40 p-4 sm:p-8">
-        <div className="mb-10">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+      <div
+        className="relative overflow-hidden rounded-[3rem] border-[10px] border-bg-900 p-4 sm:p-8"
+        style={{
+          background:
+            "radial-gradient(ellipse at 50% 0%, #0f3d2e 0%, #0a2b21 55%, #061a15 100%)",
+          boxShadow: "inset 0 0 60px rgba(0,0,0,0.55)",
+        }}
+      >
+        <div className="pointer-events-none absolute left-1/2 top-[38%] w-full max-w-md -translate-x-1/2 -translate-y-1/2 text-center opacity-25">
+          <p className="text-lg font-black uppercase tracking-widest text-emerald-200 sm:text-2xl">
+            Blackjack Pays 3 to 2
+          </p>
+          <p className="mt-1 text-[10px] font-semibold uppercase tracking-[0.3em] text-emerald-300/80 sm:text-xs">
+            Dealer stands on 17
+          </p>
+        </div>
+
+        <div className="relative mb-10">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-emerald-200/70">
             Dealer {dealerRevealed && `· ${dealerTotal.total}`}
           </p>
           <div className="flex min-h-32 flex-wrap gap-2">
@@ -330,8 +402,8 @@ export function Blackjack() {
           </div>
         </div>
 
-        <div>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">
+        <div className="relative">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-emerald-200/70">
             You {player.length > 0 && `· ${playerTotal.total}${playerTotal.soft ? " (soft)" : ""}`}
           </p>
           <div className="flex min-h-32 flex-wrap gap-2">
@@ -344,7 +416,7 @@ export function Blackjack() {
         </div>
 
         {phase === "betting" && player.length === 0 && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="mt-8 text-center text-slate-500">
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative mt-8 text-center text-emerald-200/50">
             Place a bet and hit Deal to start.
           </motion.p>
         )}

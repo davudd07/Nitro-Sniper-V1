@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
 import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
-import { BATTLE_MODES, PLAYER_COLORS } from "../data/battleModes";
+import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
 import { getCase, rollCaseItem, type CaseOddsEntry } from "../data/cases";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
@@ -64,6 +64,13 @@ export function BattleRoom() {
   }, [mode]);
 
   const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers);
+  const teams = useMemo(() => {
+    const groups: BattlePlayer[][] = [];
+    players.forEach((p) => {
+      groups[p.teamIndex] = groups[p.teamIndex] ? [...groups[p.teamIndex], p] : [p];
+    });
+    return groups;
+  }, [players]);
   const [phase, setPhase] = useState<Phase>("filling");
   const [countdown, setCountdown] = useState(3);
   const [caseSequence, setCaseSequence] = useState<string[]>([]);
@@ -356,27 +363,46 @@ export function BattleRoom() {
         </div>
       )}
 
-      <div
-        className="grid gap-4"
-        style={{ gridTemplateColumns: `repeat(${Math.min(players.length, 3)}, minmax(0, 1fr))` }}
-      >
-        {players.map((p) => (
-          <PlayerColumn
-            key={p.slotIndex}
-            player={p}
-            result={pendingResults[p.slotIndex] ?? null}
-            spinToken={spinToken}
-            goldSpinEnabled={battle.goldSpin}
-            state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
-            battleActive={phase === "running"}
-            activeCase={currentCase ?? CASES[0]}
-            costPerPlayer={battle.costPerPlayer}
-            jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
-            onLanded={(item) => handleLanded(p.slotIndex, item)}
-            onCallBot={() => callBot(p.slotIndex)}
-            onSimulateJoin={() => simulateJoin(p.slotIndex)}
-          />
-        ))}
+      <div className="flex flex-wrap items-stretch justify-center gap-3">
+        {teams.map((teamPlayers, teamIdx) => {
+          const isTeam = teamPlayers.length > 1;
+          const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+          return (
+            <Fragment key={teamIdx}>
+              {teamIdx > 0 && <TeamDivider />}
+              <div
+                className={clsx("flex flex-col gap-2", isTeam && "rounded-2xl border-2 border-dashed p-2.5")}
+                style={isTeam ? { borderColor: `${teamColor}55`, background: `${teamColor}0d` } : undefined}
+              >
+                {isTeam && (
+                  <p className="text-center text-[11px] font-bold uppercase tracking-widest" style={{ color: teamColor }}>
+                    Team {teamIdx + 1}
+                  </p>
+                )}
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  {teamPlayers.map((p) => (
+                    <div key={p.slotIndex} className="w-full sm:w-64">
+                      <PlayerColumn
+                        player={p}
+                        result={pendingResults[p.slotIndex] ?? null}
+                        spinToken={spinToken}
+                        goldSpinEnabled={battle.goldSpin}
+                        state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
+                        battleActive={phase === "running"}
+                        activeCase={currentCase ?? CASES[0]}
+                        costPerPlayer={battle.costPerPlayer}
+                        jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
+                        onLanded={(item) => handleLanded(p.slotIndex, item)}
+                        onCallBot={() => callBot(p.slotIndex)}
+                        onSimulateJoin={() => simulateJoin(p.slotIndex)}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Fragment>
+          );
+        })}
       </div>
 
       {phase === "jackpot" && jackpotTickets && (
@@ -413,6 +439,15 @@ export function BattleRoom() {
           </Link>
         </div>
       )}
+    </div>
+  );
+}
+
+function TeamDivider() {
+  return (
+    <div className="flex flex-col items-center justify-center gap-1 self-center px-1 text-slate-600">
+      <Swords className="h-6 w-6 md:h-7 md:w-7" />
+      <span className="text-[10px] font-bold uppercase tracking-widest">vs</span>
     </div>
   );
 }

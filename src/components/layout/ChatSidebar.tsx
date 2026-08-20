@@ -59,6 +59,21 @@ export function ChatSidebar() {
         {open ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronLeft className="h-3.5 w-3.5" />}
       </button>
 
+      <button
+        type="button"
+        onClick={() => {
+          sound.click();
+          toggle();
+        }}
+        className={clsx(
+          "absolute -left-4 bottom-4 z-20 grid h-9 w-9 place-items-center rounded-md border-2 text-emerald-200 shadow-[2px_2px_0_#050805]",
+          open ? "border-emerald-400/50 bg-emerald-400/15" : "border-[#3d5a3a] bg-[#152018]",
+        )}
+        title={open ? "Hide chat" : "Show chat"}
+      >
+        <MessageSquare className="h-4 w-4" />
+      </button>
+
       <div className={clsx("flex shrink-0 items-center gap-2 border-b border-white/8 px-3 py-4", !open && "justify-center px-1")}>
         <MessageSquare className="h-4 w-4 shrink-0 text-emerald-300" />
         {open && <p className="pixel-label text-[15px] font-extrabold uppercase text-emerald-200/80">Chat</p>}

@@ -12,11 +12,13 @@ interface EconomyState {
   totalWagered: number;
   totalWon: number;
   totalRakeback: number;
+  pendingRakeback: number;
   roundsPlayed: number;
   spend: (amount: number) => boolean;
   credit: (amount: number) => void;
   creditFun: (amount: number) => void;
   awardRakeback: (stake: number, houseEdge: number) => number;
+  claimRakeback: () => number;
   recordRound: (wagered: number, won: number) => void;
   reset: () => void;
   maybeTopUp: () => boolean;
@@ -30,6 +32,7 @@ export const useEconomyStore = create<EconomyState>()(
       totalWagered: 0,
       totalWon: 0,
       totalRakeback: 0,
+      pendingRakeback: 0,
       roundsPlayed: 0,
       spend: (amount) => {
         const { balance } = get();
@@ -46,7 +49,14 @@ export const useEconomyStore = create<EconomyState>()(
       awardRakeback: (stake, houseEdge) => {
         const amt = rakebackAmount(stake, houseEdge);
         if (amt <= 0) return 0;
+        set((s) => ({ pendingRakeback: (s.pendingRakeback ?? 0) + amt }));
+        return amt;
+      },
+      claimRakeback: () => {
+        const amt = get().pendingRakeback ?? 0;
+        if (amt <= 0) return 0;
         set((s) => ({
+          pendingRakeback: 0,
           balance: s.balance + amt,
           totalRakeback: s.totalRakeback + amt,
         }));
@@ -65,6 +75,7 @@ export const useEconomyStore = create<EconomyState>()(
           totalWagered: 0,
           totalWon: 0,
           totalRakeback: 0,
+          pendingRakeback: 0,
           roundsPlayed: 0,
         }),
       maybeTopUp: () => {

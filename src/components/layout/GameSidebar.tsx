@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from "react-router-dom";
 import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, Hash, ChevronLeft, ChevronRight, PanelLeft, Gift } from "lucide-react";
 import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
+import { useEconomyStore } from "../../store/economyStore";
 import { sound } from "../../lib/sound";
 
 const LINKS = [
@@ -17,6 +18,8 @@ const LINKS = [
 export function GameSidebar() {
   const open = useSettingsStore((s) => s.leftNavOpen);
   const toggle = useSettingsStore((s) => s.toggleLeftNav);
+  const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
+  const hasClaim = (pendingRakeback ?? 0) > 0;
   const navigate = useNavigate();
 
   return (
@@ -61,6 +64,14 @@ export function GameSidebar() {
           <Gift className={clsx("shrink-0", open ? "h-6 w-6" : "h-5 w-5")} />
           {open && (
             <span className="pixel-label min-w-0 truncate text-lg leading-none">Rewards</span>
+          )}
+          {hasClaim && (
+            <span
+              className={clsx(
+                "absolute rounded-full bg-cyan-300 shadow-[0_0_8px_rgba(103,232,249,0.8)]",
+                open ? "right-2 top-2 h-2.5 w-2.5" : "right-1 top-1 h-2 w-2",
+              )}
+            />
           )}
         </NavLink>
 

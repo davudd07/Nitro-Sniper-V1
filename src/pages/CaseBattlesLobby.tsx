@@ -1,16 +1,18 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Shuffle, Coins, Sparkles, Flag, Users, Plus } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Handshake } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
-import { useBattleStore } from "../store/battleStore";
+import { useBattleStore, type BattleConfig } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { BATTLE_MODES, totalPlayers } from "../data/battleModes";
 import { getCase } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
+import { JoinBattleModal } from "../components/battles/JoinBattleModal";
 import { formatCredits } from "../lib/format";
+import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -24,7 +26,9 @@ export function CaseBattlesLobby() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [joinTarget, setJoinTarget] = useState<BattleConfig | null>(null);
   const battlesMap = useBattleStore((s) => s.battles);
+  const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const battles = useMemo(
     () => Object.values(battlesMap).sort((a, b) => b.createdAt - a.createdAt),
     [battlesMap],
@@ -34,6 +38,7 @@ export function CaseBattlesLobby() {
 
   const rows = useMemo(() => {
     return battles.filter((b) => {
+      if (b.isPrivate && b.source !== "you") return false;
       if (filter === "all") return true;
       if (filter === "crazy") return b.crazy;
       if (filter === "jackpot") return b.jackpot;
@@ -48,14 +53,32 @@ export function CaseBattlesLobby() {
     return { filled, seats };
   }
 
-  function join(b: (typeof battles)[number]) {
+  function openJoin(b: BattleConfig) {
     sound.click();
-    if (b.source !== "you") {
-      if (!spend(b.costPerPlayer)) {
-        push(`You need ${formatCredits(b.costPerPlayer)} SH to join that battle.`, "danger");
-        return;
-      }
+    if (b.source === "you") {
+      setJoinIntent(b.id, { borrowPct: 0 });
+      navigate(`/battles/${b.id}`);
+      return;
     }
+    const { filled, seats } = occupied(b);
+    if (filled >= seats) {
+      setJoinIntent(b.id, { borrowPct: 0 });
+      navigate(`/battles/${b.id}`);
+      return;
+    }
+    setJoinTarget(b);
+  }
+
+  function confirmJoin(borrowPct: number) {
+    const b = joinTarget;
+    if (!b) return;
+    const cost = joinCost(b.costPerPlayer, b.fundedPct, b.fundedPct > 0 ? 0 : borrowPct);
+    if (!spend(cost)) {
+      push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
+      return;
+    }
+    setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct });
+    setJoinTarget(null);
     navigate(`/battles/${b.id}`);
   }
 
@@ -92,10 +115,10 @@ export function CaseBattlesLobby() {
       </div>
 
       <div className="surface overflow-hidden">
-        <div className="hidden grid-cols-[1fr_90px_110px_140px_120px_100px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
+        <div className="hidden grid-cols-[1fr_80px_120px_140px_150px_110px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
           <span>Cases</span>
           <span>Mode</span>
-          <span>Cost / seat</span>
+          <span>Join cost</span>
           <span>Players</span>
           <span>Modifiers</span>
           <span className="text-right">Action</span>
@@ -108,10 +131,20 @@ export function CaseBattlesLobby() {
               const mode = BATTLE_MODES.find((m) => m.id === b.modeId);
               const { filled, seats } = occupied(b);
               const waiting = filled < seats;
+              const joinerPrice = fundedSeatCost(b.costPerPlayer, b.fundedPct);
               return (
                 <div
                   key={b.id}
-                  className="grid items-center gap-3 px-4 py-3 md:grid-cols-[1fr_90px_110px_140px_120px_100px]"
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => openJoin(b)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      openJoin(b);
+                    }
+                  }}
+                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[1fr_80px_120px_140px_150px_110px] hover:bg-white/[0.03]"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex -space-x-2">
@@ -149,7 +182,16 @@ export function CaseBattlesLobby() {
                   </div>
                   <p className="hidden text-sm font-semibold text-white md:block">{mode?.label}</p>
                   <p className="hidden font-mono text-sm font-semibold text-amber-200 md:block">
-                    {formatCredits(b.costPerPlayer)}
+                    {b.fundedPct > 0 ? (
+                      <span className="block">
+                        <span className="mr-1 text-[11px] font-normal text-slate-500 line-through">
+                          {formatCredits(b.costPerPlayer)}
+                        </span>
+                        {formatCredits(joinerPrice)}
+                      </span>
+                    ) : (
+                      formatCredits(b.costPerPlayer)
+                    )}
                   </p>
                   <div className="hidden items-center gap-1.5 md:flex">
                     {Array.from({ length: seats }).map((_, i) => (
@@ -188,6 +230,21 @@ export function CaseBattlesLobby() {
                         <Sparkles className="h-2.5 w-2.5" /> Gold
                       </span>
                     )}
+                    {b.fundedPct > 0 && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+                        <Banknote className="h-2.5 w-2.5" /> {pctLabel(b.fundedPct)} funded
+                      </span>
+                    )}
+                    {b.fundedPct <= 0 && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
+                        <Handshake className="h-2.5 w-2.5" /> Borrow
+                      </span>
+                    )}
+                    {b.isPrivate && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-300">
+                        <Lock className="h-2.5 w-2.5" /> Private
+                      </span>
+                    )}
                     {b.source === "you" && (
                       <span className="rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-300">Yours</span>
                     )}
@@ -195,13 +252,16 @@ export function CaseBattlesLobby() {
                   <div className="flex justify-end">
                     <button
                       type="button"
-                      onClick={() => join(b)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openJoin(b);
+                      }}
                       className={clsx(
                         "rounded-lg px-3 py-1.5 text-xs font-semibold transition-transform active:scale-95",
                         waiting ? "bg-emerald-500 text-bg-950" : "border border-white/15 text-white hover:bg-white/5",
                       )}
                     >
-                      {b.source === "you" ? "Open" : waiting ? "Join" : "Watch"}
+                      {b.source === "you" ? "Open" : waiting ? (b.fundedPct > 0 ? "Join" : "Join / Borrow") : "Watch"}
                     </button>
                   </div>
                 </div>
@@ -211,6 +271,13 @@ export function CaseBattlesLobby() {
         )}
       </div>
       <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
+      {joinTarget && (
+        <JoinBattleModal
+          battle={joinTarget}
+          onClose={() => setJoinTarget(null)}
+          onConfirm={confirmJoin}
+        />
+      )}
     </div>
   );
 }

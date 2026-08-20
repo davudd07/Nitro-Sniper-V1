@@ -5,7 +5,6 @@ import { CaseThumb } from "./CaseThumb";
 import { RiskBadge } from "./RiskBadge";
 import { ItemCard } from "../ui/ItemCard";
 import { formatCredits, formatPercent } from "../../lib/format";
-import { RARITIES } from "../../data/rarities";
 import { sound } from "../../lib/sound";
 
 export function CasePreviewModal({
@@ -56,19 +55,6 @@ export function CasePreviewModal({
             .sort((a, b) => b.item.value - a.item.value)
             .map((o) => (
               <ItemCard key={o.item.id} item={o.item} probability={o.probability} size="sm" />
-            ))}
-        </div>
-        <div className="mt-3 space-y-1">
-          {[...c.odds]
-            .sort((a, b) => b.probability - a.probability)
-            .map((o) => (
-              <div key={`${o.item.id}-row`} className="flex items-center justify-between text-[11px]">
-                <span style={{ color: RARITIES[o.item.rarity].text }}>{o.item.name}</span>
-                <span className="text-slate-500">
-                  {formatCredits(o.item.value)} SH · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
-                  {o.goldTier ? " · gold" : ""}
-                </span>
-              </div>
             ))}
         </div>
       </div>

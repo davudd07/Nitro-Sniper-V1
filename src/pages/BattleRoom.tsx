@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, Navigate, Link } from "react-router-dom";
+import { useParams, Navigate, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag } from "lucide-react";
+import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
 import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
@@ -9,6 +9,7 @@ import { getCase, rollCaseItem, type CaseOddsEntry } from "../data/cases";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
+import { JoinBattleModal } from "../components/battles/JoinBattleModal";
 import { CaseReel } from "../components/cases/CaseReel";
 import { ItemCard } from "../components/ui/ItemCard";
 import { AnimatedPot } from "../components/ui/AnimatedPot";
@@ -18,6 +19,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { randomBotName, BOT_NAMES } from "../data/botNames";
 import { formatCredits } from "../lib/format";
+import { fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
 
@@ -40,8 +42,12 @@ type Phase = "filling" | "countdown" | "running" | "jackpot" | "finished";
 
 export function BattleRoom() {
   const { battleId } = useParams();
+  const navigate = useNavigate();
   const battle = useBattleStore((s) => (battleId ? s.getBattle(battleId) : undefined));
+  const joinIntent = useBattleStore((s) => (battleId ? s.joinIntents[battleId] : undefined));
+  const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const play = useFairnessStore((s) => s.play);
+  const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
   const push = useToastStore((s) => s.push);
 
@@ -93,6 +99,8 @@ export function BattleRoom() {
   const [liveOdds, setLiveOdds] = useState<Record<number, number>>({});
   const [tieBreak, setTieBreak] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const borrowPct = joinIntent?.borrowPct ?? 0;
+  const needsJoinGate = Boolean(battle && battle.source !== "you" && !joinIntent);
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
@@ -124,11 +132,11 @@ export function BattleRoom() {
   const allFilled = players.length > 0 && players.every((p) => p.kind !== "empty" && p.kind !== "joining");
 
   useEffect(() => {
-    if (allFilled && phase === "filling" && !startedRef.current) {
+    if (allFilled && phase === "filling" && !startedRef.current && !needsJoinGate) {
       startedRef.current = true;
       setPhase("countdown");
     }
-  }, [allFilled, phase]);
+  }, [allFilled, phase, needsJoinGate]);
 
   useEffect(() => {
     if (phase !== "countdown") return;
@@ -322,8 +330,16 @@ export function BattleRoom() {
     const share = pot / Math.max(1, teamMembers.length);
     const youWon = teamMembers.some((p) => p.kind === "you");
     if (youWon && share > 0) {
-      credit(share);
-      push(`Your team won the battle! +${formatCredits(share)} SH`, "success");
+      const paid = winPayout(share, borrowPct);
+      credit(paid);
+      if (borrowPct > 0) {
+        push(
+          `Your team won! You keep ${pctLabel(1 - borrowPct)} after borrow: +${formatCredits(paid)} SH`,
+          "success",
+        );
+      } else {
+        push(`Your team won the battle! +${formatCredits(paid)} SH`, "success");
+      }
       sound.win("big");
     } else {
       push("Your team didn't win this battle.", "info");
@@ -397,8 +413,37 @@ export function BattleRoom() {
                 <Sparkles className="h-3 w-3" /> Gold Spin
               </span>
             )}
+            {battle.fundedPct > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+                <Banknote className="h-3 w-3" /> {pctLabel(battle.fundedPct)} funded
+              </span>
+            )}
+            {borrowPct > 0 && (
+              <span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-300">
+                <Handshake className="h-3 w-3" /> Borrow {pctLabel(borrowPct)}
+              </span>
+            )}
+            {battle.isPrivate && (
+              <span className="flex items-center gap-1 rounded-full bg-fuchsia-500/15 px-2 py-0.5 text-xs font-medium text-fuchsia-300">
+                Private
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-4 text-sm text-slate-400">
+            {battle.isPrivate && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.click();
+                  const url = `${window.location.origin}/battles/${battle.id}`;
+                  void navigator.clipboard?.writeText(url);
+                  push("Battle link copied.", "success");
+                }}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/5"
+              >
+                <Link2 className="h-3.5 w-3.5" /> Copy link
+              </button>
+            )}
             <span>
               Battle:{" "}
               <span className="font-mono font-semibold text-amber-300">{formatCredits(battleValue)} SH</span>
@@ -522,6 +567,8 @@ export function BattleRoom() {
                             terminal={battle.terminal}
                             grouped={isTeam}
                             reelSize={reelSize}
+                            borrowPct={p.kind === "you" ? borrowPct : 0}
+                            fundedPct={battle.fundedPct}
                             onLanded={(item) => handleLanded(p.slotIndex, item)}
                             onCallBot={() => callBot(p.slotIndex)}
                             onSimulateJoin={() => simulateJoin(p.slotIndex)}
@@ -538,6 +585,20 @@ export function BattleRoom() {
       </div>
 
       <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
+      {needsJoinGate && (
+        <JoinBattleModal
+          battle={battle}
+          onClose={() => navigate("/battles")}
+          onConfirm={(pct) => {
+            const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
+            if (!spend(cost)) {
+              push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
+              return;
+            }
+            setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });
+          }}
+        />
+      )}
 
       {phase === "finished" && winningTeam !== null && (
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">
@@ -610,6 +671,8 @@ function PlayerColumn({
   terminal = false,
   grouped = false,
   reelSize = "lg",
+  borrowPct = 0,
+  fundedPct = 0,
   onLanded,
   onCallBot,
   onSimulateJoin,
@@ -626,6 +689,8 @@ function PlayerColumn({
   terminal?: boolean;
   grouped?: boolean;
   reelSize?: "md" | "lg";
+  borrowPct?: number;
+  fundedPct?: number;
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
   onSimulateJoin: () => void;
@@ -651,6 +716,11 @@ function PlayerColumn({
             {jackpotOdds !== undefined && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                 <Coins className="h-2.5 w-2.5" /> {jackpotOdds.toFixed(1)}%
+              </span>
+            )}
+            {player.kind === "you" && borrowPct > 0 && (
+              <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">
+                keep {pctLabel(1 - borrowPct)}
               </span>
             )}
           </p>
@@ -681,7 +751,10 @@ function PlayerColumn({
             <p className="text-xs text-slate-400">Waiting for player to join…</p>
           ) : (
             <>
-              <p className="text-xs text-slate-500">Empty seat · {formatCredits(costPerPlayer)} SH to join</p>
+              <p className="text-xs text-slate-500">
+                Empty seat · {formatCredits(fundedSeatCost(costPerPlayer, fundedPct))} SH to join
+                {fundedPct > 0 ? ` (${pctLabel(fundedPct)} funded)` : ""}
+              </p>
               <div className="flex gap-2">
                 <button
                   onClick={() => {

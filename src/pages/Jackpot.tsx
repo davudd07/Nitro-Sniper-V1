@@ -24,7 +24,7 @@ import { sound } from "../lib/sound";
 export function JackpotPage() {
   const [potId, setPotId] = useState<JackpotPotId>("small");
   const def = JACKPOT_POTS.find((p) => p.id === potId)!;
-  const [amount, setAmount] = useState(def.min);
+  const [amount, setAmount] = useState<number>(def.min);
   const pot = useJackpotStore((s) => s.pots[potId]);
   const join = useJackpotStore((s) => s.join);
   const callBot = useJackpotStore((s) => s.callBot);

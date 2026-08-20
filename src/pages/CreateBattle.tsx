@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Swords, GripVertical, ArrowDownNarrowWide, ArrowUpNarrowWide } from "lucide-react";
+import { Plus, Swords, GripVertical, ArrowDownNarrowWide, ArrowUpNarrowWide, Banknote, Lock } from "lucide-react";
 import { sound } from "../lib/sound";
 import { ModeSelector, ToggleRow } from "../components/battles/ModeSelector";
 import { AddCasesModal } from "../components/battles/AddCasesModal";
@@ -13,6 +13,7 @@ import { useBattleStore } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { formatCredits } from "../lib/format";
+import { creatorCost, pctLabel } from "../lib/battleFinance";
 
 export function CreateBattle() {
   const navigate = useNavigate();
@@ -25,8 +26,11 @@ export function CreateBattle() {
   const [modalOpen, setModalOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [dragFrom, setDragFrom] = useState<number | null>(null);
+  const [fundedPct, setFundedPct] = useState(0);
+  const [isPrivate, setIsPrivate] = useState(false);
 
   const createBattle = useBattleStore((s) => s.createBattle);
+  const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const spend = useEconomyStore((s) => s.spend);
   const push = useToastStore((s) => s.push);
 
@@ -37,6 +41,9 @@ export function CreateBattle() {
     [cases],
   );
   const totalCost = costPerPlayer * players;
+  const youPay = creatorCost(costPerPlayer, players, fundedPct);
+  const joinerPay = Math.round(costPerPlayer * (1 - fundedPct));
+  const fundCover = youPay - costPerPlayer;
   const totalCaseCount = cases.reduce((s, e) => s + e.count, 0);
 
   function sortByPrice(dir: "asc" | "desc") {
@@ -69,12 +76,30 @@ export function CreateBattle() {
       push("Add at least one case to the battle.", "warning");
       return;
     }
-    if (!spend(costPerPlayer)) {
-      push(`You need ${formatCredits(costPerPlayer)} SH to join your own seat.`, "danger");
+    if (!spend(youPay)) {
+      push(`You need ${formatCredits(youPay)} SH to create this battle.`, "danger");
       return;
     }
-    const id = createBattle({ modeId, crazy, jackpot, goldSpin, terminal, cases, costPerPlayer, source: "you", prefillBots: 0 });
-    push("Battle created! Fill the remaining slots to start.", "success");
+    const id = createBattle({
+      modeId,
+      crazy,
+      jackpot,
+      goldSpin,
+      terminal,
+      cases,
+      costPerPlayer,
+      fundedPct,
+      isPrivate,
+      source: "you",
+      prefillBots: 0,
+    });
+    setJoinIntent(id, { borrowPct: 0 });
+    push(
+      isPrivate
+        ? "Private battle created. Share the link — it won’t show in the lobby."
+        : "Battle created! Fill the remaining slots to start.",
+      "success",
+    );
     navigate(`/battles/${id}`);
   }
 
@@ -180,6 +205,54 @@ export function CreateBattle() {
           )}
         </div>
 
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <Banknote className="h-3.5 w-3.5 text-emerald-300" /> Fund joiners
+            </p>
+            <p className="mb-2 text-[11px] text-slate-400">
+              Cover part of every other seat. Joiners pay less; you pay the difference. Funded rooms cannot be joined
+              with borrow.
+            </p>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              step={5}
+              value={Math.round(fundedPct * 100)}
+              onChange={(e) => setFundedPct(Number(e.target.value) / 100)}
+              className="w-full accent-emerald-400"
+            />
+            <p className="mt-1 text-sm font-semibold text-emerald-200">{pctLabel(fundedPct)} funded</p>
+            {fundedPct > 0 && (
+              <p className="text-[11px] text-slate-500">
+                Joiners pay {formatCredits(joinerPay)} SH · you cover {formatCredits(fundCover)} SH for {players - 1}{" "}
+                other seat{players - 1 === 1 ? "" : "s"}.
+              </p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              sound.click();
+              setIsPrivate((v) => !v);
+            }}
+            className={`rounded-xl border p-3 text-left transition-colors ${
+              isPrivate ? "border-fuchsia-400/40 bg-fuchsia-500/10" : "border-white/10 bg-white/[0.03] hover:bg-white/5"
+            }`}
+          >
+            <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <Lock className="h-3.5 w-3.5 text-fuchsia-300" /> Private room
+            </p>
+            <p className="text-sm font-semibold text-white">{isPrivate ? "Private — link only" : "Public lobby"}</p>
+            <p className="mt-1 text-[11px] text-slate-400">
+              {isPrivate
+                ? "Hidden from the battle list. Anyone with the room link can still join."
+                : "Listed in the lobby so anyone can find and join it."}
+            </p>
+          </button>
+        </div>
+
         <div className="grid grid-cols-3 gap-3 rounded-xl bg-black/20 p-4 text-center">
           <div>
             <p className="text-xs text-slate-500">Players</p>
@@ -190,14 +263,16 @@ export function CreateBattle() {
             <p className="font-mono text-lg font-bold text-white">{formatCredits(costPerPlayer)}</p>
           </div>
           <div>
-            <p className="text-xs text-slate-500">Your cost to join</p>
-            <p className="font-mono text-lg font-bold text-amber-300">{formatCredits(costPerPlayer)}</p>
+            <p className="text-xs text-slate-500">Your cost</p>
+            <p className="font-mono text-lg font-bold text-amber-300">{formatCredits(youPay)}</p>
           </div>
         </div>
         <p className="-mt-3 text-center text-[11px] text-slate-500">
-          Everyone pays their own seat cost ({formatCredits(costPerPlayer)} SH) — you're only charged for your own
-          seat here. Bots and other joining players cover their own seats when they fill in. Total pot once every
-          seat is filled: {formatCredits(totalCost)} SH.
+          You always pay your own seat ({formatCredits(costPerPlayer)} SH)
+          {fundedPct > 0
+            ? ` plus ${pctLabel(fundedPct)} of every other seat (${formatCredits(fundCover)} SH). Joiners pay ${formatCredits(joinerPay)} SH.`
+            : `. Other players cover their own seats when they join.`}{" "}
+          Total pot once every seat is filled: {formatCredits(totalCost)} SH.
         </p>
 
         <button
@@ -207,7 +282,7 @@ export function CreateBattle() {
           }}
           className="btn-primary w-full py-3"
         >
-          Create Battle
+          Create Battle · {formatCredits(youPay)} SH
         </button>
       </div>
 

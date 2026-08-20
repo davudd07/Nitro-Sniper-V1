@@ -18,6 +18,10 @@ export interface BattleConfig {
   cases: BattleCaseEntry[];
   /** Cost of the full case list — what each individual seat pays to join. */
   costPerPlayer: number;
+  /** 0–1. Creator covers this fraction of every other player's seat. */
+  fundedPct: number;
+  /** Hidden from the lobby — join only with the room link. */
+  isPrivate: boolean;
   createdAt: number;
   /** "you" = created in this session; "lobby" = seeded active room. */
   source: "you" | "lobby";
@@ -25,11 +29,17 @@ export interface BattleConfig {
   prefillBots: number;
 }
 
+export interface BattleJoinIntent {
+  borrowPct: number;
+}
+
 interface BattleStoreState {
   battles: Record<string, BattleConfig>;
+  joinIntents: Record<string, BattleJoinIntent>;
   createBattle: (cfg: Omit<BattleConfig, "id" | "createdAt">) => string;
   getBattle: (id: string) => BattleConfig | undefined;
   listBattles: () => BattleConfig[];
+  setJoinIntent: (battleId: string, intent: BattleJoinIntent) => void;
 }
 
 function costOf(cases: BattleCaseEntry[]): number {
@@ -37,11 +47,18 @@ function costOf(cases: BattleCaseEntry[]): number {
 }
 
 function seedBattle(
-  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source"> & { id: string; createdAt: number },
+  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate"> & {
+    id: string;
+    createdAt: number;
+    fundedPct?: number;
+    isPrivate?: boolean;
+  },
 ): BattleConfig {
   return {
     ...partial,
     source: "lobby",
+    fundedPct: partial.fundedPct ?? 0,
+    isPrivate: partial.isPrivate ?? false,
     costPerPlayer: costOf(partial.cases),
   };
 }
@@ -124,6 +141,7 @@ function seedBattles(): Record<string, BattleConfig> {
       terminal: false,
       cases: [{ caseId: "steady", count: 1 }],
       prefillBots: 0,
+      fundedPct: 0.5,
       createdAt: now - 4000,
     }),
   ];
@@ -132,6 +150,7 @@ function seedBattles(): Record<string, BattleConfig> {
 
 export const useBattleStore = create<BattleStoreState>((set, get) => ({
   battles: seedBattles(),
+  joinIntents: {},
   createBattle: (cfg) => {
     const id = shortId("battle");
     const battle: BattleConfig = { ...cfg, id, createdAt: Date.now() };
@@ -140,4 +159,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   },
   getBattle: (id) => get().battles[id],
   listBattles: () => Object.values(get().battles).sort((a, b) => b.createdAt - a.createdAt),
+  setJoinIntent: (battleId, intent) => {
+    set((s) => ({ joinIntents: { ...s.joinIntents, [battleId]: intent } }));
+  },
 }));

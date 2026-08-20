@@ -230,6 +230,11 @@ export function CaseBattlesLobby() {
                         <Sparkles className="h-2.5 w-2.5" /> Gold
                       </span>
                     )}
+                    {b.shared && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
+                        <Users className="h-2.5 w-2.5" /> Shared
+                      </span>
+                    )}
                     {b.fundedPct > 0 && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
                         <Banknote className="h-2.5 w-2.5" /> {pctLabel(b.fundedPct)} funded

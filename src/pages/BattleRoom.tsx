@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote } from "lucide-react";
+import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Users } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
 import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
@@ -224,7 +224,7 @@ export function BattleRoom() {
         } else {
           finishBattle();
         }
-      }, 650);
+      }, battle?.fastSpin ? 280 : 650);
     }
   }
 
@@ -249,6 +249,25 @@ export function BattleRoom() {
       return battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
     };
     const totals = players.map((p) => ({ p, value: decisionValue(p.slotIndex) }));
+
+    if (battle.shared) {
+      const n = Math.max(1, players.length);
+      const share = pot / n;
+      const youPlayed = players.some((p) => p.kind === "you");
+      if (youPlayed && share > 0) {
+        const paid = winPayout(share, borrowPct);
+        credit(paid);
+        push(
+          borrowPct > 0
+            ? `Shared split. You keep ${pctLabel(1 - borrowPct)} after borrow: +${formatCredits(paid)} SH`
+            : `Shared battle — pot split equally. +${formatCredits(paid)} SH`,
+          "success",
+        );
+        sound.win("big");
+      }
+      setPhase("finished");
+      return;
+    }
 
     if (battle.jackpot) {
       const weights = computeJackpotWeights(
@@ -413,6 +432,16 @@ export function BattleRoom() {
                 <Sparkles className="h-3 w-3" /> Gold Spin
               </span>
             )}
+            {battle.shared && (
+              <span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-300">
+                Shared
+              </span>
+            )}
+            {battle.fastSpin && (
+              <span className="flex items-center gap-1 rounded-full bg-cyan-500/15 px-2 py-0.5 text-xs font-medium text-cyan-300">
+                Fast
+              </span>
+            )}
             {battle.fundedPct > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
                 <Banknote className="h-3 w-3" /> {pctLabel(battle.fundedPct)} funded
@@ -567,6 +596,7 @@ export function BattleRoom() {
                             terminal={battle.terminal}
                             grouped={isTeam}
                             reelSize={reelSize}
+                            fastSpin={battle.fastSpin}
                             borrowPct={p.kind === "you" ? borrowPct : 0}
                             fundedPct={battle.fundedPct}
                             onLanded={(item) => handleLanded(p.slotIndex, item)}
@@ -600,7 +630,22 @@ export function BattleRoom() {
         />
       )}
 
-      {phase === "finished" && winningTeam !== null && (
+      {phase === "finished" && battle.shared && (
+        <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-5 text-center">
+          <Users className="mx-auto mb-2 h-8 w-8 text-sky-300" />
+          <p className="text-lg font-bold text-white">Shared battle — pot split equally</p>
+          <p className="mt-1 text-sm text-slate-300">Total pot: {formatCredits(pot)} SH</p>
+          <Link
+            to="/battles/create"
+            onClick={() => sound.click()}
+            className="btn-primary mt-4 inline-block px-6 py-2.5"
+          >
+            Start another battle
+          </Link>
+        </div>
+      )}
+
+      {phase === "finished" && winningTeam !== null && !battle.shared && (
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">
           <Crown className="mx-auto mb-2 h-8 w-8 text-amber-300" />
           <p className="text-lg font-bold text-white">
@@ -671,6 +716,7 @@ function PlayerColumn({
   terminal = false,
   grouped = false,
   reelSize = "lg",
+  fastSpin = false,
   borrowPct = 0,
   fundedPct = 0,
   onLanded,
@@ -689,6 +735,7 @@ function PlayerColumn({
   terminal?: boolean;
   grouped?: boolean;
   reelSize?: "md" | "lg";
+  fastSpin?: boolean;
   borrowPct?: number;
   fundedPct?: number;
   onLanded: (item: CaseOddsEntry["item"]) => void;
@@ -785,6 +832,8 @@ function PlayerColumn({
           result={result}
           spinToken={battleActive ? spinToken : 0}
           goldSpinEnabled={goldSpinEnabled}
+          duration={fastSpin ? 2400 : 6800}
+          goldDuration={fastSpin ? 1400 : 3800}
           size={reelSize}
           orientation="vertical"
           laneSeed={player.slotIndex}

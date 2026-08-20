@@ -18,10 +18,18 @@ export function joinCost(costPerPlayer: number, fundedPct: number, borrowPct: nu
   return Math.round(funded * (1 - borrow));
 }
 
-/** Creator pays their own full seat plus the funded slice of every other seat. */
-export function creatorCost(costPerPlayer: number, seats: number, fundedPct: number): number {
+/** Creator pays their own seat (after optional borrow) plus funded slices of other seats. */
+export function creatorCreateCost(
+  costPerPlayer: number,
+  seats: number,
+  fundedPct: number,
+  borrowPct: number,
+): number {
+  const borrow = fundedPct > 0 ? 0 : clampPct(borrowPct, 0, MAX_BORROW_PCT);
+  const own = Math.round(costPerPlayer * (1 - borrow));
   const others = Math.max(0, seats - 1);
-  return Math.round(costPerPlayer + others * costPerPlayer * clampPct(fundedPct));
+  const fund = Math.round(others * costPerPlayer * clampPct(fundedPct));
+  return own + fund;
 }
 
 /** Winner keeps this fraction of their pot share after borrow. */

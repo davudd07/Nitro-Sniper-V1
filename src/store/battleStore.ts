@@ -22,6 +22,10 @@ export interface BattleConfig {
   fundedPct: number;
   /** Hidden from the lobby — join only with the room link. */
   isPrivate: boolean;
+  /** Everyone splits the pot equally after the last case. */
+  shared: boolean;
+  /** Shorter reel duration in the battle room. */
+  fastSpin: boolean;
   createdAt: number;
   /** "you" = created in this session; "lobby" = seeded active room. */
   source: "you" | "lobby";
@@ -47,11 +51,13 @@ function costOf(cases: BattleCaseEntry[]): number {
 }
 
 function seedBattle(
-  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate"> & {
+  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin"> & {
     id: string;
     createdAt: number;
     fundedPct?: number;
     isPrivate?: boolean;
+    shared?: boolean;
+    fastSpin?: boolean;
   },
 ): BattleConfig {
   return {
@@ -59,6 +65,8 @@ function seedBattle(
     source: "lobby",
     fundedPct: partial.fundedPct ?? 0,
     isPrivate: partial.isPrivate ?? false,
+    shared: partial.shared ?? false,
+    fastSpin: partial.fastSpin ?? false,
     costPerPlayer: costOf(partial.cases),
   };
 }

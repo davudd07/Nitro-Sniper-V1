@@ -14,6 +14,7 @@ import { CaseOpenPage } from "./pages/CaseOpenPage";
 import { CaseBattlesLobby } from "./pages/CaseBattlesLobby";
 import { CreateBattle } from "./pages/CreateBattle";
 import { BattleRoom } from "./pages/BattleRoom";
+import { JackpotPage } from "./pages/Jackpot";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -50,6 +51,7 @@ export default function App() {
           <Route path="/battles" element={<CaseBattlesLobby />} />
           <Route path="/battles/create" element={<CreateBattle />} />
           <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
+          <Route path="/jackpot" element={<JackpotPage />} />
         </Routes>
       </main>
       <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">

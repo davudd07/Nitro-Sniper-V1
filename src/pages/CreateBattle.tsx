@@ -45,7 +45,7 @@ export function CreateBattle() {
       push(`You need ${formatCredits(costPerPlayer)} SH to join your own seat.`, "danger");
       return;
     }
-    const id = createBattle({ modeId, crazy, jackpot, goldSpin, terminal, cases, costPerPlayer });
+    const id = createBattle({ modeId, crazy, jackpot, goldSpin, terminal, cases, costPerPlayer, source: "you", prefillBots: 0 });
     push("Battle created! Fill the remaining slots to start.", "success");
     navigate(`/battles/${id}`);
   }

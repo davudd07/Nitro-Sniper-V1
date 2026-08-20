@@ -14,7 +14,7 @@ import { JackpotWheel, type JackpotTicket } from "../components/battles/JackpotW
 import { useFairnessStore } from "../store/fairnessStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { randomBotName } from "../data/botNames";
+import { randomBotName, BOT_NAMES } from "../data/botNames";
 import { formatCredits } from "../lib/format";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
@@ -54,15 +54,20 @@ export function BattleRoom() {
         players.push({
           slotIndex: slot,
           teamIndex,
-          kind: slot === 0 ? "you" : "empty",
-          name: slot === 0 ? "You" : "",
+          kind: slot === 0 ? "you" : slot <= (battle?.prefillBots ?? 0) ? "bot" : "empty",
+          name:
+            slot === 0
+              ? "You"
+              : slot <= (battle?.prefillBots ?? 0)
+                ? BOT_NAMES[(slot + (battle?.id.length ?? 0)) % BOT_NAMES.length]
+                : "",
           color: PLAYER_COLORS[slot % PLAYER_COLORS.length],
         });
         slot++;
       }
     });
     return players;
-  }, [mode]);
+  }, [mode, battle?.prefillBots, battle?.id]);
 
   const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers);
   const teams = useMemo(() => {

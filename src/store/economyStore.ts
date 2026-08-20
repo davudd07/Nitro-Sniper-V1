@@ -18,6 +18,7 @@ interface EconomyState {
   credit: (amount: number) => void;
   creditFun: (amount: number) => void;
   awardRakeback: (stake: number, houseEdge: number) => number;
+  grantPendingRakeback: (amount: number) => void;
   claimRakeback: () => number;
   recordRound: (wagered: number, won: number) => void;
   reset: () => void;
@@ -51,6 +52,10 @@ export const useEconomyStore = create<EconomyState>()(
         if (amt <= 0) return 0;
         set((s) => ({ pendingRakeback: (s.pendingRakeback ?? 0) + amt }));
         return amt;
+      },
+      grantPendingRakeback: (amount) => {
+        if (amount <= 0) return;
+        set((s) => ({ pendingRakeback: (s.pendingRakeback ?? 0) + amount }));
       },
       claimRakeback: () => {
         const amt = get().pendingRakeback ?? 0;

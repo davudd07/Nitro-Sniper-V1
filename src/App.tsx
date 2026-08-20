@@ -3,6 +3,7 @@ import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { NavBar } from "./components/layout/NavBar";
 import { DemoBanner } from "./components/layout/DemoBanner";
+import { BanNotice } from "./components/layout/BanNotice";
 import { GameSidebar } from "./components/layout/GameSidebar";
 import { ChatSidebar } from "./components/layout/ChatSidebar";
 import { Toasts } from "./components/ui/Toasts";
@@ -23,6 +24,9 @@ import { ChatRainController } from "./components/chat/ChatRainController";
 import { PATH_TO_GAME } from "./data/lobbyGames";
 import { trackRecent } from "./lib/recentGames";
 import { Rewards } from "./pages/Rewards";
+import { Affiliate } from "./pages/Affiliate";
+import { Admin } from "./pages/Admin";
+import { installChatModeration } from "./lib/moderation";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -55,12 +59,27 @@ export default function App() {
     }
   }, [location.pathname]);
 
+  useEffect(() => {
+    installChatModeration();
+  }, []);
+
+  const isAdmin = location.pathname === "/admin";
+  if (isAdmin) {
+    return (
+      <div className="flex h-full min-h-0 overflow-hidden">
+        <Admin />
+        <Toasts />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-full min-h-0 overflow-hidden">
       <GameSidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <NavBar wide={isBattleRoom} />
         <DemoBanner />
+        <BanNotice />
         <main
           className={clsx(
             "mx-auto w-full min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-6 sm:px-4",
@@ -70,6 +89,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/rewards" element={<Rewards />} />
+            <Route path="/affiliate" element={<Affiliate />} />
             <Route path="/mines" element={<Mines />} />
             <Route path="/blackjack" element={<Blackjack />} />
             <Route path="/cases" element={<Cases />} />

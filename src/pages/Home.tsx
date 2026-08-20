@@ -8,6 +8,8 @@ import { CaseThumb } from "../components/cases/CaseThumb";
 import { formatCredits, formatPercent } from "../lib/format";
 import { GameCard } from "../components/lobby/GameCard";
 import { GameRow } from "../components/lobby/GameRow";
+import { HomeHero } from "../components/lobby/HomeHero";
+import { PromoRow } from "../components/lobby/PromoRow";
 import {
   LOBBY_GAMES,
   ORIGINAL_IDS,
@@ -37,13 +39,16 @@ export function Home() {
 
   return (
     <div className="space-y-8">
+      <HomeHero />
+      <PromoRow />
+
       <label className="relative block">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
         <input
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for Game..."
-          className="w-full rounded-2xl border border-white/10 bg-white/[0.04] py-3.5 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-fuchsia-400/40"
+          className="w-full rounded-xl border-2 border-[#3d5a3a]/50 bg-white/[0.04] py-3.5 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
         />
       </label>
 

@@ -26,7 +26,7 @@ export function GameCard({ game, onSoon }: { game: LobbyGame; onSoon?: () => voi
   );
 
   const className = clsx(
-    "group relative block aspect-[3/4] w-[158px] shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10 transition-transform sm:w-[176px]",
+    "group relative block aspect-[3/4] w-[158px] shrink-0 overflow-hidden rounded-xl border-2 border-white/10 shadow-[4px_4px_0_#050805] transition-transform sm:w-[176px]",
     !game.comingSoon && "hover:-translate-y-1 hover:ring-white/25",
   );
 

@@ -133,6 +133,10 @@ class SoundEngine {
     });
   }
 
+  countdownBeep(final = false) {
+    this.tone(final ? 880 : 520, final ? 0.28 : 0.14, "triangle", { release: final ? 0.3 : 0.12 }, final ? 0.4 : 0.24);
+  }
+
   battleStart() {
     [392, 523, 659].forEach((f, i) => {
       setTimeout(() => this.tone(f, 0.16, "square", { release: 0.15 }, 0.2), i * 100);

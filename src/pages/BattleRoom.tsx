@@ -1,6 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link } from "react-router-dom";
-import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords } from "lucide-react";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
 import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
@@ -123,18 +124,21 @@ export function BattleRoom() {
   useEffect(() => {
     if (phase !== "countdown") return;
     setCountdown(3);
+    sound.countdownBeep();
     const id = setInterval(() => {
       setCountdown((c) => {
         if (c <= 1) {
           clearInterval(id);
+          sound.countdownBeep(true);
           sound.battleStart();
           setPhase("running");
           setCaseIndex(0);
           return 0;
         }
+        sound.countdownBeep();
         return c - 1;
       });
-    }, 700);
+    }, 1000);
     return () => clearInterval(id);
   }, [phase]);
 
@@ -181,7 +185,11 @@ export function BattleRoom() {
       // so the % shown next to each name always reflects the latest pulls.
       if (battle?.jackpot) {
         setTimeout(() => {
-          const entries = players.map((p) => ({ key: String(p.slotIndex), value: roundStatesRef.current[p.slotIndex]?.total ?? 0 }));
+          const entries = players.map((p) => {
+            const state = roundStatesRef.current[p.slotIndex];
+            const value = battle.terminal ? (state?.history[0]?.item.value ?? 0) : (state?.total ?? 0);
+            return { key: String(p.slotIndex), value };
+          });
           const weights = computeJackpotWeights(entries, battle.crazy);
           const next: Record<number, number> = {};
           players.forEach((p, i) => (next[p.slotIndex] = weights[i] * 100));
@@ -208,8 +216,17 @@ export function BattleRoom() {
 
   function resolveOutcome(finalStates: Record<number, PlayerRoundState>) {
     if (!battle || !mode) return;
-    const totals = players.map((p) => ({ p, value: finalStates[p.slotIndex]?.total ?? 0 }));
-    const pot = totals.reduce((s, t) => s + t.value, 0);
+    // The pot paid out is always the full cumulative total pulled — Terminal
+    // Mode only changes which value decides the WINNER, not how much is won.
+    const potTotals = players.map((p) => ({ p, value: finalStates[p.slotIndex]?.total ?? 0 }));
+    const pot = potTotals.reduce((s, t) => s + t.value, 0);
+
+    const decisionValue = (slotIndex: number) => {
+      const state = finalStates[slotIndex];
+      if (!state) return 0;
+      return battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+    };
+    const totals = players.map((p) => ({ p, value: decisionValue(p.slotIndex) }));
 
     if (battle.jackpot) {
       const weights = computeJackpotWeights(
@@ -353,16 +370,27 @@ export function BattleRoom() {
               <Coins className="h-3 w-3" /> Jackpot
             </span>
           )}
+          {battle.terminal && (
+            <span className="flex items-center gap-1 rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-300">
+              <Flag className="h-3 w-3" /> Terminal
+            </span>
+          )}
           {battle.goldSpin && (
             <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-300">
               <Sparkles className="h-3 w-3" /> Gold Spin
             </span>
           )}
         </div>
-        <div className="flex items-center gap-4 text-sm text-slate-400">
+        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
           <span>
             Pot: <span className="font-mono font-semibold text-amber-300">{formatCredits(pot)} SH</span>
           </span>
+          {battle.terminal && (
+            <span className="text-pink-300">
+              {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
+              {battle.jackpot ? " · jackpot odds from last case" : ""}
+            </span>
+          )}
           {phase === "running" && currentCase && (
             <span>
               Case {caseIndex + 1}/{caseSequence.length}: <span className="text-white">{currentCase.name}</span>
@@ -392,34 +420,35 @@ export function BattleRoom() {
         {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
       </div>
 
-      {phase === "countdown" && (
-        <div className="rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/10 py-6 text-center">
-          <p className="text-sm text-fuchsia-200">Battle starting…</p>
-          <p className="text-5xl font-black text-white">{countdown}</p>
-        </div>
-      )}
+      {phase === "countdown" && <BattleCountdown countdown={countdown} />}
 
-      <div className="flex items-stretch justify-center gap-2 overflow-x-auto pb-2 scrollbar-thin">
+      <div className="flex min-w-0 w-full items-stretch gap-2 sm:gap-3">
         {teams.map((teamPlayers, teamIdx) => {
           const isTeam = teamPlayers.length > 1;
           const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
-          const columnWidthClass = players.length <= 2 ? "sm:w-60" : players.length <= 4 ? "sm:w-48" : "sm:w-40";
           const reelSize = players.length <= 4 ? "lg" : "md";
           return (
             <Fragment key={teamIdx}>
               {teamIdx > 0 && <TeamDivider />}
               <div
-                className={clsx("flex flex-col gap-2", isTeam && "rounded-2xl border-2 border-dashed p-2")}
-                style={isTeam ? { borderColor: `${teamColor}55`, background: `${teamColor}0d` } : undefined}
+                className={clsx(
+                  "flex min-w-0 flex-1 flex-col gap-2 rounded-2xl transition-colors",
+                  isTeam && "border p-2 sm:p-3",
+                )}
+                style={
+                  isTeam
+                    ? { borderColor: `${teamColor}30`, background: `linear-gradient(160deg, ${teamColor}14, transparent 65%)` }
+                    : undefined
+                }
               >
                 {isTeam && (
                   <p className="text-center text-[11px] font-bold uppercase tracking-widest" style={{ color: teamColor }}>
                     Team {teamIdx + 1}
                   </p>
                 )}
-                <div className="flex flex-col gap-2 sm:flex-row">
+                <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
                   {teamPlayers.map((p) => (
-                    <div key={p.slotIndex} className={clsx("w-full", columnWidthClass)}>
+                    <div key={p.slotIndex} className="min-w-0 flex-1">
                       <PlayerColumn
                         player={p}
                         result={pendingResults[p.slotIndex] ?? null}
@@ -430,6 +459,7 @@ export function BattleRoom() {
                         activeCase={currentCase ?? CASES[0]}
                         costPerPlayer={battle.costPerPlayer}
                         jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
+                        terminal={battle.terminal}
                         reelSize={reelSize}
                         onLanded={(item) => handleLanded(p.slotIndex, item)}
                         onCallBot={() => callBot(p.slotIndex)}
@@ -490,9 +520,33 @@ export function BattleRoom() {
 
 function TeamDivider() {
   return (
-    <div className="flex flex-col items-center justify-center gap-1 self-center px-1 text-slate-600">
-      <Swords className="h-6 w-6 md:h-7 md:w-7" />
-      <span className="text-[10px] font-bold uppercase tracking-widest">vs</span>
+    <div className="relative flex w-6 shrink-0 items-center justify-center self-stretch sm:w-10">
+      <div className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-white/15 to-transparent" />
+      <div className="relative z-10 flex flex-col items-center gap-0.5 rounded-full border border-white/10 bg-bg-900 p-2 shadow-lg">
+        <Swords className="h-4 w-4 text-slate-400" />
+        <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">vs</span>
+      </div>
+    </div>
+  );
+}
+
+function BattleCountdown({ countdown }: { countdown: number }) {
+  return (
+    <div className="relative overflow-hidden rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-bg-800 to-cyan-500/10 py-10 text-center">
+      <div className="pointer-events-none absolute inset-0 shimmer opacity-40" />
+      <p className="relative text-sm font-semibold uppercase tracking-widest text-fuchsia-200">Battle starting in</p>
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={countdown}
+          initial={{ opacity: 0, scale: 1.6 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.7 }}
+          transition={{ duration: 0.35, ease: "easeOut" }}
+          className="relative text-7xl font-black text-white drop-shadow-[0_0_20px_rgba(232,121,249,0.6)] sm:text-8xl"
+        >
+          {countdown}
+        </motion.p>
+      </AnimatePresence>
     </div>
   );
 }
@@ -507,6 +561,7 @@ function PlayerColumn({
   activeCase,
   costPerPlayer,
   jackpotOdds,
+  terminal = false,
   reelSize = "lg",
   onLanded,
   onCallBot,
@@ -521,6 +576,7 @@ function PlayerColumn({
   activeCase: (typeof CASES)[number];
   costPerPlayer: number;
   jackpotOdds?: number;
+  terminal?: boolean;
   reelSize?: "md" | "lg";
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
@@ -551,11 +607,20 @@ function PlayerColumn({
             Player {player.slotIndex + 1} · Team {player.teamIndex + 1}
           </p>
         </div>
-        <span className="ml-auto shrink-0 font-mono text-sm font-bold text-emerald-300">{formatCredits(state.total)}</span>
+        <span className="ml-auto shrink-0 text-right">
+          <span className={clsx("block font-mono text-sm font-bold", terminal ? "text-pink-300" : "text-emerald-300")}>
+            {formatCredits(terminal ? (state.history[0]?.item.value ?? 0) : state.total)}
+          </span>
+          {terminal && (
+            <span className="block text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+              last · pot {formatCredits(state.total)}
+            </span>
+          )}
+        </span>
       </div>
 
       {player.kind === "empty" || player.kind === "joining" ? (
-        <div className="flex h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 bg-bg-950/40 p-3 text-center">
+        <div className="flex h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-bg-950/40 p-3 text-center">
           {player.kind === "joining" ? (
             <p className="text-xs text-slate-400">Waiting for player to join…</p>
           ) : (

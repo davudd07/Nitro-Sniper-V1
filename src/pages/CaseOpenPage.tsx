@@ -6,6 +6,7 @@ import { CaseReel } from "../components/cases/CaseReel";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { RiskBadge } from "../components/cases/RiskBadge";
 import { ItemCard } from "../components/ui/ItemCard";
+import { Switch } from "../components/ui/Switch";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { useEconomyStore } from "../store/economyStore";
@@ -86,8 +87,8 @@ export function CaseOpenPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
-        <div className="space-y-4">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
+        <div className="min-w-0 space-y-4">
           <CaseReel
             pool={pool}
             goldPool={goldPool}
@@ -99,20 +100,10 @@ export function CaseOpenPage() {
           />
 
           <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-bg-800/60 p-3">
-            <button
-              type="button"
-              onClick={() => setGoldSpin((v) => !v)}
-              className="flex items-center gap-2 text-sm text-slate-300"
-            >
-              <span
-                className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${goldSpin ? "bg-amber-400" : "bg-white/10"}`}
-              >
-                <span
-                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white transition-transform ${goldSpin ? "translate-x-5" : "translate-x-0.5"}`}
-                />
-              </span>
+            <div className="flex items-center gap-2 text-sm text-slate-300">
+              <Switch checked={goldSpin} onChange={setGoldSpin} color="#fbbf24" />
               <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
-            </button>
+            </div>
             <button
               onClick={openCase}
               disabled={spinning}

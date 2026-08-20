@@ -18,6 +18,7 @@ export function CreateBattle() {
   const [modeId, setModeId] = useState("2v2");
   const [crazy, setCrazy] = useState(false);
   const [jackpot, setJackpot] = useState(false);
+  const [terminal, setTerminal] = useState(false);
   const [goldSpin, setGoldSpin] = useState(true);
   const [cases, setCases] = useState<BattleCaseEntry[]>([{ caseId: CASES[0].id, count: 3 }]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -44,7 +45,7 @@ export function CreateBattle() {
       push(`You need ${formatCredits(costPerPlayer)} SH to join your own seat.`, "danger");
       return;
     }
-    const id = createBattle({ modeId, crazy, jackpot, goldSpin, cases, costPerPlayer });
+    const id = createBattle({ modeId, crazy, jackpot, goldSpin, terminal, cases, costPerPlayer });
     push("Battle created! Fill the remaining slots to start.", "success");
     navigate(`/battles/${id}`);
   }
@@ -58,7 +59,16 @@ export function CreateBattle() {
 
       <div className="space-y-6 rounded-2xl border border-white/10 bg-bg-800/60 p-5">
         <ModeSelector modeId={modeId} onChange={setModeId} />
-        <ToggleRow crazy={crazy} jackpot={jackpot} goldSpin={goldSpin} onCrazy={setCrazy} onJackpot={setJackpot} onGoldSpin={setGoldSpin} />
+        <ToggleRow
+          crazy={crazy}
+          jackpot={jackpot}
+          goldSpin={goldSpin}
+          terminal={terminal}
+          onCrazy={setCrazy}
+          onJackpot={setJackpot}
+          onGoldSpin={setGoldSpin}
+          onTerminal={setTerminal}
+        />
 
         <div>
           <div className="mb-2 flex items-center justify-between">

@@ -12,6 +12,8 @@ export interface BattleConfig {
   crazy: boolean;
   jackpot: boolean;
   goldSpin: boolean;
+  /** Only the value pulled on the LAST case decides the winner, not the running total. */
+  terminal: boolean;
   cases: BattleCaseEntry[];
   /** Cost of the full case list — what each individual seat pays to join. */
   costPerPlayer: number;

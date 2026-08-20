@@ -20,12 +20,12 @@ type Orientation = "horizontal" | "vertical";
 // width when many players are on screen at once.
 const SIZE_CONFIG = {
   md: {
-    horizontal: { itemSize: 132, boxSize: 108 },
+    horizontal: { itemSize: 132, boxSize: 124 },
     vertical: { itemSize: 80, boxSize: 256 },
     icon: "md" as const,
   },
   lg: {
-    horizontal: { itemSize: 172, boxSize: 140 },
+    horizontal: { itemSize: 172, boxSize: 148 },
     vertical: { itemSize: 96, boxSize: 304 },
     icon: "lg" as const,
   },
@@ -92,6 +92,16 @@ export function CaseReel({
   const lastTickIndexRef = useRef(-1);
   const cfg = SIZE_CONFIG[size][orientation];
   const isHorizontal = orientation === "horizontal";
+
+  // Fill the track with a preview strip so the reel always spans the
+  // container (idle "Waiting to spin" text made it look empty/cut off).
+  useEffect(() => {
+    if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
+    const rand = mulberry32(laneSeed + 17);
+    const previewLen = isHorizontal ? 16 : 10;
+    setStrip(Array.from({ length: previewLen }, () => pool[Math.floor(rand() * pool.length)]));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pool, spinToken, laneSeed]);
 
   useEffect(() => {
     if (!result || spinToken === 0) return;
@@ -168,29 +178,29 @@ export function CaseReel({
   const isGoldPhase = phase === "gold" || phase === "charge";
 
   return (
-    <div className="w-full">
+    <div className="min-w-0 w-full max-w-full">
       {playerLabel && <p className="mb-1.5 truncate text-xs font-medium text-slate-400">{playerLabel}</p>}
       <div
         ref={containerRef}
         className={clsx(
-          "relative w-full overflow-hidden rounded-xl border bg-bg-950/70 transition-shadow",
-          isGoldPhase ? "border-amber-400/60 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/10",
+          "relative w-full max-w-full overflow-hidden rounded-xl border-2 bg-black/50 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)] transition-shadow",
+          isGoldPhase ? "border-amber-400/70 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/20",
         )}
-        style={{ height: isHorizontal ? cfg.boxSize : cfg.boxSize }}
+        style={{ height: cfg.boxSize }}
       >
         {isHorizontal ? (
           <>
-            <div className="pointer-events-none absolute left-1/2 top-0 z-10 h-full w-[3px] -translate-x-1/2 bg-gradient-to-b from-transparent via-fuchsia-400 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-bg-950 to-transparent" />
-            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-bg-950 to-transparent" />
+            <div className="pointer-events-none absolute left-1/2 top-0 z-10 h-full w-[3px] -translate-x-1/2 bg-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.8)]" />
+            <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-black/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-black/70 to-transparent" />
           </>
         ) : (
           <>
-            <div className="pointer-events-none absolute left-0 top-1/2 z-10 h-[3px] w-full -translate-y-1/2 bg-gradient-to-r from-transparent via-fuchsia-400 to-transparent" />
+            <div className="pointer-events-none absolute left-0 top-1/2 z-10 h-[3px] w-full -translate-y-1/2 bg-fuchsia-400 shadow-[0_0_8px_rgba(232,121,249,0.8)]" />
             <div className="pointer-events-none absolute -top-1 left-1/2 z-10 h-3 w-3 -translate-x-1/2 rotate-45 bg-fuchsia-400" />
             <div className="pointer-events-none absolute -bottom-1 left-1/2 z-10 h-3 w-3 -translate-x-1/2 rotate-45 bg-fuchsia-400" />
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-bg-950 to-transparent" />
-            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-bg-950 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-black/70 to-transparent" />
+            <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-black/70 to-transparent" />
           </>
         )}
         {phase === "charge" && (
@@ -208,14 +218,6 @@ export function CaseReel({
           {strip.map((item, i) => (
             <ReelSlot key={i} item={item} itemSize={cfg.itemSize} iconSize={SIZE_CONFIG[size].icon} orientation={orientation} />
           ))}
-          {strip.length === 0 && (
-            <div
-              className="flex items-center justify-center text-xs text-slate-600"
-              style={{ width: isHorizontal ? (containerRef.current?.clientWidth ?? cfg.boxSize) : "100%", height: isHorizontal ? "100%" : cfg.boxSize }}
-            >
-              Waiting to spin…
-            </div>
-          )}
         </div>
       </div>
     </div>
@@ -239,7 +241,7 @@ function ReelSlot({
 
   if (orientation === "horizontal") {
     return (
-      <div className="flex shrink-0 flex-col items-center justify-center gap-1 py-2" style={{ width: itemSize }}>
+      <div className="flex h-full shrink-0 flex-col items-center justify-center gap-1 overflow-hidden py-2" style={{ width: itemSize }}>
         <div className={clsx("rounded-lg", isIndicator && "gold-pulse")} style={goldGlow}>
           <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} />
         </div>

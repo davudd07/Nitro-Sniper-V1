@@ -1,6 +1,6 @@
 import { clsx } from "clsx";
 import { BATTLE_MODES } from "../../data/battleModes";
-import { Shuffle, Coins, Sparkles } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag } from "lucide-react";
 import { sound } from "../../lib/sound";
 
 export function ModeSelector({ modeId, onChange }: { modeId: string; onChange: (id: string) => void }) {
@@ -34,26 +34,31 @@ export function ToggleRow({
   crazy,
   jackpot,
   goldSpin,
+  terminal,
   onCrazy,
   onJackpot,
   onGoldSpin,
+  onTerminal,
 }: {
   crazy: boolean;
   jackpot: boolean;
   goldSpin: boolean;
+  terminal: boolean;
   onCrazy: (v: boolean) => void;
   onJackpot: (v: boolean) => void;
   onGoldSpin: (v: boolean) => void;
+  onTerminal: (v: boolean) => void;
 }) {
   const items = [
     { key: "crazy", label: "Crazy Mode", desc: "Lowest total wins instead of highest", icon: Shuffle, value: crazy, set: onCrazy, color: "#f97316" },
     { key: "jackpot", label: "Jackpot Mode", desc: "Ticket-weighted spin decides the winner", icon: Coins, value: jackpot, set: onJackpot, color: "#facc15" },
+    { key: "terminal", label: "Terminal Mode", desc: "Only the LAST case decides the winner", icon: Flag, value: terminal, set: onTerminal, color: "#f472b6" },
     { key: "gold", label: "Gold Spin", desc: "Rare pulls trigger a bonus gold reel", icon: Sparkles, value: goldSpin, set: onGoldSpin, color: "#fbbf24" },
   ];
   return (
     <div>
       <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Modifiers</p>
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid gap-2 sm:grid-cols-2">
         {items.map((it) => (
           <button
             key={it.key}
@@ -72,15 +77,13 @@ export function ToggleRow({
               <span className="block text-[11px] text-slate-500">{it.desc}</span>
             </span>
             <span
-              className={clsx(
-                "relative ml-auto h-5 w-9 shrink-0 rounded-full transition-colors duration-200",
-                it.value ? "bg-emerald-400" : "bg-white/10",
-              )}
+              className="relative ml-auto inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200"
+              style={{ backgroundColor: it.value ? it.color : "rgba(255,255,255,0.12)" }}
             >
               <span
                 className={clsx(
-                  "absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform duration-200 ease-out",
-                  it.value ? "translate-x-4" : "translate-x-0.5",
+                  "inline-block h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-out",
+                  it.value ? "translate-x-[18px]" : "translate-x-0.5",
                 )}
               />
             </span>

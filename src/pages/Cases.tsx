@@ -1,14 +1,17 @@
 import { Link } from "react-router-dom";
+import { clsx } from "clsx";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { RiskBadge } from "../components/cases/RiskBadge";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { formatCredits, formatPercent } from "../lib/format";
 import { RARITIES } from "../data/rarities";
+import { useAdminViewStore } from "../store/adminViewStore";
 
 const SORTED_CASES = [...CASES].sort((a, b) => a.price - b.price);
 
 export function Cases() {
+  const adminView = useAdminViewStore((s) => s.active);
   return (
     <div>
       <div className="mb-7">
@@ -33,15 +36,33 @@ export function Cases() {
                   <p className="pt-1">{c.blurb}</p>
                   <div className="pt-2">
                     <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Full odds table</p>
+                    {adminView && (
+                      <p className="mb-1.5 text-[10px] font-medium text-amber-200/80">
+                        Admin view: gold-spin pool highlighted
+                      </p>
+                    )}
                     <div className="max-h-56 space-y-1 overflow-y-auto scrollbar-thin pr-1">
                       {[...c.odds]
                         .sort((a, b) => b.probability - a.probability)
                         .map((o) => (
-                          <div key={o.item.id} className="flex items-center justify-between rounded bg-black/20 px-2 py-1 text-xs">
+                          <div
+                            key={o.item.id}
+                            className={clsx(
+                              "flex items-center justify-between rounded px-2 py-1 text-xs",
+                              adminView && o.goldTier
+                                ? "bg-amber-400/15 ring-1 ring-amber-300/70"
+                                : "bg-black/20",
+                              adminView && !o.goldTier && "opacity-55",
+                            )}
+                          >
                             <span style={{ color: RARITIES[o.item.rarity].text }}>{o.item.name}</span>
                             <span className="text-slate-400">
                               {formatCredits(o.item.value)} SH · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
-                              {o.goldTier && " · ✨ gold"}
+                              {adminView && o.goldTier ? (
+                                <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
+                              ) : (
+                                o.goldTier && " · ✨ gold"
+                              )}
                             </span>
                           </div>
                         ))}

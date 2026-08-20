@@ -6,6 +6,7 @@ export const ADMIN_CREDENTIAL_HASH =
   "1bd68b32c723d237e78069f356640778a747719775fc72d1cabf2d2a1be9637c";
 
 const SESSION_KEY = "prism-vault-admin-session";
+const VIEW_UNLOCK_KEY = "prism-vault-admin-view-unlock";
 
 function toHex(buf: ArrayBuffer): string {
   return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -35,8 +36,21 @@ export function persistAdminSession(): void {
 
 export function clearAdminSession(): void {
   sessionStorage.removeItem(SESSION_KEY);
+  sessionStorage.removeItem(VIEW_UNLOCK_KEY);
 }
 
 export function hasAdminSession(): boolean {
   return sessionStorage.getItem(SESSION_KEY) === "1";
+}
+
+export function persistAdminViewUnlock(): void {
+  sessionStorage.setItem(VIEW_UNLOCK_KEY, "1");
+}
+
+export function clearAdminViewUnlock(): void {
+  sessionStorage.removeItem(VIEW_UNLOCK_KEY);
+}
+
+export function hasAdminViewUnlock(): boolean {
+  return sessionStorage.getItem(VIEW_UNLOCK_KEY) === "1";
 }

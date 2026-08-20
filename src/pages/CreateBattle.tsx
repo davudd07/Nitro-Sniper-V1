@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -34,6 +34,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { formatCredits } from "../lib/format";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
+import { consumeBattleDraft } from "../lib/battleDraft";
 import { HOUSE_EDGE } from "../lib/rakeback";
 
 function flatten(entries: BattleCaseEntry[]): string[] {
@@ -70,6 +71,25 @@ export function CreateBattle() {
   const [fastSpin, setFastSpin] = useState(false);
   const [callAllBots, setCallAllBots] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
+
+  useEffect(() => {
+    const draft = consumeBattleDraft();
+    if (!draft) return;
+    setModeId(draft.modeId);
+    setShared(draft.shared);
+    setCrazy(draft.shared ? false : draft.crazy);
+    setJackpot(draft.shared ? false : draft.jackpot);
+    setTerminal(draft.shared ? false : draft.terminal);
+    setGoldSpin(draft.goldSpin);
+    setFastSpin(draft.fastSpin);
+    setRounds(flatten(draft.cases));
+    setFundedOn(draft.fundedPct > 0);
+    setFundedPct(draft.fundedPct || 0.5);
+    setBorrowOn(draft.creatorBorrowPct > 0);
+    setBorrowPct(draft.creatorBorrowPct || 0.5);
+    setIsPrivate(draft.isPrivate);
+    setCallAllBots(draft.prefillBots > 0);
+  }, []);
 
   const createBattle = useBattleStore((s) => s.createBattle);
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);

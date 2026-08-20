@@ -51,7 +51,7 @@ function CoinFace({ side }: { side: CoinSide }) {
         transform: gold ? undefined : "rotateY(180deg)",
       }}
     >
-      <div
+      <span
         className="grid h-[70%] w-[70%] place-items-center rounded-full"
         style={{
           border: gold ? "2px solid rgba(255,237,160,0.55)" : "2px solid rgba(255,255,255,0.4)",
@@ -69,14 +69,6 @@ function CoinFace({ side }: { side: CoinSide }) {
               : "drop-shadow(0 2px 8px rgba(15,23,42,0.65))",
           }}
         />
-      </div>
-      <span
-        className={clsx(
-          "absolute bottom-6 text-[10px] font-extrabold uppercase tracking-[0.28em]",
-          gold ? "text-amber-50" : "text-slate-100",
-        )}
-      >
-        {gold ? "Gold" : "Silver"}
       </span>
     </div>
   );
@@ -123,11 +115,50 @@ function SideButton({
         <span className="block text-sm font-extrabold uppercase tracking-wide text-white">
           {gold ? "Heads" : "Tails"}
         </span>
-        <span className={clsx("text-[11px] font-semibold", gold ? "text-amber-200" : "text-slate-300")}>
-          {gold ? "Gold coin" : "Silver coin"}
-        </span>
       </span>
     </button>
+  );
+}
+
+function HistoryCoin({
+  side,
+  fresh,
+  ghost,
+  hit,
+}: {
+  side: CoinSide;
+  fresh?: boolean;
+  ghost?: boolean;
+  hit?: boolean;
+}) {
+  const gold = side === "heads";
+  return (
+    <span
+      title={
+        ghost
+          ? `${gold ? "Heads" : "Tails"} — ${hit ? "would have matched your pick" : "would have missed"}`
+          : gold
+            ? "Heads"
+            : "Tails"
+      }
+      className={clsx(
+        "grid h-8 w-8 shrink-0 place-items-center rounded-full",
+        fresh
+          ? "opacity-100 ring-2 ring-white/70"
+          : ghost
+            ? hit
+              ? "opacity-90 ring-1 ring-emerald-300/80"
+              : "opacity-50"
+            : "opacity-45",
+      )}
+      style={{
+        background: gold
+          ? "radial-gradient(circle at 30% 30%, #fde68a, #d97706)"
+          : "radial-gradient(circle at 30% 30%, #e2e8f0, #64748b)",
+      }}
+    >
+      <Star className="h-3.5 w-3.5 text-white" fill="currentColor" />
+    </span>
   );
 }
 
@@ -144,6 +175,7 @@ export function CoinFlip() {
   const [autoLimit, setAutoLimit] = useState(3);
   const [autoRunning, setAutoRunning] = useState(false);
   const [history, setHistory] = useState<CoinSide[]>([]);
+  const [ghostRun, setGhostRun] = useState<{ side: CoinSide; hit: boolean }[] | null>(null);
 
   const winsRef = useRef(0);
   const phaseRef = useRef<Phase>("idle");
@@ -168,7 +200,7 @@ export function CoinFlip() {
     if (phase === "won") return `Correct — ${current.toFixed(2)}x`;
     if (phase === "lost") return "Wrong side — run over";
     if (phase === "maxed") return `Max win · ${COIN_MAX_MULT.toFixed(2)}x`;
-    return "Pick gold or silver, then flip";
+    return "Pick a side, then flip";
   }, [phase, current, autoRunning]);
 
   function choose(side: CoinSide) {
@@ -206,6 +238,7 @@ export function CoinFlip() {
       sound.chip();
     }
 
+    setGhostRun(null);
     setPhase("flipping");
     phaseRef.current = "flipping";
     const [roll] = await play(1);
@@ -223,13 +256,26 @@ export function CoinFlip() {
     setHistory((h) => [landed, ...h].slice(0, 16));
 
     if (landed !== pick) {
+      const streakAtLoss = winsRef.current;
+      const leftover = Math.max(0, COIN_MAX_WINS - streakAtLoss - 1);
       setWins(0);
       winsRef.current = 0;
       setPhase("lost");
       phaseRef.current = "lost";
       recordRound(bet, 0);
       sound.lose();
-      push(`${landed === "heads" ? "Gold" : "Silver"} — lost ${formatCredits(bet)} SH.`, "danger");
+      push(`${landed === "heads" ? "Heads" : "Tails"} — lost ${formatCredits(bet)} SH.`, "danger");
+      if (leftover > 0) {
+        const extra = await play(leftover);
+        setGhostRun(
+          extra.map((r) => {
+            const side = rollCoin(r);
+            return { side, hit: side === pick };
+          }),
+        );
+      } else {
+        setGhostRun([]);
+      }
       return "lost";
     }
 
@@ -313,10 +359,10 @@ export function CoinFlip() {
               <StatRow label="First-win multiplier" value={`${COIN_BASE_MULT.toFixed(2)}x`} />
               <StatRow label="Max win" value={`${COIN_MAX_MULT.toFixed(2)}x`} />
               <p>
-                Call gold (heads) or silver (tails). A correct flip pays {COIN_BASE_MULT.toFixed(2)}x and doubles on
-                every extra correct guess ({COIN_MAX_WINS} in a row auto-cashes at {COIN_MAX_MULT.toFixed(2)}x). A miss
-                ends the run. Continuing after a win keeps the original stake — you are not charged again. About 4%
-                house edge on a fair coin.
+                Call heads or tails. A correct flip pays {COIN_BASE_MULT.toFixed(2)}x and doubles on every extra
+                correct guess ({COIN_MAX_WINS} in a row auto-cashes at {COIN_MAX_MULT.toFixed(2)}x). A miss ends the
+                run. Continuing after a win keeps the original stake — you are not charged again. About 4% house
+                edge on a fair coin.
               </p>
             </InfoButton>
           </div>
@@ -447,33 +493,6 @@ export function CoinFlip() {
             </span>
           </div>
 
-          <div className="mb-6 flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-thin">
-            {history.length === 0 ? (
-              <p className="text-xs text-slate-500">Recent flips land here — gold vs silver.</p>
-            ) : (
-              history.map((side, i) => {
-                const gold = side === "heads";
-                return (
-                  <span
-                    key={`${side}-${i}`}
-                    title={gold ? "Gold" : "Silver"}
-                    className={clsx(
-                      "grid h-8 w-8 shrink-0 place-items-center rounded-full",
-                      i === 0 ? "opacity-100 ring-2 ring-white/70" : "opacity-45",
-                    )}
-                    style={{
-                      background: gold
-                        ? "radial-gradient(circle at 30% 30%, #fde68a, #d97706)"
-                        : "radial-gradient(circle at 30% 30%, #e2e8f0, #64748b)",
-                    }}
-                  >
-                    <Star className="h-3.5 w-3.5 text-white" fill="currentColor" />
-                  </span>
-                );
-              })
-            )}
-          </div>
-
           <div className="mx-auto grid max-w-sm place-items-center py-4">
             <div className="relative h-56 w-56 sm:h-64 sm:w-64" style={{ perspective: 900 }}>
               <motion.div
@@ -497,16 +516,40 @@ export function CoinFlip() {
                 {phase === "flipping" && <span className="text-cyan-200">In the air…</span>}
                 {phase === "won" && (
                   <span className="text-emerald-300">
-                    {result === "heads" ? "Gold" : "Silver"} — streak {wins}/{COIN_MAX_WINS}
+                    {result === "heads" ? "Heads" : "Tails"} — streak {wins}/{COIN_MAX_WINS}
                   </span>
                 )}
                 {phase === "lost" && (
-                  <span className="text-rose-300">{result === "heads" ? "Gold" : "Silver"} — streak broken</span>
+                  <span className="text-rose-300">{result === "heads" ? "Heads" : "Tails"} — streak broken</span>
                 )}
                 {phase === "maxed" && <span className="text-amber-300">Max multiplier reached — paid out automatically</span>}
-                {phase === "idle" && <span className="text-slate-500">Gold or silver. Double or cash out after every win.</span>}
+                {phase === "idle" && <span className="text-slate-500">Pick a side. Double or cash out after every win.</span>}
               </motion.p>
             </AnimatePresence>
+          </div>
+
+          {phase === "lost" && ghostRun && ghostRun.length > 0 && (
+            <div className="mt-2 rounded-lg border border-white/10 bg-black/25 px-3 py-2.5">
+              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
+                If you kept going to max win
+              </p>
+              <div className="flex items-center gap-1.5 overflow-x-auto px-0.5 py-1.5 scrollbar-thin">
+                {ghostRun.map((g, i) => (
+                  <HistoryCoin key={`ghost-${i}`} side={g.side} ghost hit={g.hit} />
+                ))}
+              </div>
+              <p className="mt-1 text-[10px] text-slate-500">
+                Next {ghostRun.length} flip{ghostRun.length === 1 ? "" : "s"} from the same seed. Bright ring = would have matched your side.
+              </p>
+            </div>
+          )}
+
+          <div className="mt-4 flex items-center gap-1.5 overflow-x-auto px-0.5 py-2 scrollbar-thin">
+            {history.length === 0 ? (
+              <p className="text-xs text-slate-500">Recent flips land here.</p>
+            ) : (
+              history.map((side, i) => <HistoryCoin key={`${side}-${i}`} side={side} fresh={i === 0} />)
+            )}
           </div>
         </div>
       </div>

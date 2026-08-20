@@ -6,6 +6,7 @@ import { RiskBadge } from "./RiskBadge";
 import { ItemCard } from "../ui/ItemCard";
 import { formatCredits, formatPercent } from "../../lib/format";
 import { sound } from "../../lib/sound";
+import { useAdminViewStore } from "../../store/adminViewStore";
 
 export function CasePreviewModal({
   caseId,
@@ -14,6 +15,7 @@ export function CasePreviewModal({
   caseId: string | null;
   onClose: () => void;
 }) {
+  const adminView = useAdminViewStore((s) => s.active);
   if (!caseId) return null;
   const c = getCase(caseId);
   if (!c) return null;
@@ -50,11 +52,21 @@ export function CasePreviewModal({
         </div>
         <p className="mb-4 text-sm text-slate-400">{c.blurb}</p>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">What’s inside</p>
+        {adminView && (
+          <p className="mb-2 text-[10px] font-medium text-amber-200/80">Admin view: gold-spin pool highlighted</p>
+        )}
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {[...c.odds]
             .sort((a, b) => b.item.value - a.item.value)
             .map((o) => (
-              <ItemCard key={o.item.id} item={o.item} probability={o.probability} size="sm" />
+              <ItemCard
+                key={o.item.id}
+                item={o.item}
+                probability={o.probability}
+                size="sm"
+                highlightGold={adminView && o.goldTier}
+                className={adminView && !o.goldTier ? "opacity-55" : undefined}
+              />
             ))}
         </div>
       </div>

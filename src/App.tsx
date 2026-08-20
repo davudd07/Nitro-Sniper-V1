@@ -26,6 +26,7 @@ import { trackRecent } from "./lib/recentGames";
 import { Rewards } from "./pages/Rewards";
 import { Affiliate } from "./pages/Affiliate";
 import { Admin } from "./pages/Admin";
+import { AdminViewBar } from "./components/admin/AdminViewBar";
 import { installChatModeration } from "./lib/moderation";
 
 // Forces a full remount of the battle room whenever the battle id changes,
@@ -78,6 +79,7 @@ export default function App() {
       <GameSidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <NavBar wide={isBattleRoom} />
+        <AdminViewBar />
         <DemoBanner />
         <BanNotice />
         <main

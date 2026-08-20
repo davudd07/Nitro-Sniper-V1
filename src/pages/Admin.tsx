@@ -1,12 +1,15 @@
 import { useMemo, useState, type FormEvent } from "react";
-import { Ban, Coins, Gift, LogOut, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { Ban, Coins, Eye, Gift, LogOut, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import {
   clearAdminSession,
   hasAdminSession,
   persistAdminSession,
+  persistAdminViewUnlock,
   verifyAdminLogin,
 } from "../lib/adminAuth";
+import { useAdminViewStore } from "../store/adminViewStore";
 import {
   LOCAL_PLAYER,
   MODERATION_PLAYERS,
@@ -95,6 +98,10 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const [selected, setSelected] = useState<string>(LOCAL_PLAYER);
   const [filter, setFilter] = useState("");
   const [amount, setAmount] = useState(1000);
+  const [confirmView, setConfirmView] = useState(false);
+  const navigate = useNavigate();
+  const enterView = useAdminViewStore((s) => s.enter);
+  const exitView = useAdminViewStore((s) => s.exit);
   const push = useToastStore((s) => s.push);
 
   const banned = useModerationStore((s) => s.banned);
@@ -142,17 +149,30 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
             Demo tools
           </span>
         </div>
-        <button
-          type="button"
-          onClick={() => {
-            clearAdminSession();
-            sound.click();
-            onLogout();
-          }}
-          className="inline-flex items-center gap-1.5 rounded-md border-2 border-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-300 hover:bg-white/5"
-        >
-          <LogOut className="h-3.5 w-3.5" /> Lock
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => {
+              sound.click();
+              setConfirmView(true);
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md border-2 border-amber-400/50 bg-amber-400/15 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-amber-100 hover:bg-amber-400/25"
+          >
+            <Eye className="h-3.5 w-3.5" /> Admin view
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              exitView();
+              clearAdminSession();
+              sound.click();
+              onLogout();
+            }}
+            className="inline-flex items-center gap-1.5 rounded-md border-2 border-white/10 px-3 py-1.5 text-xs font-bold uppercase tracking-wide text-slate-300 hover:bg-white/5"
+          >
+            <LogOut className="h-3.5 w-3.5" /> Lock
+          </button>
+        </div>
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
@@ -303,6 +323,19 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
           </div>
         </div>
       </div>
+
+      {confirmView && (
+        <ReenterGate
+          onCancel={() => setConfirmView(false)}
+          onOk={() => {
+            persistAdminViewUnlock();
+            enterView();
+            setConfirmView(false);
+            navigate("/");
+            push("Admin view on — re-enter the key any time you enter it from this desk.", "success");
+          }}
+        />
+      )}
     </div>
   );
 }
@@ -321,6 +354,67 @@ function Mini({ label, value }: { label: string; value: string }) {
     <div className="rounded-md bg-black/30 px-2.5 py-2 ring-1 ring-white/8">
       <p className="text-[10px] uppercase tracking-wide text-slate-500">{label}</p>
       <p className="font-mono text-sm font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function ReenterGate({ onOk, onCancel }: { onOk: () => void; onCancel: () => void }) {
+  const [username, setUsername] = useState("");
+  const [key, setKey] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  async function submit(e: FormEvent) {
+    e.preventDefault();
+    setBusy(true);
+    setError("");
+    try {
+      const ok = await verifyAdminLogin(username, key);
+      if (!ok) {
+        setError("Key did not match. Admin view stays locked.");
+        sound.lose();
+        return;
+      }
+      sound.click();
+      onOk();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[90] grid place-items-center bg-black/75 p-4 backdrop-blur-sm">
+      <form onSubmit={(e) => void submit(e)} className="surface w-full max-w-sm p-5">
+        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300">Security check</p>
+        <h2 className="mt-1 text-lg font-extrabold text-white">Re-enter warden key</h2>
+        <p className="mt-2 text-xs text-slate-400">
+          Admin view opens the live site with moderation tools. Confirm username and key before entering.
+        </p>
+        <label className="mt-4 mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Username</label>
+        <input
+          autoComplete="username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          className="mb-3 w-full rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-amber-400/40"
+        />
+        <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Key</label>
+        <input
+          type="password"
+          autoComplete="current-password"
+          value={key}
+          onChange={(e) => setKey(e.target.value)}
+          className="mb-3 w-full rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-amber-400/40"
+        />
+        {error && <p className="mb-3 text-sm text-rose-300">{error}</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={onCancel} className="flex-1 rounded-md border-2 border-white/10 py-2 text-xs font-bold uppercase text-slate-300">
+            Cancel
+          </button>
+          <button type="submit" disabled={busy || !username || !key} className="btn-primary flex-1 py-2 text-xs disabled:opacity-40">
+            {busy ? "Checking…" : "Enter admin view"}
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

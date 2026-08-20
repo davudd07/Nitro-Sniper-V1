@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, User, Crown, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Users } from "lucide-react";
+import { ArrowLeft, Bot, User, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
 import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
@@ -25,6 +25,7 @@ import { fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFina
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
+import { saveBattleDraft } from "../lib/battleDraft";
 
 type SlotKind = "you" | "empty" | "joining" | "bot" | "player";
 
@@ -114,6 +115,9 @@ export function BattleRoom() {
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
   const roundStatesRef = useRef<Record<number, PlayerRoundState>>({});
+  const replayLogRef = useRef<Record<number, CaseOddsEntry | null>[]>([]);
+  const replayJackpotRef = useRef<{ tickets: JackpotTicket[]; winnerId: string; tieBreak: boolean } | null>(null);
+  const isReplayRef = useRef(false);
 
   useEffect(() => {
     setPlayers(initialPlayers);
@@ -173,11 +177,19 @@ export function BattleRoom() {
       const caseId = caseSequence[idx];
       const c = getCase(caseId);
       if (!c) return;
-      const rolls = await play(players.length);
-      const results: Record<number, CaseOddsEntry | null> = {};
-      players.forEach((p, i) => {
-        results[p.slotIndex] = rollCaseItem(c, rolls[i]);
-      });
+      let results: Record<number, CaseOddsEntry | null> = {};
+      const stored = isReplayRef.current ? replayLogRef.current[idx] : undefined;
+      if (stored) {
+        results = stored;
+      } else {
+        const rolls = await play(players.length);
+        players.forEach((p, i) => {
+          results[p.slotIndex] = rollCaseItem(c, rolls[i]);
+        });
+        const log = replayLogRef.current.slice();
+        log[idx] = results;
+        replayLogRef.current = log;
+      }
       landedCountRef.current = 0;
       setPendingResults(results);
       setSpinToken((t) => t + 1);
@@ -240,6 +252,20 @@ export function BattleRoom() {
   const resolvedRef = useRef(false);
 
   function finishBattle() {
+    if (isReplayRef.current) {
+      const jp = replayJackpotRef.current;
+      if (jp) {
+        setTieBreak(jp.tieBreak);
+        setJackpotTickets(jp.tickets);
+        setJackpotWinnerId(jp.winnerId);
+        setPhase("jackpot");
+        setJackpotSpinToken((t) => t + 1);
+        return;
+      }
+      setPhase("finished");
+      setResultOpen(true);
+      return;
+    }
     if (resolvedRef.current) return;
     resolvedRef.current = true;
     resolveOutcome(roundStatesRef.current);
@@ -311,6 +337,11 @@ export function BattleRoom() {
         setJackpotTickets(tickets);
         setJackpotWinnerId(tickets[winnerIdx].playerId);
         setWinningTeam(totals[winnerIdx].p.teamIndex);
+        replayJackpotRef.current = {
+          tickets,
+          winnerId: tickets[winnerIdx].playerId,
+          tieBreak: false,
+        };
         setPhase("jackpot");
         setJackpotSpinToken((t) => t + 1);
       });
@@ -349,6 +380,11 @@ export function BattleRoom() {
           setJackpotTickets(tickets);
           setJackpotWinnerId(tickets[winnerIdx].playerId);
           setWinningTeam(tiedTeams[winnerIdx]);
+          replayJackpotRef.current = {
+            tickets,
+            winnerId: tickets[winnerIdx].playerId,
+            tieBreak: true,
+          };
           setPhase("jackpot");
           setJackpotSpinToken((t) => t + 1);
         });
@@ -389,10 +425,51 @@ export function BattleRoom() {
   }
 
   function handleJackpotFinished() {
+    if (isReplayRef.current) {
+      setPhase("finished");
+      setResultOpen(true);
+      return;
+    }
     if (winningTeam === null || !jackpotTickets) return;
     const pot = jackpotTickets.length ? Object.values(roundStates).reduce((s, r) => s + r.total, 0) : 0;
     settlePayout(winningTeam, pot);
     setPhase("finished");
+  }
+
+  function recreateBattle() {
+    if (!battle) return;
+    saveBattleDraft({
+      modeId: battle.modeId,
+      crazy: battle.crazy,
+      jackpot: battle.jackpot,
+      goldSpin: battle.goldSpin,
+      terminal: battle.terminal,
+      shared: battle.shared,
+      fastSpin: battle.fastSpin,
+      cases: battle.cases,
+      fundedPct: battle.fundedPct,
+      isPrivate: battle.isPrivate,
+      creatorBorrowPct: battle.creatorBorrowPct,
+      prefillBots: battle.prefillBots,
+    });
+    navigate("/battles/create");
+  }
+
+  function replayBattle() {
+    const init: Record<number, PlayerRoundState> = {};
+    const evenOdds: Record<number, number> = {};
+    players.forEach((p) => {
+      init[p.slotIndex] = { total: 0, history: [] };
+      evenOdds[p.slotIndex] = players.length > 0 ? 100 / players.length : 0;
+    });
+    isReplayRef.current = true;
+    setResultOpen(false);
+    setRoundStates(init);
+    roundStatesRef.current = init;
+    setLiveOdds(battle?.jackpot && !battle.terminal ? evenOdds : {});
+    setPendingResults({});
+    setCaseIndex(-1);
+    setPhase("countdown");
   }
 
   function callBot(slotIndex: number) {
@@ -649,57 +726,14 @@ export function BattleRoom() {
         />
       )}
 
-      {phase === "finished" && battle.shared && (
-        <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-5 text-center">
-          <Users className="mx-auto mb-2 h-8 w-8 text-sky-300" />
-          <p className="text-lg font-bold text-white">Shared battle — pot split equally</p>
-          <p className="mt-1 text-sm text-slate-300">
-            Total pot {formatCredits(pot)} SH · each player {formatCredits(payout?.share ?? pot / Math.max(1, players.length))} SH
-          </p>
-          {payout && payout.youPaid > 0 && (
-            <p className="mt-1 font-mono text-lg font-bold text-amber-300">You received +{formatCredits(payout.youPaid)} SH</p>
-          )}
-          <Link
-            to="/battles/create"
-            onClick={() => sound.click()}
-            className="btn-primary mt-4 inline-block px-6 py-2.5"
-          >
-            Start another battle
-          </Link>
-        </div>
-      )}
-
-      {phase === "finished" && winningTeam !== null && !battle.shared && (
-        <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">
-          <Crown className="mx-auto mb-2 h-8 w-8 text-amber-300" />
-          <p className="text-lg font-bold text-white">
-            Team {winningTeam + 1} won {formatCredits(pot)} SH
-          </p>
-          <p className="mt-1 text-sm text-slate-300">
-            {players
-              .filter((p) => p.teamIndex === winningTeam)
-              .map((p) => (p.kind === "you" ? "You" : p.name))
-              .join(" & ")}
-            {" · "}
-            each winner {formatCredits(payout?.share ?? pot)} SH
-          </p>
-          {payout?.youWon && (
-            <p className="mt-2 font-mono text-lg font-bold text-amber-300">
-              You received +{formatCredits(payout.youPaid)} SH
-            </p>
-          )}
-          <Link
-            to="/battles/create"
-            onClick={() => sound.click()}
-            className="btn-primary mt-4 inline-block px-6 py-2.5"
-          >
-            Start another battle
-          </Link>
-        </div>
-      )}
-
       {resultOpen && payout && (
-        <BattleResultOverlay result={payout} onClose={() => setResultOpen(false)} />
+        <BattleResultOverlay
+          result={payout}
+          recreateCost={battle.costPerPlayer}
+          onClose={() => setResultOpen(false)}
+          onRecreate={recreateBattle}
+          onReplay={replayBattle}
+        />
       )}
     </div>
   );

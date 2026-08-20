@@ -4,6 +4,8 @@ import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useChatStore } from "../../store/chatStore";
 import { ChatRainBanner } from "../chat/ChatRainBanner";
+import { ChatModMenu } from "../admin/ChatModMenu";
+import { useAdminViewStore } from "../../store/adminViewStore";
 import { sound } from "../../lib/sound";
 
 const TAB_BTN =
@@ -14,6 +16,7 @@ export function ChatSidebar() {
   const toggle = useSettingsStore((s) => s.toggleChat);
   const messages = useChatStore((s) => s.messages);
   const send = useChatStore((s) => s.send);
+  const adminView = useAdminViewStore((s) => s.active);
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -85,9 +88,12 @@ export function ChatSidebar() {
                       : "border-white/8 bg-black/25",
                 )}
               >
-                <p className="text-[11px] font-bold" style={{ color: m.color }}>
-                  {m.name}
-                </p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[11px] font-bold" style={{ color: m.color }}>
+                    {m.name}
+                  </p>
+                  {adminView && !m.rain && <ChatModMenu name={m.name} />}
+                </div>
                 <p className="text-[12px] leading-snug text-slate-200">{m.text}</p>
               </div>
             ))}

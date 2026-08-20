@@ -13,6 +13,7 @@ import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
+import { useAdminViewStore } from "../store/adminViewStore";
 import { takeStake } from "../lib/stake";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatPercent } from "../lib/format";
@@ -39,8 +40,10 @@ export function CaseOpenPage() {
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
+  const adminView = useAdminViewStore((s) => s.active);
 
   const goldPool = useMemo(() => (c ? c.odds.filter((o) => o.goldTier).map((o) => o.item) : []), [c]);
+  const goldIds = useMemo(() => new Set(goldPool.map((item) => item.id)), [goldPool]);
   const pool = useMemo(() => (c ? c.odds.map((o) => o.item) : []), [c]);
 
   if (!c) return <Navigate to="/cases" replace />;
@@ -182,7 +185,14 @@ export function CaseOpenPage() {
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Your unboxed items</p>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6">
                 {history.map((h) => (
-                  <ItemCard key={h.id} item={h.item} size="sm" showChance={false} />
+                  <ItemCard
+                    key={h.id}
+                    item={h.item}
+                    size="sm"
+                    showChance={false}
+                    highlightGold={adminView && goldIds.has(h.item.id)}
+                    className={adminView && !goldIds.has(h.item.id) ? "opacity-55" : undefined}
+                  />
                 ))}
               </div>
             </div>
@@ -193,14 +203,31 @@ export function CaseOpenPage() {
           <ProvablyFairPanel />
           <div className="surface p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Odds table</p>
+            {adminView && (
+              <p className="mb-2 text-[10px] font-medium text-amber-200/80">Admin view: gold-spin pool highlighted</p>
+            )}
             <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-thin pr-1">
               {[...c.odds]
                 .sort((a, b) => b.probability - a.probability)
                 .map((o) => (
-                  <div key={o.item.id} className="flex items-center justify-between rounded bg-black/20 px-2 py-1.5 text-xs">
+                  <div
+                    key={o.item.id}
+                    className={clsx(
+                      "flex items-center justify-between rounded px-2 py-1.5 text-xs",
+                      adminView && o.goldTier
+                        ? "bg-amber-400/15 ring-1 ring-amber-300/70"
+                        : "bg-black/20",
+                      adminView && !o.goldTier && "opacity-55",
+                    )}
+                  >
                     <span className="truncate pr-2">{o.item.name}</span>
                     <span className="shrink-0 text-slate-400">
-                      {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%{o.goldTier && " ✨"}
+                      {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
+                      {adminView && o.goldTier ? (
+                        <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
+                      ) : (
+                        o.goldTier && " ✨"
+                      )}
                     </span>
                   </div>
                 ))}

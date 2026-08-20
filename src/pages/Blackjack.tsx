@@ -79,8 +79,9 @@ function BetSpot({
   ringColor,
   big = false,
   highlighted,
+  armed,
   dropRef,
-  onRemoveTop,
+  onCircleClick,
 }: {
   label: string;
   hint?: string;
@@ -90,40 +91,46 @@ function BetSpot({
   ringColor: string;
   big?: boolean;
   highlighted: boolean;
-  dropRef: React.RefObject<HTMLDivElement | null>;
-  onRemoveTop: () => void;
+  armed: boolean;
+  dropRef: React.RefObject<HTMLButtonElement | null>;
+  onCircleClick: () => void;
 }) {
   const stack = stackFromAmount(amount);
+  const lit = highlighted || armed;
 
   return (
     <div className="flex flex-col items-center gap-2">
-      <div
+      <button
+        type="button"
         ref={dropRef}
-        className={`relative flex items-center justify-center rounded-full border-2 bg-black/25 text-center transition-all ${big ? "h-28 w-28" : "h-20 w-20"}`}
+        disabled={disabled}
+        onClick={onCircleClick}
+        title={armed ? "Click to place the selected chip" : stack.length ? "Click stack to remove the top chip" : "Select a chip, then click here"}
+        className={`relative flex items-center justify-center rounded-full border-2 bg-black/25 text-center transition-all disabled:opacity-50 ${big ? "h-28 w-28" : "h-20 w-20"}`}
         style={{
-          borderColor: highlighted ? ringColor : `${ringColor}70`,
+          borderColor: lit ? ringColor : `${ringColor}70`,
           borderStyle: "solid",
-          boxShadow: highlighted ? `0 0 22px ${ringColor}88, inset 0 0 18px ${ringColor}22` : "inset 0 0 16px rgba(0,0,0,0.35)",
+          boxShadow: highlighted
+            ? `0 0 22px ${ringColor}88, inset 0 0 18px ${ringColor}22`
+            : armed
+              ? `0 0 16px ${ringColor}55, inset 0 0 14px ${ringColor}18`
+              : "inset 0 0 16px rgba(0,0,0,0.35)",
         }}
       >
         {stack.length === 0 ? (
-          <p className={`font-mono font-semibold text-white/40 ${big ? "text-sm" : "text-[10px]"}`}>Drop chips</p>
+          <p className={`font-mono font-semibold text-white/40 ${big ? "text-sm" : "text-[10px]"}`}>
+            {armed ? "Click to bet" : "Click or drop"}
+          </p>
         ) : (
-          <button
-            type="button"
-            disabled={disabled}
-            onClick={onRemoveTop}
-            title="Click stack to remove the top chip"
-            className="absolute inset-0 grid place-items-center disabled:opacity-50"
-          >
+          <span className="absolute inset-0 grid place-items-center">
             {stack.map((chip, i) => (
-              <div key={i} className="absolute" style={{ transform: `translateY(${-i * 4}px)`, zIndex: i + 1 }}>
+              <span key={i} className="absolute" style={{ transform: `translateY(${-i * 4}px)`, zIndex: i + 1 }}>
                 <ChipFace chip={chip} size={big ? 44 : 34} />
-              </div>
+              </span>
             ))}
-          </button>
+          </span>
         )}
-      </div>
+      </button>
       <div className="text-center">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-100/90">{label}</p>
         {hint && <p className="text-[9px] text-emerald-200/50">{hint}</p>}
@@ -159,10 +166,12 @@ export function Blackjack() {
   const [message, setMessage] = useState("");
   const [drag, setDrag] = useState<{ chip: ChipDef; x: number; y: number } | null>(null);
   const [hoverSpot, setHoverSpot] = useState<SpotId | null>(null);
+  const [selectedChip, setSelectedChip] = useState<ChipDef | null>(null);
   const dragRef = useRef<{ chip: ChipDef; x: number; y: number } | null>(null);
-  const pairsRef = useRef<HTMLDivElement>(null);
-  const mainRef = useRef<HTMLDivElement>(null);
-  const plus3Ref = useRef<HTMLDivElement>(null);
+  const ignoreClickUntilRef = useRef(0);
+  const pairsRef = useRef<HTMLButtonElement>(null);
+  const mainRef = useRef<HTMLButtonElement>(null);
+  const plus3Ref = useRef<HTMLButtonElement>(null);
 
   const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
@@ -400,7 +409,7 @@ export function Blackjack() {
   const bettingLocked = phase !== "betting";
 
   const hitSpot = useCallback((x: number, y: number): SpotId | null => {
-    const checks: [SpotId, React.RefObject<HTMLDivElement | null>][] = [
+    const checks: [SpotId, React.RefObject<HTMLButtonElement | null>][] = [
       ["pairs", pairsRef],
       ["main", mainRef],
       ["plus3", plus3Ref],
@@ -432,39 +441,60 @@ export function Blackjack() {
     else setTwentyOnePlusThreeBet(next);
   }
 
-  function startDrag(e: React.PointerEvent, chip: ChipDef) {
+  function handleSpotClick(id: SpotId) {
     if (bettingLocked) return;
+    if (Date.now() < ignoreClickUntilRef.current) return;
+    if (selectedChip) {
+      addToSpot(id, selectedChip.value);
+      return;
+    }
+    removeTop(id);
+  }
+
+  function onChipPointerDown(e: React.PointerEvent, chip: ChipDef) {
+    if (bettingLocked || e.button !== 0) return;
     e.preventDefault();
-    const next = { chip, x: e.clientX, y: e.clientY };
-    dragRef.current = next;
-    setDrag(next);
+    const originX = e.clientX;
+    const originY = e.clientY;
+    let dragged = false;
+
+    const move = (ev: PointerEvent) => {
+      if (!dragged && Math.hypot(ev.clientX - originX, ev.clientY - originY) > 8) {
+        dragged = true;
+        const next = { chip, x: ev.clientX, y: ev.clientY };
+        dragRef.current = next;
+        setDrag(next);
+        setSelectedChip(chip);
+      }
+      if (!dragged) return;
+      const next = { chip, x: ev.clientX, y: ev.clientY };
+      dragRef.current = next;
+      setDrag(next);
+      setHoverSpot(hitSpot(ev.clientX, ev.clientY));
+    };
+
+    const up = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+      if (dragged) {
+        ignoreClickUntilRef.current = Date.now() + 400;
+        const spot = hitSpot(ev.clientX, ev.clientY);
+        if (spot && dragRef.current) addToSpot(spot, dragRef.current.chip.value);
+        dragRef.current = null;
+        setDrag(null);
+        setHoverSpot(null);
+        return;
+      }
+      setSelectedChip((prev) => (prev?.value === chip.value ? null : chip));
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
   }
 
   useEffect(() => {
-    if (!drag) return;
-    const move = (e: PointerEvent) => {
-      const cur = dragRef.current;
-      if (!cur) return;
-      const next = { chip: cur.chip, x: e.clientX, y: e.clientY };
-      dragRef.current = next;
-      setDrag(next);
-      setHoverSpot(hitSpot(e.clientX, e.clientY));
-    };
-    const up = (e: PointerEvent) => {
-      const spot = hitSpot(e.clientX, e.clientY);
-      if (spot && dragRef.current) addToSpot(spot, dragRef.current.chip.value);
-      dragRef.current = null;
-      setDrag(null);
-      setHoverSpot(null);
-    };
-    window.addEventListener("pointermove", move);
-    window.addEventListener("pointerup", up);
-    return () => {
-      window.removeEventListener("pointermove", move);
-      window.removeEventListener("pointerup", up);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [Boolean(drag)]);
+    if (bettingLocked) setSelectedChip(null);
+  }, [bettingLocked]);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -487,8 +517,9 @@ export function Blackjack() {
               <StatRow label="21+3 — three of a kind" value="30:1" />
               <StatRow label="21+3 — straight flush" value="40:1" />
               <p>
-                Place chips on the felt to bet — drag from the tray onto a circle. Side bets resolve immediately after
-                the initial deal, independent of how the main hand plays out.
+                Place chips on the felt to bet — select a chip then click a circle, or drag from the tray onto a circle.
+                Click a stack with no chip selected to peel the top chip off. Side bets resolve immediately after the
+                initial deal, independent of how the main hand plays out.
               </p>
             </InfoButton>
           </div>
@@ -609,7 +640,7 @@ export function Blackjack() {
 
         {phase === "betting" && player.length === 0 && (
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative mb-4 text-center text-emerald-200/60">
-            Drag chips from the tray onto a circle. Click a stack to peel the top chip off.
+            Select a chip and click a circle, or drag onto a circle. Click a stack to peel the top chip off.
           </motion.p>
         )}
 
@@ -622,8 +653,9 @@ export function Blackjack() {
             disabled={bettingLocked}
             ringColor="#38bdf8"
             highlighted={hoverSpot === "pairs"}
+            armed={Boolean(selectedChip) && !drag}
             dropRef={pairsRef}
-            onRemoveTop={() => removeTop("pairs")}
+            onCircleClick={() => handleSpotClick("pairs")}
           />
           <BetSpot
             label="Main Bet"
@@ -633,8 +665,9 @@ export function Blackjack() {
             ringColor="#e879f9"
             big
             highlighted={hoverSpot === "main"}
+            armed={Boolean(selectedChip) && !drag}
             dropRef={mainRef}
-            onRemoveTop={() => removeTop("main")}
+            onCircleClick={() => handleSpotClick("main")}
           />
           <BetSpot
             label="21+3"
@@ -644,24 +677,36 @@ export function Blackjack() {
             disabled={bettingLocked}
             ringColor="#fbbf24"
             highlighted={hoverSpot === "plus3"}
+            armed={Boolean(selectedChip) && !drag}
             dropRef={plus3Ref}
-            onRemoveTop={() => removeTop("plus3")}
+            onCircleClick={() => handleSpotClick("plus3")}
           />
         </div>
 
         <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-black/25 px-4 py-3">
           <p className="mr-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200/50">Chip tray</p>
-          {CHIPS.map((chip) => (
-            <button
-              key={chip.value}
-              type="button"
-              disabled={bettingLocked}
-              onPointerDown={(e) => startDrag(e, chip)}
-              className="cursor-grab touch-none active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              <ChipFace chip={chip} size={48} />
-            </button>
-          ))}
+          {CHIPS.map((chip) => {
+            const selected = selectedChip?.value === chip.value;
+            return (
+              <button
+                key={chip.value}
+                type="button"
+                disabled={bettingLocked}
+                onPointerDown={(e) => onChipPointerDown(e, chip)}
+                className={`rounded-full touch-none transition-transform disabled:cursor-not-allowed disabled:opacity-40 ${
+                  drag ? "cursor-grabbing" : "cursor-pointer"
+                } ${selected ? "scale-110" : "hover:scale-105"}`}
+                style={
+                  selected
+                    ? { boxShadow: `0 0 0 3px #fff, 0 0 18px ${chip.from}` }
+                    : undefined
+                }
+                title={selected ? "Selected — click a circle to bet, or drag" : "Click to select, or drag onto a circle"}
+              >
+                <ChipFace chip={chip} size={48} />
+              </button>
+            );
+          })}
         </div>
 
         {drag && (

@@ -355,6 +355,9 @@ export function BattleRoom() {
   const currentCaseId = caseIndex >= 0 ? caseSequence[caseIndex] : undefined;
   const currentCase = currentCaseId ? getCase(currentCaseId) : undefined;
   const pot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
+  const battleValue = battle.costPerPlayer * players.length;
+  const showJackpotCenter = Boolean(battle.jackpot || phase === "jackpot");
+  const jackpotAfterTeam = Math.max(0, Math.floor((teams.length - 1) / 2));
 
   return (
     <div className="space-y-6">
@@ -390,7 +393,8 @@ export function BattleRoom() {
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
             <span>
-              Pot: <span className="font-mono font-semibold text-amber-300">{formatCredits(pot)} SH</span>
+              Battle:{" "}
+              <span className="font-mono font-semibold text-amber-300">{formatCredits(battleValue)} SH</span>
             </span>
             {battle.terminal && (
               <span className="text-pink-300">
@@ -427,26 +431,6 @@ export function BattleRoom() {
           {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
         </div>
 
-        {phase === "jackpot" && jackpotTickets && (
-          <div className="border-b border-amber-400/20 bg-amber-400/[0.04] px-4 py-4">
-            <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-300">
-              <Coins className="h-4 w-4" /> {tieBreak ? "Tie-Breaker Jackpot" : "Jackpot Spin"}
-            </p>
-            {tieBreak && (
-              <p className="mb-3 text-xs text-slate-400">
-                It's a tie! An equal-odds spin between the tied {jackpotTickets.length > 2 ? "parties" : "two"} decides
-                the winner.
-              </p>
-            )}
-            <JackpotWheel
-              tickets={jackpotTickets}
-              spinToken={jackpotSpinToken}
-              winnerId={jackpotWinnerId}
-              onFinished={handleJackpotFinished}
-            />
-          </div>
-        )}
-
         <div className="relative min-w-0 w-full">
           {phase === "countdown" && <BattleCountdown countdown={countdown} />}
           <div className="flex w-full min-w-0 items-stretch">
@@ -454,9 +438,10 @@ export function BattleRoom() {
               const isTeam = teamPlayers.length > 1;
               const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
               const reelSize = players.length <= 4 ? "lg" : "md";
+              const insertJackpotHere = showJackpotCenter && teamIdx === jackpotAfterTeam;
               return (
                 <Fragment key={teamIdx}>
-                  {teamIdx > 0 && <TeamDivider />}
+                  {teamIdx > 0 && !(showJackpotCenter && teamIdx - 1 === jackpotAfterTeam) && <TeamDivider />}
                   <div
                     className="flex min-w-0 flex-col overflow-hidden"
                     style={{
@@ -507,6 +492,17 @@ export function BattleRoom() {
                       ))}
                     </div>
                   </div>
+                  {insertJackpotHere && (
+                    <JackpotCenter
+                      pot={pot}
+                      phase={phase}
+                      tieBreak={tieBreak}
+                      tickets={jackpotTickets}
+                      spinToken={jackpotSpinToken}
+                      winnerId={jackpotWinnerId}
+                      onFinished={handleJackpotFinished}
+                    />
+                  )}
                 </Fragment>
               );
             })}
@@ -545,6 +541,68 @@ function TeamDivider() {
         <Swords className="h-4 w-4 text-slate-300" />
         <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
       </div>
+    </div>
+  );
+}
+
+function JackpotCenter({
+  pot,
+  phase,
+  tieBreak,
+  tickets,
+  spinToken,
+  winnerId,
+  onFinished,
+}: {
+  pot: number;
+  phase: Phase;
+  tieBreak: boolean;
+  tickets: JackpotTicket[] | null;
+  spinToken: number;
+  winnerId: string | null;
+  onFinished: () => void;
+}) {
+  const spinning = phase === "jackpot" && tickets !== null;
+
+  return (
+    <div className="flex w-[22%] min-w-[12.5rem] max-w-[24rem] shrink-0 flex-col items-stretch justify-center gap-3 self-stretch border-x border-amber-400/30 bg-gradient-to-b from-amber-400/12 via-black/25 to-transparent px-3 py-4">
+      <div className="text-center">
+        <p className="flex items-center justify-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
+          <Coins className="h-3.5 w-3.5" />
+          {tieBreak && spinning ? "Tie-breaker" : "Jackpot pot"}
+        </p>
+        <p className="mt-1 font-mono text-3xl font-black tracking-tight text-white drop-shadow-[0_0_18px_rgba(251,191,36,0.35)] sm:text-4xl">
+          {formatCredits(pot)}
+        </p>
+        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-200/70">SH</p>
+      </div>
+
+      {spinning ? (
+        <div className="min-w-0">
+          {tieBreak && (
+            <p className="mb-2 text-center text-[11px] text-slate-400">
+              Equal-odds spin between the tied {tickets.length > 2 ? "parties" : "two"} decides the winner.
+            </p>
+          )}
+          <JackpotWheel
+            tickets={tickets}
+            spinToken={spinToken}
+            winnerId={winnerId}
+            compact
+            onFinished={onFinished}
+          />
+        </div>
+      ) : (
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2.5 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-amber-300/25">
+            <Swords className="h-4 w-4 text-amber-200" />
+            <span className="text-[8px] font-bold uppercase tracking-widest text-amber-200/80">vs</span>
+          </div>
+          <p className="max-w-[16rem] text-center text-[11px] leading-relaxed text-slate-400">
+            Unboxed value feeds this pot. The wheel spins here when the last case lands.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -37,12 +37,14 @@ export function JackpotWheel({
   spinToken,
   winnerId,
   duration = 8800,
+  compact = false,
   onFinished,
 }: {
   tickets: JackpotTicket[];
   spinToken: number;
   winnerId: string | null;
   duration?: number;
+  compact?: boolean;
   onFinished?: () => void;
 }) {
   const [offset, setOffset] = useState(0);
@@ -136,7 +138,10 @@ export function JackpotWheel({
 
       <div
         ref={containerRef}
-        className="relative h-24 w-full overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[inset_0_0_28px_rgba(0,0,0,0.55)]"
+        className={clsx(
+          "relative w-full overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[inset_0_0_28px_rgba(0,0,0,0.55)]",
+          compact ? "h-20" : "h-24",
+        )}
       >
         <div
           className="pointer-events-none absolute left-1/2 top-0 z-20 h-full w-1.5 -translate-x-1/2 rounded-full"

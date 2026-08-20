@@ -3,20 +3,22 @@ import { longBrake } from "../../lib/easing";
 import { sound } from "../../lib/sound";
 import type { JackpotTicket } from "../battles/JackpotWheel";
 
-const DURATION_MS = 22000;
-const EXTRA_SPINS = 16;
+const DURATION_MS = 12000;
+const EXTRA_SPINS = 12;
 
 export function JackpotCircleWheel({
   tickets,
   spinToken,
   winnerId,
   shouldSpin = true,
+  countdown = null,
   onFinished,
 }: {
   tickets: JackpotTicket[];
   spinToken: number;
   winnerId: string | null;
   shouldSpin?: boolean;
+  countdown?: number | null;
   onFinished?: () => void;
 }) {
   const [rotation, setRotation] = useState(0);
@@ -109,6 +111,11 @@ export function JackpotCircleWheel({
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">Winner</p>
                 <p className="mt-1 truncate text-sm font-semibold text-white">{winnerName}</p>
+              </>
+            ) : countdown != null ? (
+              <>
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-300">Starts in</p>
+                <p className="mt-1 font-mono text-3xl font-black text-white tabular-nums">{countdown}</p>
               </>
             ) : (
               <>

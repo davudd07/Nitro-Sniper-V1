@@ -1,10 +1,11 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Plus, Swords } from "lucide-react";
+import { Plus, Swords, GripVertical, ArrowDownNarrowWide, ArrowUpNarrowWide } from "lucide-react";
 import { sound } from "../lib/sound";
 import { ModeSelector, ToggleRow } from "../components/battles/ModeSelector";
 import { AddCasesModal } from "../components/battles/AddCasesModal";
 import { CaseThumb } from "../components/cases/CaseThumb";
+import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { BATTLE_MODES, totalPlayers } from "../data/battleModes";
 import { CASES, getCase } from "../data/cases";
 import type { BattleCaseEntry } from "../store/battleStore";
@@ -22,6 +23,8 @@ export function CreateBattle() {
   const [goldSpin, setGoldSpin] = useState(true);
   const [cases, setCases] = useState<BattleCaseEntry[]>([{ caseId: CASES[0].id, count: 3 }]);
   const [modalOpen, setModalOpen] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+  const [dragFrom, setDragFrom] = useState<number | null>(null);
 
   const createBattle = useBattleStore((s) => s.createBattle);
   const spend = useEconomyStore((s) => s.spend);
@@ -35,6 +38,31 @@ export function CreateBattle() {
   );
   const totalCost = costPerPlayer * players;
   const totalCaseCount = cases.reduce((s, e) => s + e.count, 0);
+
+  function sortByPrice(dir: "asc" | "desc") {
+    sound.click();
+    setCases((prev) =>
+      [...prev].sort((a, b) => {
+        const pa = getCase(a.caseId)?.price ?? 0;
+        const pb = getCase(b.caseId)?.price ?? 0;
+        return dir === "asc" ? pa - pb : pb - pa;
+      }),
+    );
+  }
+
+  function onDrop(to: number) {
+    if (dragFrom == null || dragFrom === to) {
+      setDragFrom(null);
+      return;
+    }
+    setCases((prev) => {
+      const next = [...prev];
+      const [item] = next.splice(dragFrom, 1);
+      next.splice(to, 0, item);
+      return next;
+    });
+    setDragFrom(null);
+  }
 
   function handleCreate() {
     if (totalCaseCount === 0) {
@@ -71,36 +99,80 @@ export function CreateBattle() {
         />
 
         <div>
-          <div className="mb-2 flex items-center justify-between">
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Cases ({totalCaseCount}/50)
             </p>
-            <button
-              onClick={() => {
-                sound.click();
-                setModalOpen(true);
-              }}
-              className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
-            >
-              <Plus className="h-3.5 w-3.5" /> Add Cases
-            </button>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <button
+                type="button"
+                title="Low to high — cheapest case first"
+                onClick={() => sortByPrice("asc")}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/5"
+              >
+                <ArrowDownNarrowWide className="h-3.5 w-3.5" />
+                Low→High
+              </button>
+              <button
+                type="button"
+                title="High to low — most expensive case first"
+                onClick={() => sortByPrice("desc")}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1.5 text-xs font-semibold text-slate-200 hover:bg-white/5"
+              >
+                <ArrowUpNarrowWide className="h-3.5 w-3.5" />
+                High→Low
+              </button>
+              <button
+                onClick={() => {
+                  sound.click();
+                  setModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 rounded-lg border border-white/15 px-3 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
+              >
+                <Plus className="h-3.5 w-3.5" /> Add Cases
+              </button>
+            </div>
           </div>
           {cases.length === 0 ? (
-            <p className="surface p-6 text-center text-sm text-slate-500">
-              No cases added yet.
-            </p>
+            <p className="surface p-6 text-center text-sm text-slate-500">No cases added yet.</p>
           ) : (
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {cases.map((e) => {
+              {cases.map((e, i) => {
                 const c = getCase(e.caseId);
                 if (!c) return null;
                 return (
-                  <div key={e.caseId} className="overflow-hidden rounded-xl border border-white/10 bg-bg-900/60">
-                    <CaseThumb c={c} className="h-16" />
-                    <div className="p-2 text-center">
-                      <p className="truncate text-xs font-medium text-white">{c.name}</p>
-                      <p className="text-[11px] text-slate-500">x{e.count}</p>
+                  <div
+                    key={e.caseId}
+                    draggable
+                    onDragStart={() => setDragFrom(i)}
+                    onDragOver={(ev) => ev.preventDefault()}
+                    onDrop={() => onDrop(i)}
+                    onDragEnd={() => setDragFrom(null)}
+                    className={`overflow-hidden rounded-xl border bg-bg-900/60 ${
+                      dragFrom === i ? "border-fuchsia-400/60 opacity-60" : "border-white/10"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between px-1.5 pt-1">
+                      <span className="cursor-grab touch-none text-slate-500 active:cursor-grabbing" title="Drag to reorder">
+                        <GripVertical className="h-3.5 w-3.5" />
+                      </span>
+                      <span className="font-mono text-[10px] text-slate-500">{formatCredits(c.price)}</span>
                     </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        sound.click();
+                        setPreviewId(c.id);
+                      }}
+                      className="w-full text-left"
+                      title="Preview case contents"
+                    >
+                      <CaseThumb c={c} className="h-16" />
+                      <div className="p-2 text-center">
+                        <p className="truncate text-xs font-medium text-white">{c.name}</p>
+                        <p className="text-[11px] text-slate-500">x{e.count}</p>
+                      </div>
+                    </button>
                   </div>
                 );
               })}
@@ -139,7 +211,14 @@ export function CreateBattle() {
         </button>
       </div>
 
-      <AddCasesModal open={modalOpen} onClose={() => setModalOpen(false)} entries={cases} onChange={setCases} />
+      <AddCasesModal
+        key={modalOpen ? "add-cases-open" : "add-cases-closed"}
+        open={modalOpen}
+        onClose={() => setModalOpen(false)}
+        entries={cases}
+        onChange={setCases}
+      />
+      <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
     </div>
   );
 }

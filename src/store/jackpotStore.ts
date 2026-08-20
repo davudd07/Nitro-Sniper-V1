@@ -23,11 +23,14 @@ export interface JackpotEntry {
 
 export type JackpotPhase = "open" | "spinning" | "finished";
 
+export const JACKPOT_COUNTDOWN_MS = 45_000;
+
 interface JackpotPotState {
   entries: JackpotEntry[];
   phase: JackpotPhase;
   winnerId: string | null;
   spinToken: number;
+  countdownEndsAt: number | null;
 }
 
 interface JackpotStore {
@@ -40,7 +43,14 @@ interface JackpotStore {
 }
 
 function emptyPot(): JackpotPotState {
-  return { entries: [], phase: "open", winnerId: null, spinToken: 0 };
+  return { entries: [], phase: "open", winnerId: null, spinToken: 0, countdownEndsAt: null };
+}
+
+function withCountdown(pot: JackpotPotState): JackpotPotState {
+  if (pot.phase !== "open") return { ...pot, countdownEndsAt: null };
+  if (pot.entries.length < 2) return { ...pot, countdownEndsAt: null };
+  if (pot.countdownEndsAt != null) return pot;
+  return { ...pot, countdownEndsAt: Date.now() + JACKPOT_COUNTDOWN_MS };
 }
 
 export function potTotal(entries: JackpotEntry[]): number {
@@ -71,7 +81,7 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       color: PLAYER_COLORS[pot.entries.length % PLAYER_COLORS.length],
     };
     set((s) => ({
-      pots: { ...s.pots, [potId]: { ...pot, entries: [...pot.entries, entry] } },
+      pots: { ...s.pots, [potId]: withCountdown({ ...pot, entries: [...pot.entries, entry] }) },
     }));
     return true;
   },
@@ -90,7 +100,10 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       color: PLAYER_COLORS[pot.entries.length % PLAYER_COLORS.length],
     };
     set((s) => ({
-      pots: { ...s.pots, [potId]: { ...s.pots[potId], entries: [...s.pots[potId].entries, entry] } },
+      pots: {
+        ...s.pots,
+        [potId]: withCountdown({ ...s.pots[potId], entries: [...s.pots[potId].entries, entry] }),
+      },
     }));
     return true;
   },
@@ -101,7 +114,7 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
     set((s) => ({
       pots: {
         ...s.pots,
-        [potId]: { ...pot, phase: "spinning", winnerId, spinToken: pot.spinToken + 1 },
+        [potId]: { ...pot, phase: "spinning", winnerId, spinToken: pot.spinToken + 1, countdownEndsAt: null },
       },
     }));
     return true;

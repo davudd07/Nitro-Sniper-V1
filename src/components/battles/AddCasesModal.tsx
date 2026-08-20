@@ -4,6 +4,7 @@ import { clsx } from "clsx";
 import { X, Plus, Minus } from "lucide-react";
 import { CASES } from "../../data/cases";
 import { CaseThumb } from "../cases/CaseThumb";
+import { CasePreviewModal } from "../cases/CasePreviewModal";
 import { RiskBadge } from "../cases/RiskBadge";
 import { formatCredits } from "../../lib/format";
 import type { BattleCaseEntry } from "../../store/battleStore";
@@ -23,6 +24,11 @@ export function AddCasesModal({
   onChange: (entries: BattleCaseEntry[]) => void;
 }) {
   const [draft, setDraft] = useState<BattleCaseEntry[]>(entries);
+  const [previewId, setPreviewId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (open) setDraft(entries);
+  }, [open, entries]);
 
   if (!open) return null;
 
@@ -80,7 +86,17 @@ export function AddCasesModal({
                   count > 0 ? "border-fuchsia-400/40 bg-fuchsia-500/5" : "border-white/10 bg-bg-800/60",
                 )}
               >
-                <CaseThumb c={c} className="h-16 w-16 shrink-0 rounded-lg" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.click();
+                    setPreviewId(c.id);
+                  }}
+                  className="shrink-0"
+                  title="Preview case contents"
+                >
+                  <CaseThumb c={c} className="h-16 w-16 rounded-lg" />
+                </button>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-white">{c.name}</p>
                   <p className="text-xs text-slate-500">{formatCredits(c.price)} SH each</p>
@@ -131,6 +147,7 @@ export function AddCasesModal({
           </button>
         </div>
       </div>
+      <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
     </div>,
     document.body,
   );

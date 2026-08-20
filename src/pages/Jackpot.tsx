@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Bot, Coins } from "lucide-react";
 import { clsx } from "clsx";
 import { JackpotCircleWheel } from "../components/jackpot/JackpotCircleWheel";
@@ -34,10 +34,17 @@ export function JackpotPage() {
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
+  const [now, setNow] = useState(() => Date.now());
+  const spinLock = useRef(false);
+  const lastBeep = useRef<number | null>(null);
 
   const total = potTotal(pot.entries);
   const you = youEntry(pot.entries);
   const payout = Math.round(total * (1 - JACKPOT_HOUSE_EDGE));
+  const countdownLeft =
+    pot.phase === "open" && pot.countdownEndsAt
+      ? Math.max(0, Math.ceil((pot.countdownEndsAt - now) / 1000))
+      : null;
   const tickets: JackpotTicket[] = useMemo(
     () =>
       pot.entries.map((e) => ({
@@ -85,23 +92,47 @@ export function JackpotPage() {
   }
 
   async function handleSpin() {
-    if (pot.entries.length < 2) {
-      push("Need at least two players to spin.", "warning");
-      return;
-    }
+    if (spinLock.current) return;
+    const live = useJackpotStore.getState().pots[potId];
+    if (live.phase !== "open" || live.entries.length < 2) return;
+    spinLock.current = true;
     sound.click();
+    const liveTotal = potTotal(live.entries);
     const [roll] = await play(1);
     let acc = 0;
-    let winner = pot.entries[pot.entries.length - 1];
-    for (const e of pot.entries) {
-      acc += e.amount / total;
+    let winner = live.entries[live.entries.length - 1];
+    for (const e of live.entries) {
+      acc += e.amount / liveTotal;
       if (roll < acc) {
         winner = e;
         break;
       }
     }
-    beginSpin(potId, winner.id);
+    if (!beginSpin(potId, winner.id)) spinLock.current = false;
   }
+
+  useEffect(() => {
+    if (pot.phase !== "open" || !pot.countdownEndsAt) return;
+    const id = window.setInterval(() => setNow(Date.now()), 200);
+    return () => window.clearInterval(id);
+  }, [pot.phase, pot.countdownEndsAt]);
+
+  useEffect(() => {
+    if (countdownLeft == null) {
+      lastBeep.current = null;
+      return;
+    }
+    if (countdownLeft <= 5 && countdownLeft > 0 && lastBeep.current !== countdownLeft) {
+      lastBeep.current = countdownLeft;
+      sound.countdownBeep(countdownLeft === 1);
+    }
+    if (countdownLeft === 0) void handleSpin();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [countdownLeft]);
+
+  useEffect(() => {
+    spinLock.current = false;
+  }, [pot.phase, potId]);
 
   function handleFinished() {
     const current = useJackpotStore.getState().pots[potId];
@@ -174,6 +205,12 @@ export function JackpotPage() {
               </p>
               <p className="text-xs text-slate-500">Pays {formatCredits(payout)} SH after house edge</p>
             </div>
+            {countdownLeft != null && pot.phase === "open" && (
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-300">Starts in</p>
+                <p className="font-mono text-5xl font-black text-white tabular-nums">{countdownLeft}</p>
+              </div>
+            )}
           </div>
 
           <JackpotCircleWheel
@@ -181,6 +218,7 @@ export function JackpotPage() {
             spinToken={pot.spinToken}
             winnerId={pot.winnerId}
             shouldSpin={pot.phase === "spinning"}
+            countdown={pot.phase === "open" ? countdownLeft : null}
             onFinished={handleFinished}
           />
 
@@ -264,15 +302,17 @@ export function JackpotPage() {
                 >
                   <Bot className="h-4 w-4" /> Call Bot · {formatCredits(you.amount)} SH
                 </button>
-                <button
-                  type="button"
-                  onClick={() => void handleSpin()}
-                  disabled={pot.entries.length < 2}
-                  className="btn-primary w-full py-2.5 disabled:opacity-40"
-                >
-                  Spin wheel
-                </button>
-                <p className="text-center text-[11px] text-slate-500">Need 2+ players. Wheel takes ~22s to land.</p>
+                {countdownLeft != null ? (
+                  <p className="text-center text-sm text-slate-300">
+                    Wheel spins in{" "}
+                    <span className="font-mono font-bold text-white">{countdownLeft}s</span>
+                    . More players can still join.
+                  </p>
+                ) : (
+                  <p className="text-center text-[11px] text-slate-500">
+                    Call a bot (or wait for a second player). A 45s countdown starts at 2+ players.
+                  </p>
+                )}
               </>
             )}
 

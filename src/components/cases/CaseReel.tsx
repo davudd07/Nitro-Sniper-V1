@@ -69,6 +69,7 @@ export function CaseReel({
   onLanded,
   onGoldTriggered,
   playerLabel,
+  requireGoldConfirm = false,
 }: {
   pool: CaseItem[];
   goldPool: CaseItem[];
@@ -83,8 +84,10 @@ export function CaseReel({
   onLanded?: (item: CaseItem, wasGold: boolean) => void;
   onGoldTriggered?: () => void;
   playerLabel?: string;
+  /** Solo opens: wait for a "Spin for Gold" click instead of auto-spinning. */
+  requireGoldConfirm?: boolean;
 }) {
-  const [phase, setPhase] = useState<"idle" | "main" | "charge" | "gold" | "done">("idle");
+  const [phase, setPhase] = useState<"idle" | "main" | "awaitingGold" | "charge" | "gold" | "done">("idle");
   const [offset, setOffset] = useState(0);
   const [strip, setStrip] = useState<CaseItem[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,6 +96,34 @@ export function CaseReel({
   const cfg = SIZE_CONFIG[size][orientation];
   const isHorizontal = orientation === "horizontal";
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const goldSeedRef = useRef(0);
+  const resultRef = useRef(result);
+  resultRef.current = result;
+
+  function runGoldSpin(seedBase: number, landed: CaseOddsEntry) {
+    setPhase("charge");
+    sound.goldCharge();
+    onGoldTriggered?.();
+    timeoutRef.current = setTimeout(() => {
+      const goldRand = mulberry32(seedBase * 104729 + 3);
+      const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand);
+      setStrip(goldStrip);
+      setOffset(0);
+      setPhase("gold");
+      lastTickIndexRef.current = -1;
+      animateTo(seedBase + 1, goldDuration, () => {
+        setPhase("done");
+        sound.goldLand();
+        onLanded?.(landed.item, true);
+      });
+    }, 900);
+  }
+
+  function confirmGoldSpin() {
+    const landed = resultRef.current;
+    if (phase !== "awaitingGold" || !landed) return;
+    runGoldSpin(goldSeedRef.current, landed);
+  }
 
   // Fill the track with a preview strip so the reel always spans the container.
   useEffect(() => {
@@ -116,22 +147,13 @@ export function CaseReel({
     lastTickIndexRef.current = -1;
     animateTo(seedBase, duration, () => {
       if (goesGold) {
-        setPhase("charge");
-        sound.goldCharge();
-        onGoldTriggered?.();
-        timeoutRef.current = setTimeout(() => {
-          const goldRand = mulberry32(seedBase * 104729 + 3);
-          const goldStrip = buildStrip(goldPool.length ? goldPool : [result.item], result.item, goldRand);
-          setStrip(goldStrip);
-          setOffset(0);
-          setPhase("gold");
-          lastTickIndexRef.current = -1;
-          animateTo(seedBase + 1, goldDuration, () => {
-            setPhase("done");
-            sound.goldLand();
-            onLanded?.(result.item, true);
-          });
-        }, 900);
+        goldSeedRef.current = seedBase;
+        if (requireGoldConfirm) {
+          setPhase("awaitingGold");
+          sound.land();
+        } else {
+          runGoldSpin(seedBase, result);
+        }
       } else {
         setPhase("done");
         sound.land();
@@ -184,7 +206,7 @@ export function CaseReel({
     [],
   );
 
-  const isGoldPhase = phase === "gold" || phase === "charge";
+  const isGoldPhase = phase === "gold" || phase === "charge" || phase === "awaitingGold";
 
   return (
     <div className="min-w-0 w-full max-w-full">
@@ -212,13 +234,24 @@ export function CaseReel({
             <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-black/70 to-transparent" />
           </>
         )}
+        {phase === "awaitingGold" && (
+          <div className="absolute left-1/2 top-1/2 z-30 -translate-x-1/2 -translate-y-1/2">
+            <button
+              type="button"
+              onClick={confirmGoldSpin}
+              className="gold-pulse inline-flex items-center gap-1.5 rounded-full border border-amber-300/80 bg-amber-400 px-4 py-2 text-xs font-bold uppercase tracking-widest text-bg-950 shadow-[0_8px_28px_rgba(251,191,36,0.55)] transition-transform hover:scale-105 active:scale-95"
+            >
+              Spin for Gold
+            </button>
+          </div>
+        )}
         {phase === "charge" && (
           <div className="gold-pulse absolute inset-0 z-20 flex items-center justify-center bg-amber-400/10 backdrop-blur-[1px]">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-300">Gold Spin!</span>
           </div>
         )}
         <div
-          className={clsx("absolute flex", isHorizontal ? "inset-y-0 left-0 flex-row" : "inset-x-0 top-0 w-full flex-col")}
+          className={clsx("pointer-events-none absolute flex", isHorizontal ? "inset-y-0 left-0 flex-row" : "inset-x-0 top-0 w-full flex-col")}
           style={{
             transform: isHorizontal ? `translateX(${-offset}px)` : `translateY(${-offset}px)`,
             willChange: "transform",

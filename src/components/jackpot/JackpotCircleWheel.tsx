@@ -21,15 +21,20 @@ export function JackpotCircleWheel({
   countdown?: number | null;
   onFinished?: () => void;
 }) {
-  const [rotation, setRotation] = useState(0);
   const [done, setDone] = useState(false);
   const rafRef = useRef<number | null>(null);
   const lastSliceRef = useRef(-1);
+  const wheelRef = useRef<HTMLDivElement>(null);
 
   const slices = buildSlices(tickets);
 
   useEffect(() => {
-    if (spinToken === 0 || !winnerId || slices.length === 0 || !shouldSpin) return;
+    if (spinToken === 0) {
+      setDone(false);
+      if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
+      return;
+    }
+    if (!winnerId || slices.length === 0 || !shouldSpin) return;
     setDone(false);
     lastSliceRef.current = -1;
 
@@ -42,12 +47,13 @@ export function JackpotCircleWheel({
     const target = EXTRA_SPINS * 360 + (360 - winnerMid) + jitter;
 
     const start = performance.now();
+    if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
 
     function frame(now: number) {
       const t = Math.min(1, (now - start) / DURATION_MS);
       const eased = longBrake(t);
       const deg = target * eased;
-      setRotation(deg);
+      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${deg}deg)`;
 
       const atTop = sliceAtTop(slices, deg);
       if (atTop && atTop.index !== lastSliceRef.current) {
@@ -58,7 +64,7 @@ export function JackpotCircleWheel({
       if (t < 1) {
         rafRef.current = requestAnimationFrame(frame);
       } else {
-        setRotation(target);
+        if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target}deg)`;
         setDone(true);
         sound.jackpotWin();
         onFinished?.();
@@ -98,10 +104,10 @@ export function JackpotCircleWheel({
 
       <div className="relative mx-auto aspect-square w-full">
         <div
+          ref={wheelRef}
           className="absolute inset-0 rounded-full shadow-[0_0_40px_rgba(0,0,0,0.45)] ring-4 ring-white/10"
           style={{
             background: slices.length ? `conic-gradient(from 0deg, ${gradient})` : "#1c1c28",
-            transform: `rotate(${rotation}deg)`,
             willChange: "transform",
           }}
         />

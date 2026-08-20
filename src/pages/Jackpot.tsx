@@ -7,6 +7,7 @@ import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
   JACKPOT_HOUSE_EDGE,
+  JACKPOT_MAX_BOTS,
   JACKPOT_POTS,
   potTotal,
   useJackpotStore,
@@ -82,10 +83,17 @@ export function JackpotPage() {
     push(`Joined ${def.label} jackpot with ${formatCredits(bet)} SH.`, "success");
   }
 
+  const botCount = pot.entries.filter((e) => e.kind === "bot").length;
+
   function handleCallBot() {
     sound.click();
     if (!callBot(potId)) {
-      push(you ? "This pot is full." : "Join first, then call a bot at your bet size.", "warning");
+      const reason = !you
+        ? "Join first, then call a bot at your bet size."
+        : botCount >= JACKPOT_MAX_BOTS
+          ? `You can call at most ${JACKPOT_MAX_BOTS} bots.`
+          : "This pot is full.";
+      push(reason, "warning");
       return;
     }
     push(`Bot joined with ${formatCredits(you!.amount)} SH.`, "info");
@@ -292,15 +300,18 @@ export function JackpotPage() {
               <>
                 <p className="text-sm text-slate-300">
                   You’re in for <span className="font-mono font-semibold text-white">{formatCredits(you.amount)} SH</span>.
-                  Call a bot and they’ll match that exact bet.
+                  Call up to {JACKPOT_MAX_BOTS} bots — they’ll match that exact bet.
                 </p>
                 <button
                   type="button"
                   onClick={handleCallBot}
-                  disabled={pot.entries.length >= 10}
+                  disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
                   className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white hover:bg-white/5 disabled:opacity-40"
                 >
                   <Bot className="h-4 w-4" /> Call Bot · {formatCredits(you.amount)} SH
+                  <span className="text-xs font-medium text-slate-400">
+                    ({botCount}/{JACKPOT_MAX_BOTS})
+                  </span>
                 </button>
                 {countdownLeft != null ? (
                   <p className="text-center text-sm text-slate-300">

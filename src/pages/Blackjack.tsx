@@ -23,7 +23,7 @@ type Outcome = "win" | "lose" | "push" | "blackjack" | null;
 
 // Traditional poker-chip denominations & colors — a generic, universal
 // casino convention (not tied to any specific brand).
-type ChipDef = { value: number; from: string; to: string; text: string };
+type ChipDef = { value: number; from: string; to: string; text: string; custom?: boolean };
 
 const CHIPS: ChipDef[] = [
   { value: 10, from: "#f8fafc", to: "#cbd5e1", text: "#0f172a" },
@@ -32,6 +32,8 @@ const CHIPS: ChipDef[] = [
   { value: 500, from: "#86efac", to: "#15803d", text: "#fff" },
   { value: 1000, from: "#1f2937", to: "#000000", text: "#fff" },
 ];
+
+const CUSTOM_CHIP_STYLE = { from: "#c4b5fd", to: "#6d28d9", text: "#fff" } as const;
 
 type SpotId = "pairs" | "main" | "plus3";
 
@@ -49,7 +51,9 @@ function ChipFace({ chip, size }: { chip: ChipDef; size: number }) {
         border: "2px solid rgba(255,255,255,0.28)",
       }}
     >
-      {chip.value >= 1000 ? `${chip.value / 1000}k` : chip.value}
+      {chip.value >= 1000
+        ? `${chip.value % 1000 === 0 ? chip.value / 1000 : (chip.value / 1000).toFixed(1)}k`
+        : chip.value}
     </div>
   );
 }
@@ -62,6 +66,9 @@ function stackFromAmount(amount: number): ChipDef[] {
       stack.push(chip);
       left -= chip.value;
     }
+  }
+  if (left > 0) {
+    stack.push({ value: left, ...CUSTOM_CHIP_STYLE, custom: true });
   }
   return stack;
 }
@@ -167,11 +174,15 @@ export function Blackjack() {
   const [drag, setDrag] = useState<{ chip: ChipDef; x: number; y: number } | null>(null);
   const [hoverSpot, setHoverSpot] = useState<SpotId | null>(null);
   const [selectedChip, setSelectedChip] = useState<ChipDef | null>(null);
+  const [customBetInput, setCustomBetInput] = useState("25");
   const dragRef = useRef<{ chip: ChipDef; x: number; y: number } | null>(null);
   const ignoreClickUntilRef = useRef(0);
   const pairsRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLButtonElement>(null);
   const plus3Ref = useRef<HTMLButtonElement>(null);
+
+  const customBetValue = Math.max(1, Math.round(Number(customBetInput)) || 1);
+  const customChip: ChipDef = { value: customBetValue, ...CUSTOM_CHIP_STYLE, custom: true };
 
   const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
@@ -444,8 +455,9 @@ export function Blackjack() {
   function handleSpotClick(id: SpotId) {
     if (bettingLocked) return;
     if (Date.now() < ignoreClickUntilRef.current) return;
-    if (selectedChip) {
-      addToSpot(id, selectedChip.value);
+    const chip = selectedChip?.custom ? customChip : selectedChip;
+    if (chip) {
+      addToSpot(id, chip.value);
       return;
     }
     removeTop(id);
@@ -454,7 +466,11 @@ export function Blackjack() {
   function onChipClick(chip: ChipDef) {
     if (bettingLocked) return;
     if (Date.now() < ignoreClickUntilRef.current) return;
-    setSelectedChip((prev) => (prev?.value === chip.value ? null : chip));
+    setSelectedChip((prev) => {
+      if (chip.custom) return prev?.custom ? null : chip;
+      if (prev && !prev.custom && prev.value === chip.value) return null;
+      return chip;
+    });
   }
 
   function onChipPointerDown(e: React.PointerEvent, chip: ChipDef) {
@@ -500,7 +516,7 @@ export function Blackjack() {
     window.addEventListener("pointercancel", up);
   }
 
-  const activeChip = bettingLocked ? null : selectedChip;
+  const activeChip = bettingLocked ? null : selectedChip?.custom ? customChip : selectedChip;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -646,7 +662,8 @@ export function Blackjack() {
 
         {phase === "betting" && player.length === 0 && (
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative mb-4 text-center text-emerald-200/60">
-            Select a chip and click a circle, or drag onto a circle. Click a stack to peel the top chip off.
+            Select a chip (or type a custom size) and click a circle, or drag onto a circle. Click a stack to peel the
+            top chip off.
           </motion.p>
         )}
 
@@ -692,7 +709,7 @@ export function Blackjack() {
         <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-black/25 px-4 py-5">
           <p className="mr-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200/50">Chip tray</p>
           {CHIPS.map((chip) => {
-            const selected = activeChip?.value === chip.value;
+            const selected = Boolean(activeChip) && !activeChip?.custom && activeChip?.value === chip.value;
             return (
               <button
                 key={chip.value}
@@ -720,6 +737,46 @@ export function Blackjack() {
               </button>
             );
           })}
+          <div className="ml-2 flex items-center gap-2 border-l border-white/10 pl-4">
+            <label className="flex flex-col gap-1">
+              <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-200/50">Custom</span>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                disabled={bettingLocked}
+                value={customBetInput}
+                onChange={(e) => setCustomBetInput(e.target.value)}
+                onFocus={() => {
+                  if (!bettingLocked) setSelectedChip(customChip);
+                }}
+                className="w-20 rounded-lg border border-white/15 bg-black/40 px-2 py-1.5 font-mono text-sm text-white outline-none focus:border-violet-400/70 disabled:opacity-40"
+              />
+            </label>
+            <button
+              type="button"
+              disabled={bettingLocked}
+              aria-pressed={Boolean(activeChip?.custom)}
+              draggable={false}
+              onClick={() => onChipClick(customChip)}
+              onPointerDown={(e) => onChipPointerDown(e, customChip)}
+              className={`relative rounded-full touch-none select-none transition-[transform,opacity,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
+                drag ? "cursor-grabbing" : "cursor-pointer"
+              } ${activeChip?.custom ? "scale-110" : "hover:scale-105"}`}
+              style={{
+                boxShadow: activeChip?.custom ? `0 0 0 3px #f8fafc, 0 0 18px ${CUSTOM_CHIP_STYLE.from}` : "0 0 0 0 transparent",
+                opacity: activeChip && !activeChip.custom ? 0.42 : 1,
+              }}
+              title="Custom bet — type an amount, then click or drag onto a circle"
+            >
+              <ChipFace chip={customChip} size={48} />
+              {activeChip?.custom && (
+                <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-white">
+                  Selected
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
         {drag && (

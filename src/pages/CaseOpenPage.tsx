@@ -125,6 +125,7 @@ export function CaseOpenPage() {
                 result={pendingResults[i] ?? null}
                 spinToken={spinToken}
                 goldSpinEnabled={goldSpin}
+                requireGoldConfirm
                 size={reelSize}
                 orientation="horizontal"
                 laneSeed={i + 1}

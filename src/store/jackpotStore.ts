@@ -24,6 +24,7 @@ export interface JackpotEntry {
 export type JackpotPhase = "open" | "spinning" | "finished";
 
 export const JACKPOT_COUNTDOWN_MS = 45_000;
+export const JACKPOT_MAX_BOTS = 5;
 
 interface JackpotPotState {
   entries: JackpotEntry[];
@@ -91,6 +92,8 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
     const you = youEntry(pot.entries);
     if (!you) return false;
     if (pot.entries.length >= 10) return false;
+    const bots = pot.entries.filter((e) => e.kind === "bot").length;
+    if (bots >= JACKPOT_MAX_BOTS) return false;
     const used = new Set(pot.entries.map((e) => e.name));
     const entry: JackpotEntry = {
       id: shortId("jp"),

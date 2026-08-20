@@ -1,26 +1,140 @@
-import { useEffect, useState } from "react";
-import { Gift, Sparkles, Clock } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
-import { useChatStore, CHAT_RAIN_PRIZE, CHAT_RAIN_WINNERS } from "../store/chatStore";
-import { useEconomyStore } from "../store/economyStore";
-import { useToastStore } from "../store/toastStore";
+import { clsx } from "clsx";
+import { X } from "lucide-react";
+import { CoinStackArt, TreasureChestArt } from "../components/rewards/DropArt";
 import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
+import { formatDropCountdown, progressFromXp } from "../lib/xp";
+import { useDemoProfileStore } from "../store/demoProfileStore";
+import { useEconomyStore } from "../store/economyStore";
+import {
+  BUY_XP_COST_SH,
+  BUY_XP_GAIN,
+  MONTHLY_DROP_SH,
+  useRewardsStore,
+  WEEKLY_DROP_SH,
+} from "../store/rewardsStore";
+import { useToastStore } from "../store/toastStore";
 
-function formatRemain(ms: number): string {
-  const s = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  return `${m}:${r.toString().padStart(2, "0")}`;
+function DropInfo({ title, children }: { title: string; children: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          sound.click();
+          setOpen(true);
+        }}
+        className="grid h-6 w-6 place-items-center rounded-full border border-white/20 bg-black/35 text-xs font-black text-white/80 hover:bg-black/55"
+        aria-label={title}
+      >
+        ?
+      </button>
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setOpen(false)}>
+            <div className="surface max-h-[85vh] w-full max-w-md overflow-y-auto bg-bg-900 p-5" onClick={(e) => e.stopPropagation()}>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-lg font-semibold text-white">{title}</h3>
+                <button type="button" onClick={() => setOpen(false)} className="rounded-lg p-1 text-slate-400 hover:bg-white/10">
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="space-y-3 text-sm leading-relaxed text-slate-300">{children}</div>
+            </div>
+          </div>,
+          document.body,
+        )}
+    </>
+  );
+}
+
+function DropCard({
+  title,
+  variant,
+  info,
+  footer,
+  footerDisabled,
+  onFooter,
+  art,
+  amount,
+}: {
+  title: string;
+  variant: "green" | "lime" | "gold";
+  info?: ReactNode;
+  footer: string;
+  footerDisabled: boolean;
+  onFooter?: () => void;
+  art: ReactNode;
+  amount?: string;
+}) {
+  const border =
+    variant === "green"
+      ? "border-[#019201]/70"
+      : variant === "lime"
+        ? "border-lime-400/45"
+        : "border-amber-400/45";
+  const glow =
+    variant === "green"
+      ? "from-emerald-500/15"
+      : variant === "lime"
+        ? "from-lime-400/15"
+        : "from-amber-400/15";
+  const word =
+    variant === "green" ? "drop-word-green" : variant === "lime" ? "drop-word-lime" : "drop-word-gold";
+  const footerClass = footerDisabled
+    ? "border-white/10 bg-[#0a100c] text-slate-400"
+    : "border-lime-300/50 bg-gradient-to-b from-lime-400 to-green-700 text-[#052e16] shadow-[0_3px_0_#14532d]";
+
+  return (
+    <article
+      className={clsx(
+        "drop-card relative flex min-h-[420px] flex-col overflow-hidden rounded-xl border-2 bg-[#0c1410] shadow-[4px_4px_0_#050805]",
+        border,
+      )}
+    >
+      <div className={clsx("pointer-events-none absolute inset-0 bg-gradient-to-b to-transparent", glow)} />
+      <div className="relative flex items-start justify-between px-4 pt-4">
+        <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white">{title}</p>
+        {info}
+      </div>
+      <div className="relative flex flex-1 flex-col items-center justify-center px-3 pb-2 pt-6">
+        <p className={clsx("drop-word", word)}>DROP</p>
+        <div className="relative -mt-6">{art}</div>
+        {amount ? <p className="mt-1 font-mono text-sm font-bold text-cyan-300">{amount}</p> : null}
+      </div>
+      <button
+        type="button"
+        disabled={footerDisabled}
+        onClick={onFooter}
+        className={clsx(
+          "relative mx-3 mb-3 rounded-full border-2 px-4 py-2.5 text-center text-sm font-black uppercase tracking-[0.14em]",
+          footerClass,
+        )}
+      >
+        {footer}
+      </button>
+    </article>
+  );
 }
 
 export function Rewards() {
-  const nextRainAt = useChatStore((s) => s.nextRainAt);
-  const lastRainWinners = useChatStore((s) => s.lastRainWinners);
-  const totalRakeback = useEconomyStore((s) => s.totalRakeback);
+  const displayName = useDemoProfileStore((s) => s.displayName);
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
   const claimRakeback = useEconomyStore((s) => s.claimRakeback);
+  const spend = useEconomyStore((s) => s.spend);
+  const credit = useEconomyStore((s) => s.credit);
+  const balance = useEconomyStore((s) => s.balance);
+  const xp = useRewardsStore((s) => s.xp);
+  const addXp = useRewardsStore((s) => s.addXp);
+  const weeklyReadyAt = useRewardsStore((s) => s.weeklyReadyAt);
+  const monthlyReadyAt = useRewardsStore((s) => s.monthlyReadyAt);
+  const claimWeekly = useRewardsStore((s) => s.claimWeekly);
+  const claimMonthly = useRewardsStore((s) => s.claimMonthly);
   const push = useToastStore((s) => s.push);
   const [now, setNow] = useState(() => Date.now());
 
@@ -29,88 +143,142 @@ export function Rewards() {
     return () => window.clearInterval(id);
   }, []);
 
-  const remain = nextRainAt - now;
+  const progress = useMemo(() => progressFromXp(xp), [xp]);
   const pending = pendingRakeback ?? 0;
-  const canClaim = pending > 0;
+  const canClaimInstant = pending > 0;
+  const weeklyReady = now >= weeklyReadyAt;
+  const monthlyReady = now >= monthlyReadyAt;
+  const canBuyXp = balance >= BUY_XP_COST_SH;
+  const initial = (displayName.trim()[0] || "V").toUpperCase();
+  const barPct = Math.max(0, Math.min(100, progress.ratio * 100));
 
-  function handleClaim() {
+  function handleClaimInstant() {
     const amt = claimRakeback();
     if (amt <= 0) {
       push("Nothing to claim yet — play a real stake first.", "info");
       return;
     }
-    sound.click();
+    sound.win("small");
     push(`Claimed ${formatRakeback(amt)} SH rakeback.`, "success");
   }
 
+  function handleBuyXp() {
+    if (!spend(BUY_XP_COST_SH)) {
+      push("Not enough Shards for demo XP.", "warning");
+      return;
+    }
+    addXp(BUY_XP_GAIN);
+    sound.click();
+    push(`Spent ${formatCredits(BUY_XP_COST_SH)} SH for ${formatCredits(BUY_XP_GAIN)} demo XP.`, "success");
+  }
+
+  function handleWeekly() {
+    const amt = claimWeekly();
+    if (amt <= 0) return;
+    credit(amt);
+    sound.win("small");
+    push(`Claimed weekly drop: ${formatCredits(amt)} SH.`, "success");
+  }
+
+  function handleMonthly() {
+    const amt = claimMonthly();
+    if (amt <= 0) return;
+    credit(amt);
+    sound.win("big");
+    push(`Claimed monthly drop: ${formatCredits(amt)} SH.`, "success");
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="relative overflow-hidden rounded-xl border-2 border-amber-400/50 bg-gradient-to-br from-amber-400/20 via-[#152018] to-[#0c1410] p-6 shadow-[0_0_40px_rgba(250,204,21,0.12)]">
-        <Sparkles className="absolute -right-4 -top-4 h-28 w-28 text-amber-300/20" />
-        <div className="flex items-center gap-3">
-          <div className="grid h-14 w-14 place-items-center rounded-xl border-2 border-amber-300 bg-amber-400 text-bg-950 shadow-[4px_4px_0_#78350f]">
-            <Gift className="h-8 w-8" />
+    <div className="space-y-5">
+      <section className="flex flex-col gap-4 rounded-xl border-2 border-[#3d5a3a] bg-[#101810] px-4 py-3 shadow-[4px_4px_0_#050805] lg:flex-row lg:items-center">
+        <div className="flex min-w-0 items-center gap-3 lg:w-[220px]">
+          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-[#019201] bg-[#152018] text-2xl font-black text-emerald-300">
+            {initial}
           </div>
-          <div>
-            <h1 className="pixel-label text-3xl font-extrabold uppercase text-amber-200">Rewards</h1>
-            <p className="text-sm text-amber-100/70">Claim rakeback in Shards · chat rain every 30 minutes — join in the last 60 seconds</p>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-slate-200">{displayName}</p>
+            <p className="pixel-label text-3xl leading-none text-emerald-300 sm:text-4xl">LEVEL {progress.level}</p>
           </div>
         </div>
-      </div>
 
-      <div className="surface p-5">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Available to claim</p>
-        <p className="mt-2 font-mono text-3xl font-black text-cyan-300">{formatRakeback(pending)} SH</p>
-        <p className="mt-2 text-xs leading-relaxed text-slate-400">
-          Real stakes (bet &gt; 0) earn {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice as Shards. It sits
-          here until you claim it. A 100 SH mines bet (4% edge) earns {formatRakeback(100 * 0.04 * 0.04)} SH. Demo
-          bets (0) earn none.
-        </p>
+        <div className="min-w-0 flex-1">
+          <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-slate-400">Progress</p>
+          <div className="mt-1.5 flex items-center gap-3">
+            <div className="h-3.5 min-w-0 flex-1 overflow-hidden rounded-full border border-[#019201]/40 bg-black/50">
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-[#016b01] via-[#019201] to-[#a3e635] transition-[width] duration-500"
+                style={{ width: `${barPct}%` }}
+              />
+            </div>
+            <p className="shrink-0 font-mono text-xs font-bold tabular-nums text-emerald-100 sm:text-sm">
+              {formatCredits(progress.intoLevel)} / {formatCredits(progress.required)} XP
+            </p>
+          </div>
+        </div>
+
         <button
           type="button"
-          disabled={!canClaim}
-          onClick={handleClaim}
-          className="btn-primary mt-4 px-6 py-2.5 text-sm"
+          disabled={!canBuyXp}
+          onClick={handleBuyXp}
+          title={`${formatCredits(BUY_XP_COST_SH)} SH → ${formatCredits(BUY_XP_GAIN)} demo XP`}
+          className="rounded-full border-2 border-lime-300/50 bg-gradient-to-b from-lime-400 to-green-700 px-6 py-2.5 text-sm font-extrabold uppercase tracking-[0.16em] text-[#052e16] shadow-[0_4px_0_#14532d] disabled:opacity-45"
         >
-          {canClaim ? `Claim ${formatRakeback(pending)} SH` : "Nothing to claim"}
+          Buy XP
         </button>
+      </section>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <DropCard
+          title="Instant Drop"
+          variant="green"
+          art={<CoinStackArt accent="green" />}
+          amount={canClaimInstant ? `${formatRakeback(pending)} SH` : undefined}
+          footer={canClaimInstant ? "Claim" : "Not claimable"}
+          footerDisabled={!canClaimInstant}
+          onFooter={handleClaimInstant}
+        />
+        <DropCard
+          title="Weekly Drop"
+          variant="lime"
+          art={<CoinStackArt accent="lime" />}
+          amount={weeklyReady ? `${formatCredits(WEEKLY_DROP_SH)} SH` : undefined}
+          footer={weeklyReady ? "Claim" : formatDropCountdown(weeklyReadyAt - now)}
+          footerDisabled={!weeklyReady}
+          onFooter={handleWeekly}
+          info={
+            <DropInfo title="Weekly drop">
+              <p>
+                A play-money Shard drop on a weekly timer. Claim when the countdown hits zero. After a claim the
+                timer resets for another week.
+              </p>
+              <p>Prize: {formatCredits(WEEKLY_DROP_SH)} SH. No deposits, no cash value.</p>
+            </DropInfo>
+          }
+        />
+        <DropCard
+          title="Monthly Drop"
+          variant="gold"
+          art={<TreasureChestArt />}
+          amount={monthlyReady ? `${formatCredits(MONTHLY_DROP_SH)} SH` : undefined}
+          footer={monthlyReady ? "Claim" : formatDropCountdown(monthlyReadyAt - now)}
+          footerDisabled={!monthlyReady}
+          onFooter={handleMonthly}
+          info={
+            <DropInfo title="Monthly drop">
+              <p>
+                A larger play-money Shard drop on a monthly timer. Claim when ready; the chest then locks until the
+                next cycle.
+              </p>
+              <p>Prize: {formatCredits(MONTHLY_DROP_SH)} SH. Demo balance only — never a real payout.</p>
+            </DropInfo>
+          }
+        />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="surface p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Lifetime claimed</p>
-          <p className="mt-2 font-mono text-3xl font-black text-emerald-300">{formatCredits(totalRakeback ?? 0)} SH</p>
-          <p className="mt-2 text-xs leading-relaxed text-slate-400">
-            Total rakeback you have already moved into your Shard balance from this page.
-          </p>
-        </div>
-        <div className="surface p-5">
-          <p className="mb-1 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-            <Clock className="h-3.5 w-3.5" /> Next chat rain
-          </p>
-          <p className="mt-2 font-mono text-3xl font-black text-amber-300">{formatRemain(remain)}</p>
-          <p className="mt-2 text-xs text-slate-400">
-            Join in the last 60 seconds. Up to {CHAT_RAIN_WINNERS} winners are picked from who joined, {CHAT_RAIN_PRIZE} SH
-            each. If you didn’t join, you cannot win. Hits credit instantly.
-          </p>
-        </div>
-      </div>
-
-      {lastRainWinners.length > 0 && (
-        <div className="surface p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Last rain winners</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {lastRainWinners.map((n) => (
-              <span
-                key={n}
-                className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-sm font-semibold text-amber-100"
-              >
-                {n}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+      <p className="text-xs leading-relaxed text-slate-500">
+        Instant Drop is rakeback: {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real demo stakes
+        (bet &gt; 0). Buy XP spends Shards for demo experience only. Chat rain still lives in the chat sidebar.
+      </p>
 
       <Link to="/" className="text-sm text-slate-400 hover:text-white">
         ← Back to lobby

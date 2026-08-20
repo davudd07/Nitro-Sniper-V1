@@ -180,6 +180,59 @@ body {
   filter: drop-shadow(2px 2px 0 #083344);
 }
 
+.drop-card {
+  background-image:
+    radial-gradient(ellipse at 50% 18%, rgba(163, 230, 53, 0.08), transparent 58%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(255, 255, 255, 0.02) 0 1px,
+      transparent 1px 10px
+    );
+}
+
+.drop-word {
+  font-family: "VT323", ui-monospace, monospace;
+  font-size: clamp(4.4rem, 8vw, 6.6rem);
+  line-height: 0.8;
+  letter-spacing: 0.04em;
+  -webkit-text-stroke: 4px var(--drop-stroke, #031403);
+  paint-order: stroke fill;
+  transform: perspective(520px) rotateX(20deg) rotateY(-6deg);
+  text-shadow:
+    1px 1px 0 var(--drop-side, #019201),
+    2px 2px 0 var(--drop-side, #019201),
+    3px 3px 0 var(--drop-side, #017a01),
+    4px 4px 0 var(--drop-depth, #014d01),
+    5px 5px 0 var(--drop-depth, #014d01),
+    6px 7px 0 var(--drop-depth, #013301),
+    7px 9px 0 #000,
+    8px 12px 14px rgba(0, 0, 0, 0.55);
+}
+
+.drop-word-green {
+  --drop-face: #86efac;
+  --drop-stroke: #031403;
+  --drop-side: #019201;
+  --drop-depth: #013301;
+  color: var(--drop-face);
+}
+
+.drop-word-lime {
+  --drop-face: #d9f99d;
+  --drop-stroke: #142407;
+  --drop-side: #65a30d;
+  --drop-depth: #3f6212;
+  color: var(--drop-face);
+}
+
+.drop-word-gold {
+  --drop-face: #fde68a;
+  --drop-stroke: #1c1403;
+  --drop-side: #ca8a04;
+  --drop-depth: #14532d;
+  color: var(--drop-face);
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;

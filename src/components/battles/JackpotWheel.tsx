@@ -139,12 +139,12 @@ export function JackpotWheel({
         className="relative h-24 w-full overflow-hidden rounded-2xl border border-white/10 bg-black/50 shadow-[inset_0_0_28px_rgba(0,0,0,0.55)]"
       >
         <div
-          className="pointer-events-none absolute left-1/2 top-0 z-20 h-full w-[3px] -translate-x-1/2 transition-colors duration-75"
-          style={{ background: activeColor, boxShadow: `0 0 14px ${activeColor}, 0 0 28px ${activeColor}88` }}
+          className="pointer-events-none absolute left-1/2 top-0 z-20 h-full w-1.5 -translate-x-1/2 rounded-full"
+          style={{ background: activeColor, boxShadow: `0 0 0 2px ${activeColor}, 0 0 18px ${activeColor}, 0 0 36px ${activeColor}` }}
         />
         <div
-          className="pointer-events-none absolute -top-1 left-1/2 z-20 h-3.5 w-3.5 -translate-x-1/2 rotate-45 transition-colors duration-75"
-          style={{ background: activeColor, boxShadow: `0 0 10px ${activeColor}` }}
+          className="pointer-events-none absolute -top-1.5 left-1/2 z-20 h-4 w-4 -translate-x-1/2 rotate-45"
+          style={{ background: activeColor, boxShadow: `0 0 12px ${activeColor}` }}
         />
         <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-12 bg-gradient-to-r from-black/80 to-transparent" />
         <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-12 bg-gradient-to-l from-black/80 to-transparent" />
@@ -158,10 +158,10 @@ export function JackpotWheel({
                 style={{
                   width: seg.width,
                   background: `linear-gradient(180deg, ${seg.ticket.color}ee, ${seg.ticket.color}66)`,
-                  filter: lit ? "brightness(1.28) saturate(1.15)" : "brightness(0.68) saturate(0.9)",
-                  boxShadow: lit ? `inset 0 0 0 2px rgba(255,255,255,0.85), 0 0 22px ${seg.ticket.color}` : "inset -1px 0 0 rgba(0,0,0,0.35)",
+                  filter: lit ? "brightness(1.45) saturate(1.25)" : "brightness(0.42) saturate(0.75)",
+                  boxShadow: lit ? `inset 0 0 0 3px rgba(255,255,255,0.9), 0 0 28px ${seg.ticket.color}` : "inset -1px 0 0 rgba(0,0,0,0.35)",
                   zIndex: lit ? 2 : 1,
-                  transform: lit ? "scaleY(1.06)" : "scaleY(1)",
+                  transform: lit ? "scaleY(1.12)" : "scaleY(0.92)",
                   transition: "filter 70ms linear, box-shadow 70ms linear, transform 70ms linear",
                 }}
               >

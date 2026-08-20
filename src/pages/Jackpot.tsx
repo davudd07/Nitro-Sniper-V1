@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Bot, Coins } from "lucide-react";
+import { Bot } from "lucide-react";
 import { clsx } from "clsx";
 import { JackpotCircleWheel } from "../components/jackpot/JackpotCircleWheel";
 import type { JackpotTicket } from "../components/battles/JackpotWheel";
+import { AnimatedPot } from "../components/ui/AnimatedPot";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
@@ -202,19 +203,11 @@ export function JackpotPage() {
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
         <div className="surface space-y-6 p-5">
-          <div className="flex flex-wrap items-end justify-between gap-3">
-            <div>
-              <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
-                <Coins className="h-3.5 w-3.5" /> {def.label} pot
-              </p>
-              <p className="font-mono text-4xl font-black text-white">
-                {formatCredits(total)}
-                <span className="ml-1.5 text-base font-semibold text-amber-200/80">SH</span>
-              </p>
-              <p className="text-xs text-slate-500">Pays {formatCredits(payout)} SH after house edge</p>
-            </div>
+          <div className="relative">
+            <AnimatedPot value={total} label={`${def.label} pot`} size="lg" />
+            <p className="mt-1 text-center text-xs text-slate-500">Pays {formatCredits(payout)} SH after house edge</p>
             {countdownLeft != null && pot.phase === "open" && (
-              <div className="text-right">
+              <div className="absolute right-0 top-0 text-right">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-300">Starts in</p>
                 <p className="font-mono text-5xl font-black text-white tabular-nums">{countdownLeft}</p>
               </div>

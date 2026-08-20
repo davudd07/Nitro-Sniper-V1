@@ -9,6 +9,7 @@ import { useToastStore } from "../store/toastStore";
 import { BATTLE_MODES, totalPlayers } from "../data/battleModes";
 import { getCase } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
+import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { formatCredits } from "../lib/format";
 
 const FILTERS = [
@@ -22,6 +23,7 @@ const FILTERS = [
 export function CaseBattlesLobby() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
+  const [previewId, setPreviewId] = useState<string | null>(null);
   const battlesMap = useBattleStore((s) => s.battles);
   const battles = useMemo(
     () => Object.values(battlesMap).sort((a, b) => b.createdAt - a.createdAt),
@@ -117,14 +119,24 @@ export function CaseBattlesLobby() {
                         const c = getCase(e.caseId);
                         if (!c) return null;
                         return (
-                          <div key={`${e.caseId}-${i}`} className="relative" title={`${c.name} ×${e.count}`}>
+                          <button
+                            key={`${e.caseId}-${i}`}
+                            type="button"
+                            title={`Inspect ${c.name}`}
+                            onClick={(ev) => {
+                              ev.stopPropagation();
+                              sound.click();
+                              setPreviewId(c.id);
+                            }}
+                            className="relative rounded-lg transition-transform hover:z-10 hover:scale-110"
+                          >
                             <CaseThumb c={c} className="h-10 w-10 rounded-lg ring-2 ring-bg-800" />
                             {e.count > 1 && (
                               <span className="absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                                 ×{e.count}
                               </span>
                             )}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>
@@ -198,6 +210,7 @@ export function CaseBattlesLobby() {
           </div>
         )}
       </div>
+      <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
     </div>
   );
 }

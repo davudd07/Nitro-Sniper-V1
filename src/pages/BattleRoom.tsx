@@ -8,8 +8,10 @@ import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
 import { getCase, rollCaseItem, type CaseOddsEntry } from "../data/cases";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
+import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { CaseReel } from "../components/cases/CaseReel";
 import { ItemCard } from "../components/ui/ItemCard";
+import { AnimatedPot } from "../components/ui/AnimatedPot";
 import { JackpotWheel, type JackpotTicket } from "../components/battles/JackpotWheel";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useEconomyStore } from "../store/economyStore";
@@ -90,6 +92,7 @@ export function BattleRoom() {
   const [winningTeam, setWinningTeam] = useState<number | null>(null);
   const [liveOdds, setLiveOdds] = useState<Record<number, number>>({});
   const [tieBreak, setTieBreak] = useState(false);
+  const [previewId, setPreviewId] = useState<string | null>(null);
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
@@ -370,7 +373,7 @@ export function BattleRoom() {
       </Link>
 
       <div className="surface w-full min-w-0 overflow-hidden">
-        <div className="grid items-center gap-x-4 gap-y-2 border-b border-white/10 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <Swords className="h-5 w-5 text-amber-300" />
             <span className="text-lg font-bold text-white">{mode.label} Battle</span>
@@ -395,20 +398,6 @@ export function BattleRoom() {
               </span>
             )}
           </div>
-          <div className="justify-self-center text-center">
-            {showJackpotPot && (
-              <>
-                <p className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
-                  <Coins className="h-3.5 w-3.5" />
-                  {tieBreak && phase === "jackpot" ? "Tie-breaker pot" : "Jackpot pot"}
-                </p>
-                <p className="font-mono text-2xl font-black tracking-tight text-white drop-shadow-[0_0_16px_rgba(251,191,36,0.35)] sm:text-3xl">
-                  {formatCredits(pot)}
-                  <span className="ml-1 text-sm font-semibold text-amber-200/80">SH</span>
-                </p>
-              </>
-            )}
-          </div>
           <div className="flex flex-wrap items-center justify-end gap-4 text-sm text-slate-400">
             <span>
               Battle:{" "}
@@ -427,6 +416,15 @@ export function BattleRoom() {
             )}
           </div>
         </div>
+
+        {showJackpotPot && (
+          <div className="flex justify-center border-b border-amber-400/20 bg-amber-400/[0.05] px-4 py-3">
+            <AnimatedPot
+              value={pot}
+              label={tieBreak && phase === "jackpot" ? "Tie-breaker pot" : "Jackpot pot"}
+            />
+          </div>
+        )}
 
         {phase === "jackpot" && jackpotTickets && (
           <div className="border-b border-amber-400/25 bg-amber-400/[0.05] px-4 py-3">
@@ -451,16 +449,22 @@ export function BattleRoom() {
             const activeIdx = i === caseIndex && phase === "running";
             const doneIdx = i < caseIndex || phase === "finished" || phase === "jackpot";
             return (
-              <div
+              <button
                 key={i}
+                type="button"
+                title={`Inspect ${c.name}`}
+                onClick={() => {
+                  sound.click();
+                  setPreviewId(id);
+                }}
                 className={clsx(
-                  "flex shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5 transition-opacity",
+                  "group flex shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5 transition-all hover:border-white/30 hover:bg-white/5",
                   activeIdx ? "border-fuchsia-400/60" : "border-white/5",
-                  doneIdx && !activeIdx && "opacity-40",
+                  doneIdx && !activeIdx && "opacity-40 hover:opacity-80",
                 )}
               >
                 <CaseThumb c={c} className="h-10 w-10 rounded" />
-              </div>
+              </button>
             );
           })}
           {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
@@ -532,6 +536,8 @@ export function BattleRoom() {
           </div>
         </div>
       </div>
+
+      <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
 
       {phase === "finished" && winningTeam !== null && (
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">

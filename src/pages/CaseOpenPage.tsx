@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
 import { ArrowLeft, Sparkles } from "lucide-react";
+import { clsx } from "clsx";
 import { getCase, rollCaseItem } from "../data/cases";
 import { CaseReel } from "../components/cases/CaseReel";
 import { CaseThumb } from "../components/cases/CaseThumb";
@@ -16,15 +17,21 @@ import { formatCredits, formatPercent } from "../lib/format";
 import type { CaseItem } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
 
+const MAX_OPENS = 4;
+
 export function CaseOpenPage() {
   const { caseId } = useParams();
   const c = caseId ? getCase(caseId) : undefined;
 
   const [goldSpin, setGoldSpin] = useState(true);
+  const [openCount, setOpenCount] = useState(1);
   const [spinToken, setSpinToken] = useState(0);
-  const [pendingResult, setPendingResult] = useState<CaseOddsEntry | null>(null);
+  const [pendingResults, setPendingResults] = useState<(CaseOddsEntry | null)[]>([null]);
   const [spinning, setSpinning] = useState(false);
-  const [history, setHistory] = useState<{ item: CaseItem; id: number }[]>([]);
+  const [history, setHistory] = useState<{ item: CaseItem; id: string }[]>([]);
+  const landedRef = useRef(0);
+  const roundCountRef = useRef(1);
+  const roundItemsRef = useRef<CaseItem[]>([]);
 
   const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
@@ -37,16 +44,22 @@ export function CaseOpenPage() {
 
   if (!c) return <Navigate to="/cases" replace />;
 
+  const totalPrice = c.price * openCount;
+  const reelSize = openCount >= 3 ? "md" : "lg";
+
   async function openCase() {
     if (spinning || !c) return;
-    if (!spend(c.price)) {
-      push("Not enough Shards to open this case.", "danger");
+    const n = openCount;
+    if (!spend(c.price * n)) {
+      push(`Not enough Shards to open ${n}× this case.`, "danger");
       return;
     }
     setSpinning(true);
-    const [roll] = await play(1);
-    const result = rollCaseItem(c, roll);
-    setPendingResult(result);
+    landedRef.current = 0;
+    roundCountRef.current = n;
+    roundItemsRef.current = [];
+    const rolls = await play(n);
+    setPendingResults(rolls.map((roll) => rollCaseItem(c, roll)));
     setSpinToken((t) => t + 1);
   }
 
@@ -54,13 +67,27 @@ export function CaseOpenPage() {
     if (!c) return;
     credit(item.value);
     recordRound(c.price, item.value);
-    setHistory((h) => [{ item, id: Date.now() }, ...h].slice(0, 20));
+    roundItemsRef.current.push(item);
+    setHistory((h) => [{ item, id: `${Date.now()}-${h.length}-${item.id}` }, ...h].slice(0, 24));
+    landedRef.current += 1;
+    if (landedRef.current < roundCountRef.current) return;
     setSpinning(false);
-    const profit = item.value - c.price;
-    push(
-      profit >= 0 ? `Unboxed ${item.name} worth ${formatCredits(item.value)} SH!` : `Unboxed ${item.name} (${formatCredits(item.value)} SH).`,
-      profit >= 0 ? "success" : "info",
-    );
+    const items = roundItemsRef.current;
+    const totalValue = items.reduce((s, i) => s + i.value, 0);
+    const cost = c.price * items.length;
+    const profit = totalValue - cost;
+    if (items.length === 1) {
+      const it = items[0];
+      push(
+        profit >= 0 ? `Unboxed ${it.name} worth ${formatCredits(it.value)} SH!` : `Unboxed ${it.name} (${formatCredits(it.value)} SH).`,
+        profit >= 0 ? "success" : "info",
+      );
+    } else {
+      push(
+        `Unboxed ${items.length} items worth ${formatCredits(totalValue)} SH (${profit >= 0 ? "+" : ""}${formatCredits(profit)}).`,
+        profit >= 0 ? "success" : "info",
+      );
+    }
   }
 
   return (
@@ -89,30 +116,62 @@ export function CaseOpenPage() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          <div className="surface min-w-0 overflow-hidden p-3">
-            <CaseReel
-              pool={pool}
-              goldPool={goldPool}
-              result={pendingResult}
-              spinToken={spinToken}
-              goldSpinEnabled={goldSpin}
-              size="lg"
-              orientation="horizontal"
-              onLanded={handleLanded}
-            />
+          <div className="surface min-w-0 space-y-3 overflow-hidden p-3">
+            {Array.from({ length: openCount }, (_, i) => (
+              <CaseReel
+                key={i}
+                pool={pool}
+                goldPool={goldPool}
+                result={pendingResults[i] ?? null}
+                spinToken={spinToken}
+                goldSpinEnabled={goldSpin}
+                size={reelSize}
+                orientation="horizontal"
+                laneSeed={i + 1}
+                onLanded={handleLanded}
+              />
+            ))}
           </div>
 
           <div className="surface flex flex-wrap items-center justify-between gap-3 p-3">
-            <div className="flex items-center gap-2 text-sm text-slate-300">
-              <Switch checked={goldSpin} onChange={setGoldSpin} color="#fbbf24" />
-              <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center gap-2 text-sm text-slate-300">
+                <Switch checked={goldSpin} onChange={setGoldSpin} disabled={spinning} color="#fbbf24" />
+                <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Open</span>
+                {Array.from({ length: MAX_OPENS }, (_, i) => i + 1).map((n) => (
+                  <button
+                    key={n}
+                    type="button"
+                    disabled={spinning}
+                    onClick={() => {
+                      if (spinning) return;
+                      setOpenCount(n);
+                      setPendingResults(Array.from({ length: n }, () => null));
+                      setSpinToken(0);
+                    }}
+                    className={clsx(
+                      "h-8 w-8 rounded-lg text-sm font-bold transition-colors disabled:opacity-40",
+                      openCount === n ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white",
+                    )}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
             </div>
             <button
-              onClick={openCase}
+              onClick={() => void openCase()}
               disabled={spinning}
               className="btn-primary px-8 py-2.5 disabled:opacity-50"
             >
-              {spinning ? "Opening…" : `Open · ${formatCredits(c.price)} SH`}
+              {spinning
+                ? "Opening…"
+                : openCount === 1
+                  ? `Open · ${formatCredits(c.price)} SH`
+                  : `Open ${openCount}× · ${formatCredits(totalPrice)} SH`}
             </button>
           </div>
 

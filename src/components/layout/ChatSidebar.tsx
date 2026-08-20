@@ -81,9 +81,8 @@ export function ChatSidebar() {
           toggle();
         }}
         className={clsx(
-          TAB_BTN,
-          "bottom-4",
-          open && "border-emerald-400/50 bg-emerald-400/15",
+          "absolute right-full bottom-4 z-50 grid h-9 w-9 place-items-center rounded-r-none rounded-md border-2 border-r-0 text-emerald-200 shadow-[2px_2px_0_#050805]",
+          open ? "border-emerald-400/50 bg-emerald-400/15" : "border-[#3d5a3a] bg-[#152018]",
         )}
         title={open ? "Hide chat" : "Show chat"}
       >

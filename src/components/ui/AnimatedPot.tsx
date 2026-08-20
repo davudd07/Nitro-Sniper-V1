@@ -18,23 +18,25 @@ export function AnimatedPot({
 }) {
   const [shown, setShown] = useState(value);
   const [pulse, setPulse] = useState(0);
-  const prevRef = useRef(value);
+  const shownRef = useRef(value);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const from = prevRef.current;
+    const from = shownRef.current;
     const to = value;
     if (from === to) return;
-    prevRef.current = to;
     if (to > from) setPulse((n) => n + 1);
 
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const start = performance.now();
-    const dur = to > from ? 520 : 280;
+    const delta = Math.abs(to - from);
+    const dur = Math.min(720, Math.max(380, 280 + delta * 4));
 
     function tick(now: number) {
       const t = Math.min(1, (now - start) / dur);
-      setShown(Math.round(from + (to - from) * easeOutQuart(t)));
+      const next = Math.round(from + (to - from) * easeOutQuart(t));
+      shownRef.current = next;
+      setShown(next);
       if (t < 1) rafRef.current = requestAnimationFrame(tick);
     }
     rafRef.current = requestAnimationFrame(tick);
@@ -50,8 +52,8 @@ export function AnimatedPot({
       </p>
       <motion.p
         key={pulse}
-        initial={pulse === 0 ? false : { scale: 1.18, color: "#fde68a" }}
-        animate={{ scale: 1, color: "#ffffff" }}
+        initial={pulse === 0 ? false : { scale: 1.16 }}
+        animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 520, damping: 22 }}
         className={clsx(
           "inline-block origin-center font-mono font-black tracking-tight tabular-nums text-white drop-shadow-[0_0_16px_rgba(251,191,36,0.35)]",

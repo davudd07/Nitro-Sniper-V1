@@ -25,7 +25,7 @@ export function GameSidebar() {
   return (
     <aside
       className={clsx(
-        "relative flex h-full min-h-0 shrink-0 flex-col border-r-2 border-[#2a3a28] bg-[#0c1410] transition-[width] duration-200 ease-out",
+        "relative z-50 flex h-full min-h-0 shrink-0 flex-col overflow-visible border-r-2 border-[#2a3a28] bg-[#0c1410] transition-[width] duration-200 ease-out",
         open ? "w-[232px]" : "w-12",
       )}
     >
@@ -35,10 +35,10 @@ export function GameSidebar() {
           sound.click();
           toggle();
         }}
-        className="absolute -right-3 top-4 z-20 grid h-6 w-6 place-items-center rounded-md border-2 border-[#3d5a3a] bg-[#152018] text-emerald-200 shadow-[2px_2px_0_#050805]"
+        className="absolute top-4 left-full z-50 grid h-9 w-9 place-items-center rounded-l-none rounded-md border-2 border-l-0 border-[#3d5a3a] bg-[#152018] text-emerald-200 shadow-[2px_2px_0_#050805]"
         title={open ? "Collapse games" : "Open games"}
       >
-        {open ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+        {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
 
       <div className={clsx("flex items-center gap-2 px-3 py-4", !open && "justify-center px-1")}>

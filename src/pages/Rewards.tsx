@@ -53,7 +53,7 @@ export function Rewards() {
           </div>
           <div>
             <h1 className="pixel-label text-3xl font-extrabold uppercase text-amber-200">Rewards</h1>
-            <p className="text-sm text-amber-100/70">Claim rakeback in Shards · chat rain every 30 minutes</p>
+            <p className="text-sm text-amber-100/70">Claim rakeback in Shards · chat rain every 30 minutes — join in the last 60 seconds</p>
           </div>
         </div>
       </div>
@@ -90,7 +90,8 @@ export function Rewards() {
           </p>
           <p className="mt-2 font-mono text-3xl font-black text-amber-300">{formatRemain(remain)}</p>
           <p className="mt-2 text-xs text-slate-400">
-            {CHAT_RAIN_WINNERS} random chat names win {CHAT_RAIN_PRIZE} SH each. If you hit, it’s credited instantly.
+            Join in the last 60 seconds. Up to {CHAT_RAIN_WINNERS} winners are picked from who joined, {CHAT_RAIN_PRIZE} SH
+            each. If you didn’t join, you cannot win. Hits credit instantly.
           </p>
         </div>
       </div>

@@ -2,20 +2,15 @@ import { persist } from "zustand/middleware";
 import { create } from "zustand";
 import { sound } from "../lib/sound";
 
-export type DisplayCurrency = "shards" | "funcoins";
-
 interface SettingsState {
   soundOn: boolean;
   leftNavOpen: boolean;
   chatOpen: boolean;
-  displayCurrency: DisplayCurrency;
   toggleSound: () => void;
   toggleLeftNav: () => void;
   toggleChat: () => void;
   setLeftNav: (open: boolean) => void;
   setChat: (open: boolean) => void;
-  setDisplayCurrency: (currency: DisplayCurrency) => void;
-  cycleDisplayCurrency: () => void;
 }
 
 export const useSettingsStore = create<SettingsState>()(
@@ -24,7 +19,6 @@ export const useSettingsStore = create<SettingsState>()(
       soundOn: true,
       leftNavOpen: true,
       chatOpen: true,
-      displayCurrency: "shards",
       toggleSound: () => {
         const next = !get().soundOn;
         sound.setMuted(!next);
@@ -34,18 +28,11 @@ export const useSettingsStore = create<SettingsState>()(
       toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
       setLeftNav: (open) => set({ leftNavOpen: open }),
       setChat: (open) => set({ chatOpen: open }),
-      setDisplayCurrency: (currency) => set({ displayCurrency: currency }),
-      cycleDisplayCurrency: () =>
-        set((s) => ({ displayCurrency: s.displayCurrency === "shards" ? "funcoins" : "shards" })),
     }),
     {
       name: "prism-vault-settings",
       onRehydrateStorage: () => (state) => {
-        if (!state) return;
-        sound.setMuted(!state.soundOn);
-        if (state.displayCurrency !== "shards" && state.displayCurrency !== "funcoins") {
-          state.displayCurrency = "shards";
-        }
+        if (state) sound.setMuted(!state.soundOn);
       },
     },
   ),

@@ -1,38 +1,20 @@
-import { PanelLeft, Volume2, VolumeX, RotateCcw } from "lucide-react";
+import { Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../../store/economyStore";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useToastStore } from "../../store/toastStore";
-import { sound } from "../../lib/sound";
 import { CurrencySwitcher } from "./CurrencySwitcher";
 
 export function NavBar({ wide = false }: { wide?: boolean }) {
   const reset = useEconomyStore((s) => s.reset);
   const soundOn = useSettingsStore((s) => s.soundOn);
   const toggleSound = useSettingsStore((s) => s.toggleSound);
-  const leftNavOpen = useSettingsStore((s) => s.leftNavOpen);
-  const toggleLeftNav = useSettingsStore((s) => s.toggleLeftNav);
   const push = useToastStore((s) => s.push);
 
   return (
     <header className="sticky top-0 z-40 border-b-2 border-[#2a3a28] bg-[#0c1410]/90 backdrop-blur-xl">
-      <div className={clsx("grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 px-3 py-2", wide ? "max-w-none" : "")}>
+      <div className={clsx("grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 pl-12 pr-12", wide ? "max-w-none" : "")}>
         <div className="flex min-w-0 items-center gap-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              sound.click();
-              toggleLeftNav();
-            }}
-            className={clsx(
-              "grid h-9 w-9 shrink-0 place-items-center rounded-md border-2 text-emerald-200",
-              leftNavOpen ? "border-emerald-400/50 bg-emerald-400/15" : "border-white/10 bg-white/[0.04]",
-            )}
-            title={leftNavOpen ? "Hide games" : "Show games"}
-          >
-            <PanelLeft className="h-4 w-4" />
-          </button>
-
           <div className="flex min-w-0 items-center gap-2.5 pr-1">
             <div className="grid h-9 w-9 shrink-0 place-items-center rounded-md border-2 border-emerald-400/40 bg-gradient-to-br from-lime-400 to-emerald-600 text-sm font-extrabold tracking-wide text-bg-950 shadow-[3px_3px_0_#052e16]">
               PV

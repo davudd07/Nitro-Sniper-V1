@@ -15,7 +15,6 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
-import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
@@ -525,10 +524,12 @@ export function Blackjack() {
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <div className="space-y-4">
         <div className="surface p-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-semibold tracking-tight text-white">Blackjack</h2>
+          <div className="mb-3 flex items-start justify-between gap-2">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight text-white">Blackjack</h2>
+              <p className="text-[11px] font-normal text-slate-500">0 = demo bet</p>
+            </div>
             <div className="flex items-center gap-2">
-              <DemoBetBadge active={bet + perfectPairsBet + twentyOnePlusThreeBet === 0} />
               <InfoButton title="Blackjack — RTP & House Edge">
               <StatRow label="Rules" value="Dealer stands on all 17s" />
               <StatRow label="Blackjack payout" value="3:2" />

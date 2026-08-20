@@ -164,7 +164,9 @@ export function JackpotWheel({
                   width: seg.width,
                   background: `linear-gradient(180deg, ${seg.ticket.color}ee, ${seg.ticket.color}66)`,
                   filter: lit ? "brightness(1.45) saturate(1.25)" : "brightness(0.42) saturate(0.75)",
-                  boxShadow: lit ? `inset 0 0 0 3px rgba(255,255,255,0.9), 0 0 28px ${seg.ticket.color}` : "inset -1px 0 0 rgba(0,0,0,0.35)",
+                  boxShadow: lit
+                    ? `inset 0 0 0 3px rgba(255,255,255,0.9), 0 0 28px ${seg.ticket.color}`
+                    : "inset 1px 0 0 #94a3b8, inset -1px 0 0 #94a3b8",
                   zIndex: lit ? 2 : 1,
                   transform: lit ? "scaleY(1.12)" : "scaleY(0.92)",
                   transition: "filter 70ms linear, box-shadow 70ms linear, transform 70ms linear",

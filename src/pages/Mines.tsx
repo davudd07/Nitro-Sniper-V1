@@ -101,12 +101,14 @@ export function Mines() {
   }
 
   const revealAllMines = phase === "busted" || phase === "cashed";
+  const gemsFound = tiles.filter((t) => t === "safe").length;
+  const minePresets = [3, 5, 10, 15, 24];
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+    <div className="grid gap-6 lg:grid-cols-[300px_1fr]">
       <div className="space-y-4">
-        <div className="surface p-4">
-          <div className="mb-3 flex items-center justify-between">
+        <div className="surface p-5">
+          <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Mines</h2>
             <InfoButton title="Mines — RTP & House Edge">
               <StatRow label="Base RTP" value={formatPercent(RTP)} />
@@ -119,33 +121,50 @@ export function Mines() {
             </InfoButton>
           </div>
 
-          <label className="mb-1 block text-xs text-slate-400">Bet amount</label>
-          <div className="mb-4 flex items-center gap-2">
+          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Bet</label>
+          <div className="mb-5 flex items-center gap-2">
             <input
               type="number"
               min={1}
               value={bet}
               disabled={phase === "playing"}
               onChange={(e) => setBet(Math.max(1, Number(e.target.value) || 0))}
-              className="w-full rounded-lg bg-black/30 px-3 py-2 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/50 disabled:opacity-50"
+              className="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/40 disabled:opacity-50"
             />
             <button
               disabled={phase === "playing"}
               onClick={() => setBet((b) => Math.max(1, Math.floor(b / 2)))}
-              className="rounded-lg border border-white/10 p-2 text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg bg-bg-900 p-2.5 text-slate-300 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >
               <Minus className="h-4 w-4" />
             </button>
             <button
               disabled={phase === "playing"}
               onClick={() => setBet((b) => b * 2)}
-              className="rounded-lg border border-white/10 p-2 text-slate-300 hover:bg-white/5 disabled:opacity-50"
+              className="rounded-lg bg-bg-900 p-2.5 text-slate-300 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >
               <Plus className="h-4 w-4" />
             </button>
           </div>
 
-          <label className="mb-1 block text-xs text-slate-400">Mines: {mines}</label>
+          <label className="mb-2 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            Mines · {mines}
+          </label>
+          <div className="mb-3 flex flex-wrap gap-1.5">
+            {minePresets.map((n) => (
+              <button
+                key={n}
+                disabled={phase === "playing"}
+                onClick={() => setMines(n)}
+                className={clsx(
+                  "rounded-lg px-2.5 py-1 text-xs font-semibold ring-1 transition-colors disabled:opacity-40",
+                  mines === n ? "bg-white/10 text-white ring-white/20" : "text-slate-400 ring-white/10 hover:bg-white/5",
+                )}
+              >
+                {n}
+              </button>
+            ))}
+          </div>
           <input
             type="range"
             min={1}
@@ -153,22 +172,18 @@ export function Mines() {
             value={mines}
             disabled={phase === "playing"}
             onChange={(e) => setMines(Number(e.target.value))}
-            className="mb-4 w-full accent-fuchsia-500 disabled:opacity-50"
+            className="mb-5 w-full accent-cyan-400 disabled:opacity-50"
           />
 
           {phase !== "playing" ? (
-            <button
-              onClick={startGame}
-              disabled={busy}
-              className="btn-primary w-full py-3 disabled:opacity-50"
-            >
+            <button onClick={startGame} disabled={busy} className="btn-primary w-full py-3 disabled:opacity-50">
               {busy ? "Starting…" : "Start Game"}
             </button>
           ) : (
             <button
               onClick={cashOut}
               disabled={reveals === 0}
-              className="w-full rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-400 py-3 font-bold text-bg-950 shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-40"
+              className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-bg-950 transition-transform hover:brightness-110 disabled:opacity-40"
             >
               Cash Out {reveals > 0 ? `· ${formatCredits(potentialWin)} SH` : ""}
             </button>
@@ -176,13 +191,13 @@ export function Mines() {
 
           {phase === "playing" && (
             <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
-              <div className="rounded-lg bg-black/30 p-2">
+              <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
                 <p className="text-slate-500">Current</p>
-                <p className="font-mono font-bold text-emerald-300">{currentMultiplier.toFixed(2)}x</p>
+                <p className="font-mono text-base font-bold text-emerald-300">{currentMultiplier.toFixed(2)}x</p>
               </div>
-              <div className="rounded-lg bg-black/30 p-2">
+              <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
                 <p className="text-slate-500">Next tile</p>
-                <p className="font-mono font-bold text-cyan-300">{nextMultiplier.toFixed(2)}x</p>
+                <p className="font-mono text-base font-bold text-cyan-300">{nextMultiplier.toFixed(2)}x</p>
               </div>
             </div>
           )}
@@ -191,8 +206,19 @@ export function Mines() {
         <ProvablyFairPanel />
       </div>
 
-      <div className="surface p-4 sm:p-6">
-        <div className="mx-auto grid max-w-lg grid-cols-5 gap-2 sm:gap-3">
+      <div className="surface p-5 sm:p-8">
+        <div className="mb-5 flex items-center justify-between text-xs text-slate-400">
+          <span>
+            Gems {gemsFound} / {GRID_SIZE - mines}
+          </span>
+          <span className={clsx("font-medium", phase === "playing" ? "text-cyan-300" : "text-slate-500")}>
+            {phase === "idle" && "Pick a bet, then start"}
+            {phase === "playing" && "Click a tile"}
+            {phase === "busted" && "Hit a mine"}
+            {phase === "cashed" && "Cashed out"}
+          </span>
+        </div>
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-2.5">
           {tiles.map((t, i) => {
             const isMine = minePositions.has(i);
             const revealed = t !== "hidden" || (revealAllMines && isMine);
@@ -202,22 +228,28 @@ export function Mines() {
                 onClick={() => revealTile(i)}
                 disabled={phase !== "playing" || t !== "hidden"}
                 className={clsx(
-                  "flex aspect-square items-center justify-center rounded-xl border text-lg font-bold transition-all",
-                  !revealed && "border-white/10 bg-bg-700 hover:bg-bg-600 active:scale-95",
-                  revealed && t === "safe" && "border-emerald-400/40 bg-emerald-500/20",
-                  revealed && isMine && "border-rose-400/40 bg-rose-500/20",
+                  "flex aspect-square items-center justify-center rounded-xl text-lg font-bold transition-all duration-150",
+                  !revealed &&
+                    "bg-bg-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_4px_0_#0a0a12] ring-1 ring-white/10 hover:-translate-y-0.5 hover:bg-bg-600 hover:ring-cyan-300/30 active:translate-y-0 disabled:hover:translate-y-0",
+                  revealed && t === "safe" && "bg-emerald-500/15 ring-1 ring-emerald-400/30",
+                  revealed && isMine && "bg-rose-500/20 ring-1 ring-rose-400/40",
                 )}
               >
-                {revealed && (isMine ? <Bomb className="h-6 w-6 text-rose-400" /> : <Gem className="h-6 w-6 text-emerald-300" />)}
+                {revealed &&
+                  (isMine ? (
+                    <Bomb className="h-6 w-6 text-rose-400" />
+                  ) : (
+                    <Gem className="h-6 w-6 text-emerald-300" />
+                  ))}
               </button>
             );
           })}
         </div>
         {phase === "busted" && (
-          <p className="mt-4 text-center font-semibold text-rose-300">Busted — better luck next round.</p>
+          <p className="mt-6 text-center text-sm font-semibold text-rose-300">Busted — better luck next round.</p>
         )}
         {phase === "cashed" && (
-          <p className="mt-4 text-center font-semibold text-emerald-300">Cashed out successfully!</p>
+          <p className="mt-6 text-center text-sm font-semibold text-emerald-300">Cashed out successfully!</p>
         )}
       </div>
     </div>

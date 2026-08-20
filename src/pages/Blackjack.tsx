@@ -1,6 +1,5 @@
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Minus } from "lucide-react";
 import {
   freshDeck,
   shuffleDeck,
@@ -24,13 +23,48 @@ type Outcome = "win" | "lose" | "push" | "blackjack" | null;
 
 // Traditional poker-chip denominations & colors — a generic, universal
 // casino convention (not tied to any specific brand).
-const CHIPS = [
+type ChipDef = { value: number; from: string; to: string; text: string };
+
+const CHIPS: ChipDef[] = [
   { value: 10, from: "#f8fafc", to: "#cbd5e1", text: "#0f172a" },
   { value: 50, from: "#fda4af", to: "#e11d48", text: "#fff" },
   { value: 100, from: "#93c5fd", to: "#1d4ed8", text: "#fff" },
   { value: 500, from: "#86efac", to: "#15803d", text: "#fff" },
   { value: 1000, from: "#1f2937", to: "#000000", text: "#fff" },
 ];
+
+type SpotId = "pairs" | "main" | "plus3";
+
+function ChipFace({ chip, size }: { chip: ChipDef; size: number }) {
+  return (
+    <div
+      className="grid shrink-0 place-items-center rounded-full font-bold select-none"
+      style={{
+        width: size,
+        height: size,
+        fontSize: size > 40 ? 12 : 10,
+        color: chip.text,
+        background: `radial-gradient(circle at 32% 28%, ${chip.from}, ${chip.to})`,
+        boxShadow: "0 3px 8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 0 rgba(0,0,0,0.25)",
+        border: "2px solid rgba(255,255,255,0.28)",
+      }}
+    >
+      {chip.value >= 1000 ? `${chip.value / 1000}k` : chip.value}
+    </div>
+  );
+}
+
+function stackFromAmount(amount: number): ChipDef[] {
+  const stack: ChipDef[] = [];
+  let left = amount;
+  for (const chip of [...CHIPS].slice().reverse()) {
+    while (left >= chip.value && stack.length < 8) {
+      stack.push(chip);
+      left -= chip.value;
+    }
+  }
+  return stack;
+}
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
@@ -44,6 +78,9 @@ function BetSpot({
   disabled,
   ringColor,
   big = false,
+  highlighted,
+  dropRef,
+  onRemoveTop,
 }: {
   label: string;
   hint?: string;
@@ -52,63 +89,62 @@ function BetSpot({
   disabled: boolean;
   ringColor: string;
   big?: boolean;
+  highlighted: boolean;
+  dropRef: React.RefObject<HTMLDivElement | null>;
+  onRemoveTop: () => void;
 }) {
+  const stack = stackFromAmount(amount);
+
   return (
     <div className="flex flex-col items-center gap-2">
       <div
-        className={`flex items-center justify-center rounded-full border-2 border-dashed bg-black/30 text-center shadow-inner ${big ? "h-24 w-24" : "h-16 w-16"}`}
-        style={{ borderColor: `${ringColor}80` }}
+        ref={dropRef}
+        className={`relative flex items-center justify-center rounded-full border-2 bg-black/25 text-center transition-all ${big ? "h-28 w-28" : "h-20 w-20"}`}
+        style={{
+          borderColor: highlighted ? ringColor : `${ringColor}70`,
+          borderStyle: "solid",
+          boxShadow: highlighted ? `0 0 22px ${ringColor}88, inset 0 0 18px ${ringColor}22` : "inset 0 0 16px rgba(0,0,0,0.35)",
+        }}
       >
-        <div>
-          <p className={`font-mono font-bold text-white ${big ? "text-lg" : "text-xs"}`}>{formatCredits(amount)}</p>
-          {big && <p className="text-[9px] text-slate-400">SH</p>}
-        </div>
-      </div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-300">{label}</p>
-      {hint && <p className="-mt-1.5 text-[9px] text-slate-500">{hint}</p>}
-      <div className="flex flex-wrap items-center justify-center gap-1">
-        {CHIPS.map((chip) => (
+        {stack.length === 0 ? (
+          <p className={`font-mono font-semibold text-white/40 ${big ? "text-sm" : "text-[10px]"}`}>Drop chips</p>
+        ) : (
           <button
-            key={chip.value}
+            type="button"
             disabled={disabled}
-            onClick={() => {
-              sound.chip();
-              setAmount((v) => v + chip.value);
-            }}
-            className={`grid shrink-0 place-items-center rounded-full border border-dashed border-white/40 font-bold shadow transition-all duration-150 hover:-translate-y-0.5 active:translate-y-0 active:scale-90 disabled:opacity-40 ${big ? "h-8 w-8 text-[10px]" : "h-6 w-6 text-[8px]"}`}
-            style={{ background: `radial-gradient(circle at 35% 30%, ${chip.from}, ${chip.to})`, color: chip.text }}
+            onClick={onRemoveTop}
+            title="Click stack to remove the top chip"
+            className="absolute inset-0 grid place-items-center disabled:opacity-50"
           >
-            {chip.value >= 1000 ? `${chip.value / 1000}k` : chip.value}
+            {stack.map((chip, i) => (
+              <div key={i} className="absolute" style={{ transform: `translateY(${-i * 4}px)`, zIndex: i + 1 }}>
+                <ChipFace chip={chip} size={big ? 44 : 34} />
+              </div>
+            ))}
           </button>
-        ))}
+        )}
       </div>
-      <div className="flex items-center gap-1">
-        <input
-          type="number"
-          min={0}
-          value={amount}
-          disabled={disabled}
-          onChange={(e) => setAmount(Math.max(0, Number(e.target.value) || 0))}
-          className="w-16 rounded-md bg-black/40 px-1.5 py-1 text-center font-mono text-[11px] text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/50 disabled:opacity-40"
-        />
-        <button
-          disabled={disabled}
-          onClick={() => {
-            sound.click();
-            setAmount(0);
-          }}
-          className="rounded-md border border-white/15 p-1 text-slate-400 transition-all duration-150 hover:bg-white/10 active:scale-90 disabled:opacity-40"
-          title="Clear"
-        >
-          <Minus className="h-3 w-3" />
-        </button>
+      <div className="text-center">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-100/90">{label}</p>
+        {hint && <p className="text-[9px] text-emerald-200/50">{hint}</p>}
+        <p className="mt-0.5 font-mono text-xs font-bold text-white">{formatCredits(amount)} SH</p>
       </div>
+      <button
+        disabled={disabled || amount === 0}
+        onClick={() => {
+          sound.click();
+          setAmount(0);
+        }}
+        className="text-[10px] font-medium uppercase tracking-wide text-slate-400 hover:text-white disabled:opacity-30"
+      >
+        Clear
+      </button>
     </div>
   );
 }
 
 export function Blackjack() {
-  const [bet, setBet] = useState(100);
+  const [bet, setBet] = useState(0);
   const [perfectPairsBet, setPerfectPairsBet] = useState(0);
   const [twentyOnePlusThreeBet, setTwentyOnePlusThreeBet] = useState(0);
   const [sideBetMessages, setSideBetMessages] = useState<string[]>([]);
@@ -121,6 +157,12 @@ export function Blackjack() {
   const [busy, setBusy] = useState(false);
   const [doubled, setDoubled] = useState(false);
   const [message, setMessage] = useState("");
+  const [drag, setDrag] = useState<{ chip: ChipDef; x: number; y: number } | null>(null);
+  const [hoverSpot, setHoverSpot] = useState<SpotId | null>(null);
+  const dragRef = useRef<{ chip: ChipDef; x: number; y: number } | null>(null);
+  const pairsRef = useRef<HTMLDivElement>(null);
+  const mainRef = useRef<HTMLDivElement>(null);
+  const plus3Ref = useRef<HTMLDivElement>(null);
 
   const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
@@ -357,6 +399,73 @@ export function Blackjack() {
 
   const bettingLocked = phase !== "betting";
 
+  const hitSpot = useCallback((x: number, y: number): SpotId | null => {
+    const checks: [SpotId, React.RefObject<HTMLDivElement | null>][] = [
+      ["pairs", pairsRef],
+      ["main", mainRef],
+      ["plus3", plus3Ref],
+    ];
+    for (const [id, ref] of checks) {
+      const r = ref.current?.getBoundingClientRect();
+      if (r && x >= r.left && x <= r.right && y >= r.top && y <= r.bottom) return id;
+    }
+    return null;
+  }, []);
+
+  function addToSpot(id: SpotId, value: number) {
+    sound.chip();
+    if (id === "main") setBet((v) => v + value);
+    else if (id === "pairs") setPerfectPairsBet((v) => v + value);
+    else setTwentyOnePlusThreeBet((v) => v + value);
+  }
+
+  function removeTop(id: SpotId) {
+    if (bettingLocked) return;
+    const amount = id === "main" ? bet : id === "pairs" ? perfectPairsBet : twentyOnePlusThreeBet;
+    const stack = stackFromAmount(amount);
+    const top = stack[stack.length - 1];
+    if (!top) return;
+    sound.click();
+    const next = Math.max(0, amount - top.value);
+    if (id === "main") setBet(next);
+    else if (id === "pairs") setPerfectPairsBet(next);
+    else setTwentyOnePlusThreeBet(next);
+  }
+
+  function startDrag(e: React.PointerEvent, chip: ChipDef) {
+    if (bettingLocked) return;
+    e.preventDefault();
+    const next = { chip, x: e.clientX, y: e.clientY };
+    dragRef.current = next;
+    setDrag(next);
+  }
+
+  useEffect(() => {
+    if (!drag) return;
+    const move = (e: PointerEvent) => {
+      const cur = dragRef.current;
+      if (!cur) return;
+      const next = { chip: cur.chip, x: e.clientX, y: e.clientY };
+      dragRef.current = next;
+      setDrag(next);
+      setHoverSpot(hitSpot(e.clientX, e.clientY));
+    };
+    const up = (e: PointerEvent) => {
+      const spot = hitSpot(e.clientX, e.clientY);
+      if (spot && dragRef.current) addToSpot(spot, dragRef.current.chip.value);
+      dragRef.current = null;
+      setDrag(null);
+      setHoverSpot(null);
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [Boolean(drag)]);
+
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <div className="space-y-4">
@@ -378,8 +487,8 @@ export function Blackjack() {
               <StatRow label="21+3 — three of a kind" value="30:1" />
               <StatRow label="21+3 — straight flush" value="40:1" />
               <p>
-                Place chips on the felt to bet — side bets resolve immediately after the initial deal, independent of
-                how the main hand plays out.
+                Place chips on the felt to bet — drag from the tray onto a circle. Side bets resolve immediately after
+                the initial deal, independent of how the main hand plays out.
               </p>
             </InfoButton>
           </div>
@@ -499,12 +608,12 @@ export function Blackjack() {
         </div>
 
         {phase === "betting" && player.length === 0 && (
-          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative mb-4 text-center text-emerald-200/50">
-            Place your bets on the felt below, then hit Deal.
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative mb-4 text-center text-emerald-200/60">
+            Drag chips from the tray onto a circle. Click a stack to peel the top chip off.
           </motion.p>
         )}
 
-        <div className="relative flex flex-wrap items-start justify-center gap-6 border-t border-white/10 pt-6">
+        <div className="relative flex flex-wrap items-start justify-center gap-8 border-t border-white/10 pt-6">
           <BetSpot
             label="Perfect Pairs"
             hint="up to 25:1"
@@ -512,8 +621,21 @@ export function Blackjack() {
             setAmount={setPerfectPairsBet}
             disabled={bettingLocked}
             ringColor="#38bdf8"
+            highlighted={hoverSpot === "pairs"}
+            dropRef={pairsRef}
+            onRemoveTop={() => removeTop("pairs")}
           />
-          <BetSpot label="Main Bet" amount={bet} setAmount={setBet} disabled={bettingLocked} ringColor="#e879f9" big />
+          <BetSpot
+            label="Main Bet"
+            amount={bet}
+            setAmount={setBet}
+            disabled={bettingLocked}
+            ringColor="#e879f9"
+            big
+            highlighted={hoverSpot === "main"}
+            dropRef={mainRef}
+            onRemoveTop={() => removeTop("main")}
+          />
           <BetSpot
             label="21+3"
             hint="up to 40:1"
@@ -521,8 +643,35 @@ export function Blackjack() {
             setAmount={setTwentyOnePlusThreeBet}
             disabled={bettingLocked}
             ringColor="#fbbf24"
+            highlighted={hoverSpot === "plus3"}
+            dropRef={plus3Ref}
+            onRemoveTop={() => removeTop("plus3")}
           />
         </div>
+
+        <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-black/25 px-4 py-3">
+          <p className="mr-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200/50">Chip tray</p>
+          {CHIPS.map((chip) => (
+            <button
+              key={chip.value}
+              type="button"
+              disabled={bettingLocked}
+              onPointerDown={(e) => startDrag(e, chip)}
+              className="cursor-grab touch-none active:cursor-grabbing disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              <ChipFace chip={chip} size={48} />
+            </button>
+          ))}
+        </div>
+
+        {drag && (
+          <div
+            className="pointer-events-none fixed z-50 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: drag.x, top: drag.y }}
+          >
+            <ChipFace chip={drag.chip} size={52} />
+          </div>
+        )}
       </div>
     </div>
   );

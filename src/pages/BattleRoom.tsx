@@ -100,8 +100,9 @@ export function BattleRoom() {
     });
     setRoundStates(init);
     roundStatesRef.current = init;
-    setLiveOdds(evenOdds);
-  }, [initialPlayers]);
+    // Terminal + jackpot: odds don't exist until the LAST case lands.
+    setLiveOdds(battle?.jackpot && !battle.terminal ? evenOdds : {});
+  }, [initialPlayers, battle?.jackpot, battle?.terminal]);
 
   useEffect(() => {
     if (!battle) return;
@@ -184,17 +185,22 @@ export function BattleRoom() {
       // Recompute live jackpot odds once every player has landed this round,
       // so the % shown next to each name always reflects the latest pulls.
       if (battle?.jackpot) {
-        setTimeout(() => {
-          const entries = players.map((p) => {
-            const state = roundStatesRef.current[p.slotIndex];
-            const value = battle.terminal ? (state?.history[0]?.item.value ?? 0) : (state?.total ?? 0);
-            return { key: String(p.slotIndex), value };
-          });
-          const weights = computeJackpotWeights(entries, battle.crazy);
-          const next: Record<number, number> = {};
-          players.forEach((p, i) => (next[p.slotIndex] = weights[i] * 100));
-          setLiveOdds(next);
-        }, 350);
+        const isLastCase = caseIndex + 1 >= caseSequence.length;
+        // Terminal Mode: last-case value is the only thing that matters, so
+        // don't flash misleading mid-battle jackpot % until that case lands.
+        if (!battle.terminal || isLastCase) {
+          setTimeout(() => {
+            const entries = players.map((p) => {
+              const state = roundStatesRef.current[p.slotIndex];
+              const value = battle.terminal ? (state?.history[0]?.item.value ?? 0) : (state?.total ?? 0);
+              return { key: String(p.slotIndex), value };
+            });
+            const weights = computeJackpotWeights(entries, battle.crazy);
+            const next: Record<number, number> = {};
+            players.forEach((p, i) => (next[p.slotIndex] = weights[i] * 100));
+            setLiveOdds(next);
+          }, 350);
+        }
       }
       setTimeout(() => {
         if (caseIndex + 1 < caseSequence.length) {
@@ -389,7 +395,7 @@ export function BattleRoom() {
             {battle.terminal && (
               <span className="text-pink-300">
                 {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
-                {battle.jackpot ? " · jackpot odds from last case" : ""}
+                {battle.jackpot ? (battle.terminal ? " · jackpot odds after last case" : "") : ""}
               </span>
             )}
             {phase === "running" && currentCase && (
@@ -485,7 +491,11 @@ export function BattleRoom() {
                             battleActive={phase === "running"}
                             activeCase={currentCase ?? CASES[0]}
                             costPerPlayer={battle.costPerPlayer}
-                            jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
+                            jackpotOdds={
+                              battle.jackpot && (!battle.terminal || liveOdds[p.slotIndex] !== undefined)
+                                ? liveOdds[p.slotIndex]
+                                : undefined
+                            }
                             terminal={battle.terminal}
                             grouped={isTeam}
                             reelSize={reelSize}

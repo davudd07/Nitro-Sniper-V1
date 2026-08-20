@@ -14,7 +14,7 @@ const LINKS = [
   { to: "/battles", label: "Case Battles", icon: Swords, end: false },
 ];
 
-export function NavBar() {
+export function NavBar({ wide = false }: { wide?: boolean }) {
   const balance = useEconomyStore((s) => s.balance);
   const reset = useEconomyStore((s) => s.reset);
   const soundOn = useSettingsStore((s) => s.soundOn);
@@ -23,7 +23,7 @@ export function NavBar() {
 
   return (
     <header className="sticky top-0 z-40 border-b border-white/5 bg-bg-950/85 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3">
+      <div className={clsx("mx-auto flex w-full items-center gap-4 px-4 py-3", wide ? "max-w-none" : "max-w-7xl")}>
         <div className="flex items-center gap-2 pr-2">
           <div className="grid h-8 w-8 place-items-center rounded-lg bg-gradient-to-br from-fuchsia-500 to-cyan-400 font-bold text-bg-950">
             PV

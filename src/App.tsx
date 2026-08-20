@@ -38,9 +38,9 @@ export default function App() {
 
   return (
     <div className="flex min-h-full flex-col">
-      <NavBar />
+      <NavBar wide={isBattleRoom} />
       <DemoBanner />
-      <main className={clsx("mx-auto w-full min-w-0 flex-1 px-4 py-6", isBattleRoom ? "max-w-[2000px]" : "max-w-7xl")}>
+      <main className={clsx("mx-auto w-full min-w-0 flex-1 px-3 py-6 sm:px-4", isBattleRoom ? "max-w-none" : "max-w-7xl")}>
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/mines" element={<Mines />} />

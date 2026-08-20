@@ -421,14 +421,9 @@ export function BattleRoom() {
           {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
         </div>
 
-        <div className="relative min-w-0 w-full p-3">
+        <div className="relative min-w-0 w-full">
           {phase === "countdown" && <BattleCountdown countdown={countdown} />}
-          <div
-            className="grid w-full min-w-0 items-stretch"
-            style={{
-              gridTemplateColumns: teams.map((_, i) => (i === 0 ? "minmax(0,1fr)" : "auto minmax(0,1fr)")).join(" "),
-            }}
-          >
+          <div className="flex w-full min-w-0 items-stretch">
             {teams.map((teamPlayers, teamIdx) => {
               const isTeam = teamPlayers.length > 1;
               const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
@@ -437,29 +432,29 @@ export function BattleRoom() {
                 <Fragment key={teamIdx}>
                   {teamIdx > 0 && <TeamDivider />}
                   <div
-                    className="flex min-w-0 flex-col overflow-hidden rounded-xl"
-                    style={
-                      isTeam
+                    className="flex min-w-0 flex-col overflow-hidden"
+                    style={{
+                      flex: "1 1 0%",
+                      width: 0,
+                      ...(isTeam
                         ? {
                             border: `1px solid ${teamColor}40`,
                             background: `linear-gradient(180deg, ${teamColor}18, transparent 42%)`,
                           }
-                        : undefined
-                    }
+                        : undefined),
+                    }}
                   >
                     {isTeam && (
                       <p className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest" style={{ color: teamColor }}>
                         Team {teamIdx + 1}
                       </p>
                     )}
-                    <div
-                      className="grid min-w-0 flex-1"
-                      style={{ gridTemplateColumns: `repeat(${teamPlayers.length}, minmax(0, 1fr))` }}
-                    >
+                    <div className="flex min-w-0 w-full flex-1">
                       {teamPlayers.map((p, i) => (
                         <div
                           key={p.slotIndex}
-                          className={clsx("min-w-0", isTeam && i > 0 && "border-l border-white/10")}
+                          className={clsx("min-w-0", isTeam && i > 0 && "border-l border-solid border-white/15")}
+                          style={{ flex: "1 1 0%", width: 0 }}
                         >
                           <PlayerColumn
                             player={p}
@@ -646,7 +641,7 @@ function PlayerColumn({
       </div>
 
       {player.kind === "empty" || player.kind === "joining" ? (
-        <div className="flex h-[140px] flex-col items-center justify-center gap-2 rounded-xl border border-white/10 bg-bg-950/40 p-3 text-center">
+        <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 rounded-lg bg-black/25 p-3 text-center">
           {player.kind === "joining" ? (
             <p className="text-xs text-slate-400">Waiting for player to join…</p>
           ) : (

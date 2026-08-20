@@ -451,16 +451,24 @@ export function Blackjack() {
     removeTop(id);
   }
 
+  function onChipClick(chip: ChipDef) {
+    if (bettingLocked) return;
+    if (Date.now() < ignoreClickUntilRef.current) return;
+    setSelectedChip((prev) => (prev?.value === chip.value ? null : chip));
+  }
+
   function onChipPointerDown(e: React.PointerEvent, chip: ChipDef) {
     if (bettingLocked || e.button !== 0) return;
-    e.preventDefault();
     const originX = e.clientX;
     const originY = e.clientY;
+    const pointerId = e.pointerId;
     let dragged = false;
 
     const move = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
       if (!dragged && Math.hypot(ev.clientX - originX, ev.clientY - originY) > 8) {
         dragged = true;
+        ignoreClickUntilRef.current = Date.now() + 600;
         const next = { chip, x: ev.clientX, y: ev.clientY };
         dragRef.current = next;
         setDrag(next);
@@ -474,22 +482,22 @@ export function Blackjack() {
     };
 
     const up = (ev: PointerEvent) => {
+      if (ev.pointerId !== pointerId) return;
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
-      if (dragged) {
-        ignoreClickUntilRef.current = Date.now() + 400;
-        const spot = hitSpot(ev.clientX, ev.clientY);
-        if (spot && dragRef.current) addToSpot(spot, dragRef.current.chip.value);
-        dragRef.current = null;
-        setDrag(null);
-        setHoverSpot(null);
-        return;
-      }
-      setSelectedChip((prev) => (prev?.value === chip.value ? null : chip));
+      window.removeEventListener("pointercancel", up);
+      if (!dragged) return;
+      ignoreClickUntilRef.current = Date.now() + 400;
+      const spot = hitSpot(ev.clientX, ev.clientY);
+      if (spot && dragRef.current) addToSpot(spot, dragRef.current.chip.value);
+      dragRef.current = null;
+      setDrag(null);
+      setHoverSpot(null);
     };
 
     window.addEventListener("pointermove", move);
     window.addEventListener("pointerup", up);
+    window.addEventListener("pointercancel", up);
   }
 
   const activeChip = bettingLocked ? null : selectedChip;
@@ -681,7 +689,7 @@ export function Blackjack() {
           />
         </div>
 
-        <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-black/25 px-4 py-3">
+        <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-black/25 px-4 py-5">
           <p className="mr-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200/50">Chip tray</p>
           {CHIPS.map((chip) => {
             const selected = activeChip?.value === chip.value;
@@ -690,18 +698,25 @@ export function Blackjack() {
                 key={chip.value}
                 type="button"
                 disabled={bettingLocked}
+                aria-pressed={selected}
+                draggable={false}
+                onClick={() => onChipClick(chip)}
                 onPointerDown={(e) => onChipPointerDown(e, chip)}
-                className={`rounded-full touch-none transition-transform disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`relative rounded-full touch-none select-none transition-[transform,opacity,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
                   drag ? "cursor-grabbing" : "cursor-pointer"
                 } ${selected ? "scale-110" : "hover:scale-105"}`}
-                style={
-                  selected
-                    ? { boxShadow: `0 0 0 3px #fff, 0 0 18px ${chip.from}` }
-                    : undefined
-                }
-                title={selected ? "Selected — click a circle to bet, or drag" : "Click to select, or drag onto a circle"}
+                style={{
+                  boxShadow: selected ? `0 0 0 3px #f8fafc, 0 0 18px ${chip.from}` : "0 0 0 0 transparent",
+                  opacity: activeChip && !selected ? 0.42 : 1,
+                }}
+                title={selected ? "Selected — click again to deselect, or click a circle to bet" : "Click to select, or drag onto a circle"}
               >
                 <ChipFace chip={chip} size={48} />
+                {selected && (
+                  <span className="absolute -bottom-5 left-1/2 -translate-x-1/2 whitespace-nowrap text-[9px] font-bold uppercase tracking-wider text-white">
+                    Selected
+                  </span>
+                )}
               </button>
             );
           })}

@@ -612,7 +612,7 @@ export function BattleRoom() {
           </div>
         )}
 
-        <div className="flex gap-2 overflow-x-auto border-b border-white/10 bg-black/20 px-3 py-2 scrollbar-thin">
+        <div className="flex w-full justify-center gap-2 overflow-x-auto border-b border-white/10 bg-black/20 px-3 py-2 scrollbar-thin">
           {caseSequence.map((id, i) => {
             const c = getCase(id)!;
             const activeIdx = i === caseIndex && phase === "running";

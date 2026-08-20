@@ -12,7 +12,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
   const push = useToastStore((s) => s.push);
 
   return (
-    <header className="sticky top-0 z-40 overflow-visible border-b-2 border-[#2a3a28] bg-[#0c1410]/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 overflow-visible border-b-2 border-[#2a3a28] bg-[#0c1410]/90 backdrop-blur-xl">
       <div className={clsx("grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 pl-12 pr-12", wide ? "max-w-none" : "")}>
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex min-w-0 items-center gap-2.5 pr-1">

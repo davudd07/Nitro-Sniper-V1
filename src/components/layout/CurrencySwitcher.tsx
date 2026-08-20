@@ -2,12 +2,15 @@ import { ChevronDown, Coins, Gem } from "lucide-react";
 import { clsx } from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useEconomyStore } from "../../store/economyStore";
+import { useSettingsStore, type DisplayCurrency } from "../../store/settingsStore";
 import { formatCredits, formatFunCoins } from "../../lib/format";
 import { sound } from "../../lib/sound";
 
 export function CurrencySwitcher() {
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
+  const selected = useSettingsStore((s) => s.displayCurrency) === "funcoins" ? "funcoins" : "shards";
+  const setDisplayCurrency = useSettingsStore((s) => s.setDisplayCurrency);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -20,31 +23,69 @@ export function CurrencySwitcher() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
+  const shards = {
+    id: "shards" as const,
+    icon: Gem,
+    value: formatCredits(balance),
+    suffix: "SH",
+    bar: "bg-cyan-400/15 text-white",
+    iconClass: "text-cyan-300",
+    suffixClass: "text-cyan-200/70",
+  };
+  const fun = {
+    id: "funcoins" as const,
+    icon: Coins,
+    value: formatFunCoins(funCoins ?? 0),
+    suffix: "FC",
+    bar: "bg-amber-400/15 text-amber-50",
+    iconClass: "text-amber-300",
+    suffixClass: "text-amber-400/70",
+  };
+
+  const primary = selected === "funcoins" ? fun : shards;
+  const secondary = selected === "funcoins" ? shards : fun;
+  const PrimaryIcon = primary.icon;
+  const SecondaryIcon = secondary.icon;
+
+  function pick(id: DisplayCurrency) {
+    sound.click();
+    setDisplayCurrency(id);
+  }
+
   return (
-    <div ref={rootRef} className="relative z-50 min-w-[168px]">
-      <div className="flex items-center gap-1.5 rounded-md border-2 border-[#2a3a28] bg-cyan-400/15 px-2 py-1.5 text-white shadow-[3px_3px_0_#050805]">
-        <Gem className="h-3.5 w-3.5 text-cyan-300" />
-        <span className="font-mono text-sm font-semibold tabular-nums">{formatCredits(balance)}</span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-cyan-200/70">SH</span>
+    <div ref={rootRef} className="relative z-[60] min-w-[168px]">
+      <button
+        type="button"
+        onClick={() => {
+          sound.click();
+          setOpen((v) => !v);
+        }}
+        className={clsx(
+          "flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a3a28] px-2 py-1.5 shadow-[3px_3px_0_#050805]",
+          primary.bar,
+        )}
+        title={open ? "Hide other currency" : "Show other currency"}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+      >
+        <PrimaryIcon className={clsx("h-3.5 w-3.5", primary.iconClass)} />
+        <span className="font-mono text-sm font-semibold tabular-nums">{primary.value}</span>
+        <span className={clsx("text-[10px] font-bold uppercase tracking-wider", primary.suffixClass)}>{primary.suffix}</span>
+        <span className="ml-auto grid h-6 w-6 place-items-center rounded opacity-80">
+          <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+        </span>
+      </button>
+      {open && (
         <button
           type="button"
-          onClick={() => {
-            sound.click();
-            setOpen((v) => !v);
-          }}
-          className="ml-auto grid h-6 w-6 place-items-center rounded text-cyan-100/80 hover:bg-black/20"
-          title={open ? "Hide Fun Coins" : "Show Fun Coins"}
-          aria-expanded={open}
+          onClick={() => pick(secondary.id)}
+          className="absolute left-0 right-0 top-full z-[70] mt-1 flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a3a28] bg-[#0c1410] px-2 py-1.5 text-left shadow-[3px_3px_0_#050805] hover:bg-white/[0.04]"
+          title={`Switch to ${secondary.suffix}`}
         >
-          <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
+          <SecondaryIcon className={clsx("h-3.5 w-3.5", secondary.iconClass)} />
+          <span className="font-mono text-sm font-semibold tabular-nums text-white">{secondary.value}</span>
+          <span className={clsx("text-[10px] font-bold uppercase tracking-wider", secondary.suffixClass)}>{secondary.suffix}</span>
         </button>
-      </div>
-      {open && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 flex items-center gap-1.5 rounded-md border-2 border-[#2a3a28] bg-[#0c1410] px-2 py-1.5 text-amber-100/80 shadow-[3px_3px_0_#050805]">
-          <Coins className="h-3.5 w-3.5 text-amber-400/80" />
-          <span className="font-mono text-sm font-semibold tabular-nums">{formatFunCoins(funCoins ?? 0)}</span>
-          <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70">FC</span>
-        </div>
       )}
     </div>
   );

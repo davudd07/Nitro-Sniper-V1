@@ -69,12 +69,12 @@ export function CaseOpenPage() {
         <ArrowLeft className="h-4 w-4" /> Back to cases
       </Link>
 
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-bg-800/60">
+      <div className="surface overflow-hidden">
         <CaseThumb c={c} className="h-40 sm:h-48" />
         <div className="flex flex-wrap items-center justify-between gap-3 p-4">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold text-white">{c.name}</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-white">{c.name}</h1>
               <RiskBadge risk={c.risk} />
             </div>
             <p className="text-sm text-slate-400">{c.blurb}</p>
@@ -99,7 +99,7 @@ export function CaseOpenPage() {
             onLanded={handleLanded}
           />
 
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-bg-800/60 p-3">
+          <div className="surface flex flex-wrap items-center justify-between gap-3 p-3">
             <div className="flex items-center gap-2 text-sm text-slate-300">
               <Switch checked={goldSpin} onChange={setGoldSpin} color="#fbbf24" />
               <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
@@ -107,7 +107,7 @@ export function CaseOpenPage() {
             <button
               onClick={openCase}
               disabled={spinning}
-              className="rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-8 py-2.5 font-bold text-bg-950 shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-50"
+              className="btn-primary px-8 py-2.5 disabled:opacity-50"
             >
               {spinning ? "Opening…" : `Open · ${formatCredits(c.price)} SH`}
             </button>
@@ -127,7 +127,7 @@ export function CaseOpenPage() {
 
         <div className="space-y-4">
           <ProvablyFairPanel />
-          <div className="rounded-xl border border-white/10 bg-bg-800/60 p-3">
+          <div className="surface p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Odds table</p>
             <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-thin pr-1">
               {[...c.odds]

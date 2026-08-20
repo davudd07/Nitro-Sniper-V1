@@ -52,7 +52,7 @@ export default function App() {
           <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
         </Routes>
       </main>
-      <footer className="border-t border-white/5 py-4 text-center text-xs text-slate-600">
+      <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
         Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
       </footer>
       <Toasts />

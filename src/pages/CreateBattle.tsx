@@ -54,10 +54,10 @@ export function CreateBattle() {
     <div className="mx-auto max-w-3xl space-y-6">
       <div className="flex items-center gap-2">
         <Swords className="h-6 w-6 text-amber-300" />
-        <h1 className="text-2xl font-bold text-white">Create Case Battle</h1>
+        <h1 className="text-2xl font-semibold tracking-tight text-white">Create Case Battle</h1>
       </div>
 
-      <div className="space-y-6 rounded-2xl border border-white/10 bg-bg-800/60 p-5">
+      <div className="surface space-y-6 p-5">
         <ModeSelector modeId={modeId} onChange={setModeId} />
         <ToggleRow
           crazy={crazy}
@@ -86,7 +86,7 @@ export function CreateBattle() {
             </button>
           </div>
           {cases.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-white/15 p-6 text-center text-sm text-slate-500">
+            <p className="surface p-6 text-center text-sm text-slate-500">
               No cases added yet.
             </p>
           ) : (
@@ -133,7 +133,7 @@ export function CreateBattle() {
             sound.click();
             handleCreate();
           }}
-          className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98]"
+          className="btn-primary w-full py-3"
         >
           Create Battle
         </button>

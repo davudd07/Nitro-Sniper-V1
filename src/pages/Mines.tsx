@@ -105,9 +105,9 @@ export function Mines() {
   return (
     <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
       <div className="space-y-4">
-        <div className="rounded-2xl border border-white/10 bg-bg-800/60 p-4">
+        <div className="surface p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Mines</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-white">Mines</h2>
             <InfoButton title="Mines — RTP & House Edge">
               <StatRow label="Base RTP" value={formatPercent(RTP)} />
               <StatRow label="House edge" value={formatPercent(1 - RTP)} />
@@ -160,7 +160,7 @@ export function Mines() {
             <button
               onClick={startGame}
               disabled={busy}
-              className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform hover:scale-[1.02] disabled:opacity-50"
+              className="btn-primary w-full py-3 disabled:opacity-50"
             >
               {busy ? "Starting…" : "Start Game"}
             </button>
@@ -191,7 +191,7 @@ export function Mines() {
         <ProvablyFairPanel />
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-bg-800/40 p-4 sm:p-6">
+      <div className="surface p-4 sm:p-6">
         <div className="mx-auto grid max-w-lg grid-cols-5 gap-2 sm:gap-3">
           {tiles.map((t, i) => {
             const isMine = minePositions.has(i);

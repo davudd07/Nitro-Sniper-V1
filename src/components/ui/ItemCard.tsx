@@ -24,7 +24,7 @@ export function ItemCard({
   return (
     <div
       className={clsx(
-        "flex flex-col items-center rounded-xl border bg-bg-800/70 text-center transition-transform hover:-translate-y-0.5",
+        "flex flex-col items-center rounded-xl border bg-white/[0.03] text-center transition-transform hover:-translate-y-0.5",
         pad,
         className,
       )}

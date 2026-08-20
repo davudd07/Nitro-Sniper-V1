@@ -356,7 +356,7 @@ export function BattleRoom() {
         <ArrowLeft className="h-4 w-4" /> Back to battles
       </Link>
 
-      <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-bg-800/50">
+      <div className="surface w-full min-w-0 overflow-hidden">
         <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
           <div className="flex flex-wrap items-center gap-2">
             <Swords className="h-5 w-5 text-amber-300" />
@@ -485,7 +485,7 @@ export function BattleRoom() {
       </div>
 
       {phase === "jackpot" && jackpotTickets && (
-        <div className="rounded-2xl border border-amber-400/30 bg-bg-800/60 p-4">
+        <div className="surface border-amber-400/25 p-4">
           <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-300">
             <Coins className="h-4 w-4" /> {tieBreak ? "Tie-Breaker Jackpot" : "Jackpot Spin"}
           </p>
@@ -518,7 +518,7 @@ export function BattleRoom() {
           <Link
             to="/battles/create"
             onClick={() => sound.click()}
-            className="mt-4 inline-block rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-6 py-2.5 font-bold text-bg-950 transition-transform duration-150 hover:scale-105 active:scale-95"
+            className="btn-primary mt-4 inline-block px-6 py-2.5"
           >
             Start another battle
           </Link>

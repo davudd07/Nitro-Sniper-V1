@@ -48,7 +48,7 @@ export function AddCasesModal({
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
-        className="max-h-[88vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-bg-900 p-5 shadow-2xl scrollbar-thin"
+        className="surface max-h-[88vh] w-full max-w-3xl overflow-y-auto bg-bg-900 p-5 scrollbar-thin"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-4 flex items-center justify-between">
@@ -125,7 +125,7 @@ export function AddCasesModal({
               onChange(draft);
               onClose();
             }}
-            className="rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-6 py-2.5 font-bold text-bg-950 transition-transform duration-150 hover:scale-[1.03] active:scale-95"
+            className="btn-primary px-6 py-2.5"
           >
             Confirm
           </button>

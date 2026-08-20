@@ -20,7 +20,7 @@ export function ProvablyFairPanel({ compact = false }: { compact?: boolean }) {
   useEffect(() => setEditingSeed(clientSeed), [clientSeed]);
 
   return (
-    <div className="rounded-xl border border-white/10 bg-bg-800/60">
+    <div className="surface overflow-hidden">
       <button
         onClick={() => setOpen((v) => !v)}
         className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"

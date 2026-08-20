@@ -18,8 +18,8 @@ export function ModeSelector({ modeId, onChange }: { modeId: string; onChange: (
             className={clsx(
               "rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all duration-150 ease-out active:scale-95",
               modeId === m.id
-                ? "border-fuchsia-400/60 bg-fuchsia-500/20 text-white shadow-[0_0_16px_rgba(217,70,239,0.25)]"
-                : "border-white/10 bg-bg-800/60 text-slate-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/5",
+                ? "border-cyan-300/50 bg-cyan-400/15 text-white shadow-[0_0_18px_rgba(34,211,238,0.18)]"
+                : "border-white/10 bg-white/[0.03] text-slate-300 hover:-translate-y-0.5 hover:border-white/20 hover:bg-white/5",
             )}
           >
             {m.label}
@@ -68,7 +68,7 @@ export function ToggleRow({
             }}
             className={clsx(
               "flex items-start gap-2.5 rounded-xl border p-3 text-left transition-all duration-150 ease-out active:scale-[0.97]",
-              it.value ? "border-white/20 bg-white/10" : "border-white/10 bg-bg-800/60 hover:-translate-y-0.5 hover:bg-white/5",
+              it.value ? "border-white/20 bg-white/[0.08]" : "border-white/10 bg-white/[0.03] hover:-translate-y-0.5 hover:bg-white/5",
             )}
           >
             <it.icon className="mt-0.5 h-4 w-4 shrink-0 transition-colors duration-150" style={{ color: it.value ? it.color : "#64748b" }} />

@@ -360,9 +360,9 @@ export function Blackjack() {
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
       <div className="space-y-4">
-        <div className="rounded-2xl border border-white/10 bg-bg-800/60 p-4">
+        <div className="surface p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-lg font-bold text-white">Blackjack</h2>
+            <h2 className="text-lg font-semibold tracking-tight text-white">Blackjack</h2>
             <InfoButton title="Blackjack — RTP & House Edge">
               <StatRow label="Rules" value="Dealer stands on all 17s" />
               <StatRow label="Blackjack payout" value="3:2" />
@@ -392,7 +392,7 @@ export function Blackjack() {
                 else void deal();
               }}
               disabled={busy || (phase === "betting" && bet <= 0)}
-              className="w-full rounded-xl bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-3 font-bold text-bg-950 shadow-lg transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+              className="btn-primary w-full py-3 disabled:opacity-50"
             >
               {phase === "settled" ? "New Round" : "Deal"}
             </button>

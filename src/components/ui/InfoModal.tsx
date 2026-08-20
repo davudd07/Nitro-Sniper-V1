@@ -17,7 +17,7 @@ export function InfoButton({ title, children }: { title: string; children: React
         createPortal(
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={() => setOpen(false)}>
             <div
-              className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/10 bg-bg-900 p-5 shadow-2xl"
+              className="surface max-h-[85vh] w-full max-w-lg overflow-y-auto bg-bg-900 p-5"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="mb-3 flex items-center justify-between">

@@ -11,15 +11,15 @@ const SORTED_CASES = [...CASES].sort((a, b) => a.price - b.price);
 export function Cases() {
   return (
     <div>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-white">Cases</h1>
-        <p className="text-sm text-slate-400">
+      <div className="mb-7">
+        <h1 className="text-2xl font-semibold tracking-tight text-white">Cases</h1>
+        <p className="mt-1 text-sm text-slate-400">
           Nine original cases spanning low, medium, and high risk — all with fully transparent, price-derived odds.
         </p>
       </div>
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {SORTED_CASES.map((c) => (
-          <div key={c.id} className="group overflow-hidden rounded-2xl border border-white/10 bg-bg-800/60">
+          <div key={c.id} className="surface group overflow-hidden">
             <Link to={`/cases/${c.id}`}>
               <CaseThumb c={c} className="h-36" />
             </Link>
@@ -53,7 +53,7 @@ export function Cases() {
               <p className="mb-3 text-xs text-slate-500">{c.blurb}</p>
               <Link
                 to={`/cases/${c.id}`}
-                className="block w-full rounded-lg bg-gradient-to-br from-fuchsia-500 to-cyan-400 py-2 text-center text-sm font-bold text-bg-950 transition-transform group-hover:scale-[1.02]"
+                className="btn-primary block w-full py-2 text-center text-sm"
               >
                 Open · {formatCredits(c.price)} SH
               </Link>

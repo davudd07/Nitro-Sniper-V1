@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   freshDeck,
@@ -492,9 +492,7 @@ export function Blackjack() {
     window.addEventListener("pointerup", up);
   }
 
-  useEffect(() => {
-    if (bettingLocked) setSelectedChip(null);
-  }, [bettingLocked]);
+  const activeChip = bettingLocked ? null : selectedChip;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[280px_1fr]">
@@ -653,7 +651,7 @@ export function Blackjack() {
             disabled={bettingLocked}
             ringColor="#38bdf8"
             highlighted={hoverSpot === "pairs"}
-            armed={Boolean(selectedChip) && !drag}
+            armed={Boolean(activeChip) && !drag}
             dropRef={pairsRef}
             onCircleClick={() => handleSpotClick("pairs")}
           />
@@ -665,7 +663,7 @@ export function Blackjack() {
             ringColor="#e879f9"
             big
             highlighted={hoverSpot === "main"}
-            armed={Boolean(selectedChip) && !drag}
+            armed={Boolean(activeChip) && !drag}
             dropRef={mainRef}
             onCircleClick={() => handleSpotClick("main")}
           />
@@ -677,7 +675,7 @@ export function Blackjack() {
             disabled={bettingLocked}
             ringColor="#fbbf24"
             highlighted={hoverSpot === "plus3"}
-            armed={Boolean(selectedChip) && !drag}
+            armed={Boolean(activeChip) && !drag}
             dropRef={plus3Ref}
             onCircleClick={() => handleSpotClick("plus3")}
           />
@@ -686,7 +684,7 @@ export function Blackjack() {
         <div className="relative mt-6 flex flex-wrap items-center justify-center gap-3 rounded-2xl bg-black/25 px-4 py-3">
           <p className="mr-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-emerald-200/50">Chip tray</p>
           {CHIPS.map((chip) => {
-            const selected = selectedChip?.value === chip.value;
+            const selected = activeChip?.value === chip.value;
             return (
               <button
                 key={chip.value}

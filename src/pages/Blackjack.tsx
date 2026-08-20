@@ -17,6 +17,7 @@ import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { takeStake } from "../lib/stake";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { PlayingCard } from "../components/ui/PlayingCard";
 
@@ -186,7 +187,6 @@ export function Blackjack() {
   const customBetValue = Math.max(1, Math.round(Number(customBetInput)) || 1);
   const customChip: ChipDef = { value: customBetValue, ...CUSTOM_CHIP_STYLE, custom: true };
 
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -196,9 +196,13 @@ export function Blackjack() {
   const dealerTotal = handTotal(dealer);
 
   async function deal() {
-    if (busy || bet <= 0) return;
+    if (busy) return;
     const sideBetsTotal = perfectPairsBet + twentyOnePlusThreeBet;
-    awardRakeback(bet + sideBetsTotal, HOUSE_EDGE.blackjack);
+    if (bet < 0) return;
+    if (!takeStake(bet + sideBetsTotal, HOUSE_EDGE.blackjack)) {
+      push("Not enough Shards for that bet.", "danger");
+      return;
+    }
     setBusy(true);
     setDoubled(false);
     setOutcome(null);
@@ -308,7 +312,10 @@ export function Blackjack() {
 
   async function double() {
     if (phase !== "player-turn" || busy || player.length !== 2) return;
-    awardRakeback(bet, HOUSE_EDGE.blackjack);
+    if (!takeStake(bet, HOUSE_EDGE.blackjack)) {
+      push("Not enough Shards to double.", "danger");
+      return;
+    }
     setDoubled(true);
     setBusy(true);
     const d = [...deck];
@@ -521,7 +528,7 @@ export function Blackjack() {
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Blackjack</h2>
             <div className="flex items-center gap-2">
-              <DemoBetBadge />
+              <DemoBetBadge active={bet + perfectPairsBet + twentyOnePlusThreeBet === 0} />
               <InfoButton title="Blackjack — RTP & House Edge">
               <StatRow label="Rules" value="Dealer stands on all 17s" />
               <StatRow label="Blackjack payout" value="3:2" />
@@ -552,7 +559,7 @@ export function Blackjack() {
                 if (phase === "settled") newRound();
                 else void deal();
               }}
-              disabled={busy || (phase === "betting" && bet <= 0)}
+              disabled={busy}
               className="btn-primary w-full py-3 disabled:opacity-50"
             >
               {phase === "settled" ? "New Round" : "Deal"}

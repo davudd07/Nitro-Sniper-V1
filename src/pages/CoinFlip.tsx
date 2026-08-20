@@ -10,6 +10,7 @@ import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { takeStake } from "../lib/stake";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
   COIN_BASE_MULT,
@@ -24,7 +25,7 @@ import {
 } from "../lib/coinflip";
 
 const RTP = 0.96;
-const BET_PRESETS = [25, 50, 100, 250, 500];
+const BET_PRESETS = [0, 25, 50, 100, 250, 500];
 
 type Phase = "idle" | "flipping" | "won" | "lost" | "maxed";
 
@@ -81,7 +82,6 @@ export function CoinFlip() {
   const [session, setSession] = useState(0);
 
   const balance = useEconomyStore((s) => s.balance);
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -110,8 +110,11 @@ export function CoinFlip() {
   async function flip() {
     if (phase === "flipping" || !pick) return;
     if (phase === "idle" || phase === "lost" || phase === "maxed") {
-      if (bet <= 0) return;
-      awardRakeback(bet, HOUSE_EDGE.coinflip);
+      if (bet < 0) return;
+      if (!takeStake(bet, HOUSE_EDGE.coinflip)) {
+        push("Not enough Shards for that bet.", "danger");
+        return;
+      }
       setWins(0);
       setSession((s) => s - bet);
       sound.chip();
@@ -179,7 +182,7 @@ export function CoinFlip() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Coin Flip</h2>
             <div className="flex items-center gap-2">
-              <DemoBetBadge />
+              <DemoBetBadge active={bet === 0} />
               <InfoButton title="Coin Flip — RTP & House Edge">
               <StatRow label="Base RTP" value={formatPercent(RTP)} />
               <StatRow label="House edge" value={formatPercent(1 - RTP)} />
@@ -199,15 +202,15 @@ export function CoinFlip() {
           <div className="mb-3 flex items-center gap-2">
             <input
               type="number"
-              min={1}
+              min={0}
               value={bet}
               disabled={inRun}
-              onChange={(e) => setBet(Math.max(1, Number(e.target.value) || 0))}
+              onChange={(e) => setBet(Math.max(0, Number(e.target.value) || 0))}
               className="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40 disabled:opacity-50"
             />
             <button
               disabled={inRun}
-              onClick={() => setBet((b) => Math.max(1, Math.floor(b / 2)))}
+              onClick={() => setBet((b) => Math.max(0, Math.floor(b / 2)))}
               className="rounded-lg bg-bg-900 p-2.5 text-slate-300 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >
               <Minus className="h-4 w-4" />

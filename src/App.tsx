@@ -19,8 +19,10 @@ import { BattleRoom } from "./pages/BattleRoom";
 import { JackpotPage } from "./pages/Jackpot";
 import { CoinFlip } from "./pages/CoinFlip";
 import { ComingSoon } from "./pages/ComingSoon";
+import { ChatRainController } from "./components/chat/ChatRainController";
 import { PATH_TO_GAME } from "./data/lobbyGames";
 import { trackRecent } from "./lib/recentGames";
+import { Rewards } from "./pages/Rewards";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -54,14 +56,20 @@ export default function App() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-full">
+    <div className="flex h-full min-h-0 overflow-hidden">
       <GameSidebar />
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <NavBar wide={isBattleRoom} />
         <DemoBanner />
-        <main className={clsx("mx-auto w-full min-w-0 flex-1 px-3 py-6 sm:px-4", isBattleRoom ? "max-w-none" : "max-w-7xl")}>
+        <main
+          className={clsx(
+            "mx-auto w-full min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-6 sm:px-4",
+            isBattleRoom ? "max-w-none" : "max-w-7xl",
+          )}
+        >
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/rewards" element={<Rewards />} />
             <Route path="/mines" element={<Mines />} />
             <Route path="/blackjack" element={<Blackjack />} />
             <Route path="/cases" element={<Cases />} />
@@ -74,11 +82,12 @@ export default function App() {
             <Route path="/keno" element={<ComingSoon title="Keno" />} />
           </Routes>
         </main>
-        <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
+        <footer className="shrink-0 border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
           Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
         </footer>
       </div>
       <ChatSidebar />
+      <ChatRainController />
       <Toasts />
     </div>
   );

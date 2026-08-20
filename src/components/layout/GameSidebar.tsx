@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, Hash, ChevronLeft, ChevronRight, PanelLeft } from "lucide-react";
+import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, Hash, ChevronLeft, ChevronRight, PanelLeft, Gift } from "lucide-react";
 import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
 import { sound } from "../../lib/sound";
@@ -22,7 +22,7 @@ export function GameSidebar() {
   return (
     <aside
       className={clsx(
-        "relative flex shrink-0 flex-col border-r-2 border-[#2a3a28] bg-[#0c1410] transition-[width] duration-200 ease-out",
+        "relative flex h-full min-h-0 shrink-0 flex-col border-r-2 border-[#2a3a28] bg-[#0c1410] transition-[width] duration-200 ease-out",
         open ? "w-[232px]" : "w-12",
       )}
     >
@@ -40,12 +40,34 @@ export function GameSidebar() {
 
       <div className={clsx("flex items-center gap-2 px-3 py-4", !open && "justify-center px-1")}>
         <PanelLeft className="h-4 w-4 shrink-0 text-emerald-300" />
-        {open && (
-          <p className="pixel-label text-[15px] font-extrabold uppercase text-emerald-200/80">Games</p>
-        )}
+        {open && <p className="pixel-label text-[15px] font-extrabold uppercase text-emerald-200/80">Menu</p>}
       </div>
 
-      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4 scrollbar-thin">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 pb-4 scrollbar-thin">
+        <NavLink
+          to="/rewards"
+          title="Rewards"
+          onClick={() => sound.click()}
+          className={({ isActive }) =>
+            clsx(
+              "relative flex items-center gap-2.5 rounded-lg border-2 px-2.5 font-extrabold uppercase tracking-wide shadow-[3px_3px_0_#78350f] transition-transform hover:-translate-y-0.5",
+              open ? "justify-start py-3 text-[13px]" : "justify-center px-0 py-3",
+              isActive
+                ? "border-amber-300 bg-gradient-to-br from-amber-300 to-orange-500 text-bg-950"
+                : "border-amber-400/70 bg-gradient-to-br from-amber-400/90 to-orange-600 text-bg-950",
+            )
+          }
+        >
+          <Gift className={clsx("shrink-0", open ? "h-6 w-6" : "h-5 w-5")} />
+          {open && (
+            <span className="pixel-label min-w-0 truncate text-lg leading-none">Rewards</span>
+          )}
+        </NavLink>
+
+        <p className={clsx("px-1 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600", !open && "sr-only")}>
+          Games
+        </p>
+
         {LINKS.map(({ to, label, icon: Icon, end }) => (
           <NavLink
             key={to}

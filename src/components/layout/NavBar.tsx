@@ -55,7 +55,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
             {soundOn ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />}
           </button>
 
-          <div className="flex items-center gap-1.5 rounded-md border-2 border-amber-400/25 bg-amber-400/10 px-2.5 py-1.5" title="Fun Coins — 4% of house edge on every bet">
+          <div className="flex items-center gap-1.5 rounded-md border-2 border-amber-400/25 bg-amber-400/10 px-2.5 py-1.5" title="Fun Coins — a second play-money balance">
             <Coins className="h-3.5 w-3.5 text-amber-300" />
             <span className="font-mono text-sm font-semibold tabular-nums text-amber-100">{formatFunCoins(funCoins ?? 0)}</span>
             <span className="text-[10px] font-bold uppercase tracking-wider text-amber-400/70">FC</span>

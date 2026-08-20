@@ -46,7 +46,10 @@ export const useEconomyStore = create<EconomyState>()(
       awardRakeback: (stake, houseEdge) => {
         const amt = rakebackAmount(stake, houseEdge);
         if (amt <= 0) return 0;
-        set((s) => ({ funCoins: s.funCoins + amt, totalRakeback: s.totalRakeback + amt }));
+        set((s) => ({
+          balance: s.balance + amt,
+          totalRakeback: s.totalRakeback + amt,
+        }));
         return amt;
       },
       recordRound: (wagered, won) =>

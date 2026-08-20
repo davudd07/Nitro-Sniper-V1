@@ -11,6 +11,7 @@ import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { takeStake } from "../lib/stake";
 
 const GRID_SIZE = 25;
 const RTP = 0.96;
@@ -36,7 +37,6 @@ export function Mines() {
   const [busy, setBusy] = useState(false);
 
   const credit = useEconomyStore((s) => s.credit);
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
@@ -47,8 +47,11 @@ export function Mines() {
 
   async function startGame() {
     if (phase === "playing" || busy) return;
-    if (bet <= 0) return;
-    awardRakeback(bet, HOUSE_EDGE.mines);
+    if (bet < 0) return;
+    if (!takeStake(bet, HOUSE_EDGE.mines)) {
+      push("Not enough Shards for that bet.", "danger");
+      return;
+    }
     setBusy(true);
     const rolls = await play(GRID_SIZE);
     const order = rolls.map((r, i) => ({ r, i })).sort((a, b) => a.r - b.r);
@@ -111,7 +114,7 @@ export function Mines() {
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Mines</h2>
             <div className="flex items-center gap-2">
-              <DemoBetBadge />
+              <DemoBetBadge active={bet === 0} />
               <InfoButton title="Mines — RTP & House Edge">
               <StatRow label="Base RTP" value={formatPercent(RTP)} />
               <StatRow label="House edge" value={formatPercent(1 - RTP)} />
@@ -125,20 +128,20 @@ export function Mines() {
           </div>
 
           <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
-            Demo bet
+            Bet
           </label>
           <div className="mb-5 flex items-center gap-2">
             <input
               type="number"
-              min={1}
+              min={0}
               value={bet}
               disabled={phase === "playing"}
-              onChange={(e) => setBet(Math.max(1, Number(e.target.value) || 0))}
+              onChange={(e) => setBet(Math.max(0, Number(e.target.value) || 0))}
               className="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/40 disabled:opacity-50"
             />
             <button
               disabled={phase === "playing"}
-              onClick={() => setBet((b) => Math.max(1, Math.floor(b / 2)))}
+              onClick={() => setBet((b) => Math.max(0, Math.floor(b / 2)))}
               className="rounded-lg bg-bg-900 p-2.5 text-slate-300 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >
               <Minus className="h-4 w-4" />
@@ -182,7 +185,7 @@ export function Mines() {
 
           {phase !== "playing" ? (
             <button onClick={startGame} disabled={busy} className="btn-primary w-full py-3 disabled:opacity-50">
-              {busy ? "Starting…" : "Start Game"}
+              {busy ? "Starting…" : bet === 0 ? "Start demo" : "Start Game"}
             </button>
           ) : (
             <button

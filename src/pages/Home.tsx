@@ -48,7 +48,7 @@ export function Home() {
       </label>
 
       <p className="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-emerald-300/90">
-        <ShieldCheck className="h-3.5 w-3.5" /> Demo tables are free to play. Fun Coins are rakeback — 4% of the house-edge slice of every stake. Battles still cost Shards.
+        <ShieldCheck className="h-3.5 w-3.5" /> Bet 0 to demo. Stakes above 0 spend Shards. Rakeback pays Shards — see Rewards.
       </p>
 
       {filtered ? (

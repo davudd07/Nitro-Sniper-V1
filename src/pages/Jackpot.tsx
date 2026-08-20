@@ -20,7 +20,6 @@ import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { formatCredits, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
-import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { HOUSE_EDGE } from "../lib/rakeback";
 
 export function JackpotPage() {
@@ -33,6 +32,7 @@ export function JackpotPage() {
   const beginSpin = useJackpotStore((s) => s.beginSpin);
   const finishSpin = useJackpotStore((s) => s.finishSpin);
   const resetPot = useJackpotStore((s) => s.resetPot);
+  const spend = useEconomyStore((s) => s.spend);
   const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -73,7 +73,12 @@ export function JackpotPage() {
       push(`Bet must be ${formatCredits(def.min)}–${formatCredits(def.max)} SH in this pot.`, "warning");
       return;
     }
+    if (!spend(bet)) {
+      push("Not enough Shards for that bet.", "danger");
+      return;
+    }
     if (!join(potId, bet)) {
+      credit(bet);
       push("You already have a seat in this pot.", "info");
       return;
     }
@@ -166,11 +171,8 @@ export function JackpotPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Jackpot</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Demo bet — no SH deducted. Tickets are proportional to bet size. Winner takes 91% of the pot — 9% house edge.
+            Deposit into a pot. Tickets are proportional to bet size. Winner takes 91% of the pot — 9% house edge.
           </p>
-          <div className="mt-2">
-            <DemoBetBadge />
-          </div>
         </div>
         <InfoButton title="Jackpot — RTP & House Edge">
           <StatRow label="House edge" value={formatPercent(JACKPOT_HOUSE_EDGE)} />

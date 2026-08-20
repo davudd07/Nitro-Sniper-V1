@@ -13,7 +13,7 @@ import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
-import { DemoBetBadge } from "../components/ui/DemoBetBadge";
+import { takeStake } from "../lib/stake";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatPercent } from "../lib/format";
 import type { CaseItem } from "../data/items";
@@ -35,7 +35,6 @@ export function CaseOpenPage() {
   const roundCountRef = useRef(1);
   const roundItemsRef = useRef<CaseItem[]>([]);
 
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -52,7 +51,10 @@ export function CaseOpenPage() {
   async function openCase() {
     if (spinning || !c) return;
     const n = openCount;
-    awardRakeback(c.price * n, HOUSE_EDGE.cases);
+    if (!takeStake(c.price * n, HOUSE_EDGE.cases)) {
+      push(`You need ${formatCredits(c.price * n)} SH to open this case.`, "danger");
+      return;
+    }
     setSpinning(true);
     landedRef.current = 0;
     roundCountRef.current = n;
@@ -102,7 +104,6 @@ export function CaseOpenPage() {
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight text-white">{c.name}</h1>
               <RiskBadge risk={c.risk} />
-              <DemoBetBadge />
             </div>
             <p className="text-sm text-slate-400">{c.blurb}</p>
           </div>
@@ -171,8 +172,8 @@ export function CaseOpenPage() {
               {spinning
                 ? "Opening…"
                 : openCount === 1
-                  ? `Demo open · ${formatCredits(c.price)} SH`
-                  : `Demo open ${openCount}× · ${formatCredits(totalPrice)} SH`}
+                  ? `Open · ${formatCredits(c.price)} SH`
+                  : `Open ${openCount}× · ${formatCredits(totalPrice)} SH`}
             </button>
           </div>
 

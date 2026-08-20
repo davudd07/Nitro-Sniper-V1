@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Handshake } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
 import { useBattleStore, type BattleConfig } from "../store/battleStore";
@@ -13,6 +13,7 @@ import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
 import { formatCredits } from "../lib/format";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
+import { BattleCost, BorrowBadge } from "../components/battles/BattleCost";
 
 const FILTERS = [
   { id: "all", label: "All" },
@@ -56,13 +57,11 @@ export function CaseBattlesLobby() {
   function openJoin(b: BattleConfig) {
     sound.click();
     if (b.source === "you") {
-      setJoinIntent(b.id, { borrowPct: 0 });
       navigate(`/battles/${b.id}`);
       return;
     }
     const { filled, seats } = occupied(b);
     if (filled >= seats) {
-      setJoinIntent(b.id, { borrowPct: 0 });
       navigate(`/battles/${b.id}`);
       return;
     }
@@ -115,10 +114,10 @@ export function CaseBattlesLobby() {
       </div>
 
       <div className="surface overflow-hidden">
-        <div className="hidden grid-cols-[1fr_80px_120px_140px_150px_110px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
+        <div className="hidden grid-cols-[1fr_80px_170px_140px_150px_110px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
           <span>Cases</span>
           <span>Mode</span>
-          <span>Join cost</span>
+          <span>Cost</span>
           <span>Players</span>
           <span>Modifiers</span>
           <span className="text-right">Action</span>
@@ -144,7 +143,7 @@ export function CaseBattlesLobby() {
                       openJoin(b);
                     }
                   }}
-                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[1fr_80px_120px_140px_150px_110px] hover:bg-white/[0.03]"
+                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[1fr_80px_170px_140px_150px_110px] hover:bg-white/[0.03]"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex -space-x-2">
@@ -174,25 +173,27 @@ export function CaseBattlesLobby() {
                       })}
                     </div>
                     <div className="min-w-0 md:hidden">
-                      <p className="truncate text-sm font-semibold text-white">{mode?.label} · {formatCredits(b.costPerPlayer)} SH</p>
+                      <p className="truncate text-sm font-semibold text-white">{mode?.label}</p>
                       <p className="text-[11px] text-slate-500">
                         {filled}/{seats} players
                       </p>
                     </div>
                   </div>
                   <p className="hidden text-sm font-semibold text-white md:block">{mode?.label}</p>
-                  <p className="hidden font-mono text-sm font-semibold text-amber-200 md:block">
-                    {b.fundedPct > 0 ? (
-                      <span className="block">
+                  <div className="hidden md:block">
+                    {b.source === "you" ? (
+                      <BattleCost costPerPlayer={b.costPerPlayer} borrowPct={b.creatorBorrowPct} align="left" compact />
+                    ) : b.fundedPct > 0 ? (
+                      <p className="font-mono text-sm font-semibold text-amber-200">
                         <span className="mr-1 text-[11px] font-normal text-slate-500 line-through">
                           {formatCredits(b.costPerPlayer)}
                         </span>
                         {formatCredits(joinerPrice)}
-                      </span>
+                      </p>
                     ) : (
-                      formatCredits(b.costPerPlayer)
+                      <p className="font-mono text-sm font-semibold text-amber-200">{formatCredits(b.costPerPlayer)}</p>
                     )}
-                  </p>
+                  </div>
                   <div className="hidden items-center gap-1.5 md:flex">
                     {Array.from({ length: seats }).map((_, i) => (
                       <span
@@ -240,11 +241,7 @@ export function CaseBattlesLobby() {
                         <Banknote className="h-2.5 w-2.5" /> {pctLabel(b.fundedPct)} funded
                       </span>
                     )}
-                    {b.fundedPct <= 0 && (
-                      <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
-                        <Handshake className="h-2.5 w-2.5" /> Borrow
-                      </span>
-                    )}
+                    {b.creatorBorrowPct > 0 && <BorrowBadge pct={b.creatorBorrowPct} />}
                     {b.isPrivate && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-300">
                         <Lock className="h-2.5 w-2.5" /> Private

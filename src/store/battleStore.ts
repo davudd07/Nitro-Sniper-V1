@@ -31,6 +31,8 @@ export interface BattleConfig {
   source: "you" | "lobby";
   /** Other seats already filled with bots when the room opens. */
   prefillBots: number;
+  /** 0–1. Creator borrowed this fraction of their own seat. */
+  creatorBorrowPct: number;
 }
 
 export interface BattleJoinIntent {
@@ -51,13 +53,14 @@ function costOf(cases: BattleCaseEntry[]): number {
 }
 
 function seedBattle(
-  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin"> & {
+  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct"> & {
     id: string;
     createdAt: number;
     fundedPct?: number;
     isPrivate?: boolean;
     shared?: boolean;
     fastSpin?: boolean;
+    creatorBorrowPct?: number;
   },
 ): BattleConfig {
   return {
@@ -67,6 +70,7 @@ function seedBattle(
     isPrivate: partial.isPrivate ?? false,
     shared: partial.shared ?? false,
     fastSpin: partial.fastSpin ?? false,
+    creatorBorrowPct: partial.creatorBorrowPct ?? 0,
     costPerPlayer: costOf(partial.cases),
   };
 }

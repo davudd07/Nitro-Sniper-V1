@@ -85,6 +85,7 @@ export function CreateBattle() {
   const effectiveFund = fundedOn ? fundedPct : 0;
   const effectiveBorrow = fundedOn || !borrowOn ? 0 : borrowPct;
   const youPay = creatorCreateCost(costPerPlayer, players, effectiveFund, effectiveBorrow);
+  const fullPay = creatorCreateCost(costPerPlayer, players, effectiveFund, 0);
   const joinerPay = Math.round(costPerPlayer * (1 - effectiveFund));
 
   function setGameMode(next: "classic" | "shared") {
@@ -160,6 +161,7 @@ export function CreateBattle() {
       isPrivate,
       source: "you",
       prefillBots: callAllBots ? players - 1 : 0,
+      creatorBorrowPct: effectiveBorrow,
     });
     setJoinIntent(id, { borrowPct: effectiveBorrow });
     push(
@@ -306,9 +308,13 @@ export function CreateBattle() {
             className="btn-primary w-full gap-2 py-3"
           >
             <span className="text-[13px] font-extrabold uppercase tracking-[0.12em]">Create Battle</span>
-            <span className="inline-flex items-center gap-1 font-mono text-sm">
+            <span className="inline-flex items-center gap-2 font-mono text-sm">
+              {effectiveBorrow > 0 && (
+                <span className="text-bg-950/50 line-through decoration-2">{formatCredits(fullPay)}</span>
+              )}
               <Gem className="h-4 w-4" />
               {formatCredits(youPay)}
+              {effectiveBorrow > 0 && <Handshake className="h-3.5 w-3.5" />}
             </span>
           </button>
 

@@ -18,6 +18,7 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { randomBotName, BOT_NAMES } from "../data/botNames";
+import { BattleCost } from "../components/battles/BattleCost";
 import { formatCredits } from "../lib/format";
 import { fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { sound } from "../lib/sound";
@@ -99,7 +100,10 @@ export function BattleRoom() {
   const [liveOdds, setLiveOdds] = useState<Record<number, number>>({});
   const [tieBreak, setTieBreak] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
-  const borrowPct = joinIntent?.borrowPct ?? 0;
+  const borrowPct =
+    battle?.source === "you"
+      ? Math.max(joinIntent?.borrowPct ?? 0, battle.creatorBorrowPct)
+      : (joinIntent?.borrowPct ?? 0);
   const needsJoinGate = Boolean(battle && battle.source !== "you" && !joinIntent);
 
   const landedCountRef = useRef(0);
@@ -398,7 +402,6 @@ export function BattleRoom() {
   const currentCaseId = caseIndex >= 0 ? caseSequence[caseIndex] : undefined;
   const currentCase = currentCaseId ? getCase(currentCaseId) : undefined;
   const pot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
-  const battleValue = battle.costPerPlayer * players.length;
   const showJackpotPot = Boolean(battle.jackpot || phase === "jackpot");
 
   return (
@@ -449,7 +452,7 @@ export function BattleRoom() {
             )}
             {borrowPct > 0 && (
               <span className="flex items-center gap-1 rounded-full bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-300">
-                <Handshake className="h-3 w-3" /> Borrow {pctLabel(borrowPct)}
+                <Handshake className="h-3 w-3" /> Borrowed {pctLabel(borrowPct)}
               </span>
             )}
             {battle.isPrivate && (
@@ -473,10 +476,7 @@ export function BattleRoom() {
                 <Link2 className="h-3.5 w-3.5" /> Copy link
               </button>
             )}
-            <span>
-              Battle:{" "}
-              <span className="font-mono font-semibold text-amber-300">{formatCredits(battleValue)} SH</span>
-            </span>
+            <BattleCost costPerPlayer={battle.costPerPlayer} borrowPct={borrowPct} />
             {battle.terminal && (
               <span className="text-pink-300">
                 {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
@@ -766,8 +766,8 @@ function PlayerColumn({
               </span>
             )}
             {player.kind === "you" && borrowPct > 0 && (
-              <span className="rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">
-                keep {pctLabel(1 - borrowPct)}
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold text-sky-300">
+                <Handshake className="h-3 w-3" /> keep {pctLabel(1 - borrowPct)}
               </span>
             )}
           </p>

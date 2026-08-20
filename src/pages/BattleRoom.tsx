@@ -421,6 +421,26 @@ export function BattleRoom() {
           {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
         </div>
 
+        {phase === "jackpot" && jackpotTickets && (
+          <div className="border-b border-amber-400/20 bg-amber-400/[0.04] px-4 py-4">
+            <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-300">
+              <Coins className="h-4 w-4" /> {tieBreak ? "Tie-Breaker Jackpot" : "Jackpot Spin"}
+            </p>
+            {tieBreak && (
+              <p className="mb-3 text-xs text-slate-400">
+                It's a tie! An equal-odds spin between the tied {jackpotTickets.length > 2 ? "parties" : "two"} decides
+                the winner.
+              </p>
+            )}
+            <JackpotWheel
+              tickets={jackpotTickets}
+              spinToken={jackpotSpinToken}
+              winnerId={jackpotWinnerId}
+              onFinished={handleJackpotFinished}
+            />
+          </div>
+        )}
+
         <div className="relative min-w-0 w-full">
           {phase === "countdown" && <BattleCountdown countdown={countdown} />}
           <div className="flex w-full min-w-0 items-stretch">
@@ -483,26 +503,6 @@ export function BattleRoom() {
           </div>
         </div>
       </div>
-
-      {phase === "jackpot" && jackpotTickets && (
-        <div className="surface border-amber-400/25 p-4">
-          <p className="mb-1 flex items-center gap-2 text-sm font-semibold text-amber-300">
-            <Coins className="h-4 w-4" /> {tieBreak ? "Tie-Breaker Jackpot" : "Jackpot Spin"}
-          </p>
-          {tieBreak && (
-            <p className="mb-3 text-xs text-slate-400">
-              It's a tie! An equal-odds spin between the tied {jackpotTickets.length > 2 ? "parties" : "two"} decides
-              the winner.
-            </p>
-          )}
-          <JackpotWheel
-            tickets={jackpotTickets}
-            spinToken={jackpotSpinToken}
-            winnerId={jackpotWinnerId}
-            onFinished={handleJackpotFinished}
-          />
-        </div>
-      )}
 
       {phase === "finished" && winningTeam !== null && (
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">

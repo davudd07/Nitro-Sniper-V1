@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Bomb, Spade, Package, Swords, Coins, ShieldCheck, Sparkles } from "lucide-react";
+import { Bomb, Spade, Package, Swords, Coins, Circle, Hash, ShieldCheck, Sparkles } from "lucide-react";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { formatPercent } from "../lib/format";
@@ -40,6 +40,20 @@ const GAMES = [
     desc: "Small, large, and unlimited pots. Call a bot at your bet. 9% house edge.",
     tag: "91% RTP",
   },
+  {
+    to: "/coinflip",
+    icon: Circle,
+    name: "Coin Flip",
+    desc: "Call heads or tails. 1.92x to start, doubles every hit, auto-cash at 983.04x.",
+    tag: "96% RTP",
+  },
+  {
+    to: "/keno",
+    icon: Hash,
+    name: "Keno",
+    desc: "Pick 1–10 spots on a 40-number board. Ten balls drawn. Catch table posted live.",
+    tag: "~94% RTP",
+  },
 ];
 
 export function Home() {
@@ -70,7 +84,7 @@ export function Home() {
       </section>
 
       <section>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
           {GAMES.map((g) => (
             <Link
               key={g.to}

@@ -15,6 +15,8 @@ import { CaseBattlesLobby } from "./pages/CaseBattlesLobby";
 import { CreateBattle } from "./pages/CreateBattle";
 import { BattleRoom } from "./pages/BattleRoom";
 import { JackpotPage } from "./pages/Jackpot";
+import { CoinFlip } from "./pages/CoinFlip";
+import { Keno } from "./pages/Keno";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -52,6 +54,8 @@ export default function App() {
           <Route path="/battles/create" element={<CreateBattle />} />
           <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
           <Route path="/jackpot" element={<JackpotPage />} />
+          <Route path="/coinflip" element={<CoinFlip />} />
+          <Route path="/keno" element={<Keno />} />
         </Routes>
       </main>
       <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">

@@ -95,6 +95,13 @@ class SoundEngine {
     this.tone(600, 0.04, "triangle", {}, 0.08);
   }
 
+  coinFlip() {
+    this.noiseBurst(0.12, 0.1, 1800);
+    this.tone(420, 0.18, "triangle", { release: 0.2 }, 0.16);
+    setTimeout(() => this.tone(880, 0.08, "sine", { release: 0.12 }, 0.12), 220);
+    setTimeout(() => this.tone(520, 0.14, "triangle", { release: 0.16 }, 0.14), 700);
+  }
+
   chip() {
     this.tone(920, 0.05, "square", { release: 0.05 }, 0.1);
   }

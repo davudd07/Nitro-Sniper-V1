@@ -34,6 +34,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { formatCredits } from "../lib/format";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
+import { HOUSE_EDGE } from "../lib/rakeback";
 
 function flatten(entries: BattleCaseEntry[]): string[] {
   return entries.flatMap((e) => Array.from({ length: e.count }, () => e.caseId));
@@ -73,6 +74,7 @@ export function CreateBattle() {
   const createBattle = useBattleStore((s) => s.createBattle);
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const spend = useEconomyStore((s) => s.spend);
+  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const push = useToastStore((s) => s.push);
 
   const mode = BATTLE_MODES.find((m) => m.id === modeId)!;
@@ -147,6 +149,7 @@ export function CreateBattle() {
       push(`You need ${formatCredits(youPay)} SH to create this battle.`, "danger");
       return;
     }
+    awardRakeback(youPay, HOUSE_EDGE.battles);
     const id = createBattle({
       modeId,
       crazy: shared ? false : crazy,

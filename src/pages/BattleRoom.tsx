@@ -22,6 +22,7 @@ import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { formatCredits } from "../lib/format";
 import { fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
+import { HOUSE_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
 
@@ -50,6 +51,7 @@ export function BattleRoom() {
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const play = useFairnessStore((s) => s.play);
   const spend = useEconomyStore((s) => s.spend);
+  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const push = useToastStore((s) => s.push);
 
@@ -641,6 +643,7 @@ export function BattleRoom() {
               push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
               return;
             }
+            awardRakeback(cost, HOUSE_EDGE.battles);
             setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });
           }}
         />

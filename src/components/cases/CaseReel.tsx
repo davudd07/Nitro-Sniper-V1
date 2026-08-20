@@ -20,13 +20,13 @@ type Orientation = "horizontal" | "vertical";
 // width when many players are on screen at once.
 const SIZE_CONFIG = {
   md: {
-    horizontal: { itemSize: 132, boxSize: 132 },
-    vertical: { itemSize: 80, boxSize: 256 },
+    horizontal: { itemSize: 140, boxSize: 140 },
+    vertical: { itemSize: 92, boxSize: 276 },
     icon: "md" as const,
   },
   lg: {
-    horizontal: { itemSize: 172, boxSize: 168 },
-    vertical: { itemSize: 96, boxSize: 304 },
+    horizontal: { itemSize: 180, boxSize: 180 },
+    vertical: { itemSize: 108, boxSize: 324 },
     icon: "lg" as const,
   },
 };
@@ -214,7 +214,7 @@ export function CaseReel({
       <div
         ref={containerRef}
         className={clsx(
-          "relative w-full max-w-full overflow-hidden rounded-xl border-2 bg-black/50 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)] transition-shadow",
+          "relative w-full max-w-full overflow-hidden border-2 bg-black/50 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)] transition-shadow",
           isGoldPhase ? "border-amber-400/70 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/20",
         )}
         style={{ height: cfg.boxSize }}
@@ -277,33 +277,46 @@ function ReelSlot({
   iconSize: "md" | "lg";
   orientation: Orientation;
 }) {
-  const isIndicator = item.id === GOLD_INDICATOR.id;
   const r = RARITIES[item.rarity];
-  const goldGlow = isIndicator ? { boxShadow: "0 0 22px rgba(251,191,36,0.7)" } : undefined;
+  const isIndicator = item.id === GOLD_INDICATOR.id;
 
   if (orientation === "horizontal") {
     return (
-      <div className="flex h-full shrink-0 flex-col items-center justify-center gap-1 px-1" style={{ width: itemSize }}>
-        <div className={clsx("rounded-lg", isIndicator && "gold-pulse")} style={goldGlow}>
-          <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} />
+      <div className="relative h-full shrink-0" style={{ width: itemSize }}>
+        <div
+          className={clsx("absolute inset-0 flex flex-col items-center justify-center gap-0.5", isIndicator && "gold-pulse")}
+          style={{
+            background: `linear-gradient(165deg, ${r.from}66, ${r.to})`,
+            boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : `inset 0 0 16px ${r.ring}33`,
+            borderRight: `2px solid ${r.ring}`,
+          }}
+        >
+          <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none" />
+          <span className="max-w-[92%] truncate px-0.5 text-[10px] font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
+            {item.name}
+          </span>
         </div>
-        <span className="max-w-[85%] truncate text-[10px] font-medium" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
-          {item.name}
-        </span>
       </div>
     );
   }
 
   return (
-    <div className="flex w-full shrink-0 items-center gap-2.5 px-3" style={{ height: itemSize }}>
-      <div className={clsx("shrink-0 rounded-lg", isIndicator && "gold-pulse")} style={goldGlow}>
-        <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} />
-      </div>
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-xs font-medium" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
-          {item.name}
-        </p>
-        {!isIndicator && <p className="text-[11px] text-slate-500">{formatCredits(item.value)} SH</p>}
+    <div className="relative w-full shrink-0" style={{ height: itemSize }}>
+      <div
+        className={clsx("absolute inset-0 flex items-center gap-2.5 px-2", isIndicator && "gold-pulse")}
+        style={{
+          background: `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
+          boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
+          borderBottom: `2px solid ${r.ring}`,
+        }}
+      >
+        <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none shrink-0" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-xs font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
+            {item.name}
+          </p>
+          {!isIndicator && <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>}
+        </div>
       </div>
     </div>
   );

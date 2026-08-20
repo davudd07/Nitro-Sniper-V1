@@ -8,6 +8,8 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
+import { DemoBetBadge } from "../components/ui/DemoBetBadge";
+import { HOUSE_EDGE } from "../lib/rakeback";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
   COIN_BASE_MULT,
@@ -79,7 +81,7 @@ export function CoinFlip() {
   const [session, setSession] = useState(0);
 
   const balance = useEconomyStore((s) => s.balance);
-  const spend = useEconomyStore((s) => s.spend);
+  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -109,10 +111,7 @@ export function CoinFlip() {
     if (phase === "flipping" || !pick) return;
     if (phase === "idle" || phase === "lost" || phase === "maxed") {
       if (bet <= 0) return;
-      if (!spend(bet)) {
-        push("Not enough Shards for that bet.", "danger");
-        return;
-      }
+      awardRakeback(bet, HOUSE_EDGE.coinflip);
       setWins(0);
       setSession((s) => s - bet);
       sound.chip();
@@ -179,7 +178,9 @@ export function CoinFlip() {
         <div className="surface p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Coin Flip</h2>
-            <InfoButton title="Coin Flip — RTP & House Edge">
+            <div className="flex items-center gap-2">
+              <DemoBetBadge />
+              <InfoButton title="Coin Flip — RTP & House Edge">
               <StatRow label="Base RTP" value={formatPercent(RTP)} />
               <StatRow label="House edge" value={formatPercent(1 - RTP)} />
               <StatRow label="First-win multiplier" value={`${COIN_BASE_MULT.toFixed(2)}x`} />
@@ -191,6 +192,7 @@ export function CoinFlip() {
                 on a fair coin.
               </p>
             </InfoButton>
+            </div>
           </div>
 
           <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Bet</label>

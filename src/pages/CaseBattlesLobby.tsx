@@ -13,6 +13,7 @@ import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
 import { formatCredits } from "../lib/format";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
+import { HOUSE_EDGE } from "../lib/rakeback";
 import { BattleCost, BorrowBadge } from "../components/battles/BattleCost";
 
 const FILTERS = [
@@ -35,6 +36,7 @@ export function CaseBattlesLobby() {
     [battlesMap],
   );
   const spend = useEconomyStore((s) => s.spend);
+  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const push = useToastStore((s) => s.push);
 
   const rows = useMemo(() => {
@@ -76,6 +78,7 @@ export function CaseBattlesLobby() {
       push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
       return;
     }
+    awardRakeback(cost, HOUSE_EDGE.battles);
     setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct });
     setJoinTarget(null);
     navigate(`/battles/${b.id}`);

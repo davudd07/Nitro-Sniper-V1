@@ -15,6 +15,8 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
+import { DemoBetBadge } from "../components/ui/DemoBetBadge";
+import { HOUSE_EDGE } from "../lib/rakeback";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { PlayingCard } from "../components/ui/PlayingCard";
 
@@ -184,7 +186,7 @@ export function Blackjack() {
   const customBetValue = Math.max(1, Math.round(Number(customBetInput)) || 1);
   const customChip: ChipDef = { value: customBetValue, ...CUSTOM_CHIP_STYLE, custom: true };
 
-  const spend = useEconomyStore((s) => s.spend);
+  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -196,10 +198,7 @@ export function Blackjack() {
   async function deal() {
     if (busy || bet <= 0) return;
     const sideBetsTotal = perfectPairsBet + twentyOnePlusThreeBet;
-    if (!spend(bet + sideBetsTotal)) {
-      push("Not enough Shards for that bet.", "danger");
-      return;
-    }
+    awardRakeback(bet + sideBetsTotal, HOUSE_EDGE.blackjack);
     setBusy(true);
     setDoubled(false);
     setOutcome(null);
@@ -309,10 +308,7 @@ export function Blackjack() {
 
   async function double() {
     if (phase !== "player-turn" || busy || player.length !== 2) return;
-    if (!spend(bet)) {
-      push("Not enough Shards to double.", "danger");
-      return;
-    }
+    awardRakeback(bet, HOUSE_EDGE.blackjack);
     setDoubled(true);
     setBusy(true);
     const d = [...deck];
@@ -524,7 +520,9 @@ export function Blackjack() {
         <div className="surface p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Blackjack</h2>
-            <InfoButton title="Blackjack — RTP & House Edge">
+            <div className="flex items-center gap-2">
+              <DemoBetBadge />
+              <InfoButton title="Blackjack — RTP & House Edge">
               <StatRow label="Rules" value="Dealer stands on all 17s" />
               <StatRow label="Blackjack payout" value="3:2" />
               <StatRow label="Est. RTP (optimal play)" value={formatPercent(0.9941, 2)} />
@@ -544,6 +542,7 @@ export function Blackjack() {
                 initial deal, independent of how the main hand plays out.
               </p>
             </InfoButton>
+            </div>
           </div>
 
           {phase === "betting" || phase === "settled" ? (

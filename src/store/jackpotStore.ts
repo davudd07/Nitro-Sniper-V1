@@ -7,8 +7,8 @@ export const JACKPOT_HOUSE_EDGE = 0.09;
 
 export const JACKPOT_POTS = [
   { id: "small", label: "Small", min: 5, max: 100, blurb: "5–100 SH" },
-  { id: "large", label: "Large", min: 100, max: 1000, blurb: "100–1,000 SH" },
-  { id: "unlimited", label: "Unlimited", min: 1000, max: 100_000, blurb: "1,000–100,000 SH" },
+  { id: "large", label: "Large", min: 100, max: 10_000, blurb: "100–10,000 SH" },
+  { id: "unlimited", label: "Unlimited", min: 10_000, max: 100_000, blurb: "10,000–100,000 SH" },
 ] as const;
 
 export type JackpotPotId = (typeof JACKPOT_POTS)[number]["id"];

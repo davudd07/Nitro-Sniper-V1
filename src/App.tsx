@@ -3,6 +3,8 @@ import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { NavBar } from "./components/layout/NavBar";
 import { DemoBanner } from "./components/layout/DemoBanner";
+import { GameSidebar } from "./components/layout/GameSidebar";
+import { ChatSidebar } from "./components/layout/ChatSidebar";
 import { Toasts } from "./components/ui/Toasts";
 import { useEconomyStore } from "./store/economyStore";
 import { useToastStore } from "./store/toastStore";
@@ -52,27 +54,31 @@ export default function App() {
   }, [location.pathname]);
 
   return (
-    <div className="flex min-h-full flex-col">
-      <NavBar wide={isBattleRoom} />
-      <DemoBanner />
-      <main className={clsx("mx-auto w-full min-w-0 flex-1 px-3 py-6 sm:px-4", isBattleRoom ? "max-w-none" : "max-w-7xl")}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/mines" element={<Mines />} />
-          <Route path="/blackjack" element={<Blackjack />} />
-          <Route path="/cases" element={<Cases />} />
-          <Route path="/cases/:caseId" element={<CaseOpenPage />} />
-          <Route path="/battles" element={<CaseBattlesLobby />} />
-          <Route path="/battles/create" element={<CreateBattle />} />
-          <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
-          <Route path="/jackpot" element={<JackpotPage />} />
-          <Route path="/coinflip" element={<CoinFlip />} />
-          <Route path="/keno" element={<ComingSoon title="Keno" />} />
-        </Routes>
-      </main>
-      <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
-        Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
-      </footer>
+    <div className="flex min-h-full">
+      <GameSidebar />
+      <div className="flex min-w-0 flex-1 flex-col">
+        <NavBar wide={isBattleRoom} />
+        <DemoBanner />
+        <main className={clsx("mx-auto w-full min-w-0 flex-1 px-3 py-6 sm:px-4", isBattleRoom ? "max-w-none" : "max-w-7xl")}>
+          <Routes>
+            <Route path="/" element={<Home />} />
+            <Route path="/mines" element={<Mines />} />
+            <Route path="/blackjack" element={<Blackjack />} />
+            <Route path="/cases" element={<Cases />} />
+            <Route path="/cases/:caseId" element={<CaseOpenPage />} />
+            <Route path="/battles" element={<CaseBattlesLobby />} />
+            <Route path="/battles/create" element={<CreateBattle />} />
+            <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
+            <Route path="/jackpot" element={<JackpotPage />} />
+            <Route path="/coinflip" element={<CoinFlip />} />
+            <Route path="/keno" element={<ComingSoon title="Keno" />} />
+          </Routes>
+        </main>
+        <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
+          Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
+        </footer>
+      </div>
+      <ChatSidebar />
       <Toasts />
     </div>
   );

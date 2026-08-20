@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import { Bomb, Gem, Minus, Plus } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../store/economyStore";
@@ -7,7 +8,9 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
+import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
+import { HOUSE_EDGE } from "../lib/rakeback";
 
 const GRID_SIZE = 25;
 const RTP = 0.96;
@@ -32,8 +35,8 @@ export function Mines() {
   const [reveals, setReveals] = useState(0);
   const [busy, setBusy] = useState(false);
 
-  const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
+  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
@@ -45,10 +48,7 @@ export function Mines() {
   async function startGame() {
     if (phase === "playing" || busy) return;
     if (bet <= 0) return;
-    if (!spend(bet)) {
-      push("Not enough Shards for that bet.", "danger");
-      return;
-    }
+    awardRakeback(bet, HOUSE_EDGE.mines);
     setBusy(true);
     const rolls = await play(GRID_SIZE);
     const order = rolls.map((r, i) => ({ r, i })).sort((a, b) => a.r - b.r);
@@ -110,7 +110,9 @@ export function Mines() {
         <div className="surface p-5">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-semibold tracking-tight text-white">Mines</h2>
-            <InfoButton title="Mines — RTP & House Edge">
+            <div className="flex items-center gap-2">
+              <DemoBetBadge />
+              <InfoButton title="Mines — RTP & House Edge">
               <StatRow label="Base RTP" value={formatPercent(RTP)} />
               <StatRow label="House edge" value={formatPercent(1 - RTP)} />
               <p>
@@ -119,9 +121,12 @@ export function Mines() {
                 positions are derived from the provably-fair seed for this round.
               </p>
             </InfoButton>
+            </div>
           </div>
 
-          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Bet</label>
+          <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+            Demo bet
+          </label>
           <div className="mb-5 flex items-center gap-2">
             <input
               type="number"
@@ -218,30 +223,38 @@ export function Mines() {
             {phase === "cashed" && "Cashed out"}
           </span>
         </div>
-        <div className="mx-auto grid max-w-md grid-cols-5 gap-2.5">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-2">
           {tiles.map((t, i) => {
             const isMine = minePositions.has(i);
             const revealed = t !== "hidden" || (revealAllMines && isMine);
             return (
-              <button
+              <motion.button
                 key={i}
+                type="button"
                 onClick={() => revealTile(i)}
                 disabled={phase !== "playing" || t !== "hidden"}
+                whileHover={phase === "playing" && t === "hidden" ? { scale: 1.08, y: -3 } : undefined}
+                whileTap={phase === "playing" && t === "hidden" ? { scale: 0.9 } : undefined}
+                transition={{ type: "spring", stiffness: 520, damping: 22 }}
                 className={clsx(
-                  "flex aspect-square items-center justify-center rounded-xl text-lg font-bold transition-all duration-150",
+                  "flex aspect-square items-center justify-center rounded-md border-2 text-lg font-bold",
                   !revealed &&
-                    "bg-bg-700 shadow-[inset_0_1px_0_rgba(255,255,255,0.08),0_4px_0_#0a0a12] ring-1 ring-white/10 hover:-translate-y-0.5 hover:bg-bg-600 hover:ring-cyan-300/30 active:translate-y-0 disabled:hover:translate-y-0",
-                  revealed && t === "safe" && "bg-emerald-500/15 ring-1 ring-emerald-400/30",
-                  revealed && isMine && "bg-rose-500/20 ring-1 ring-rose-400/40",
+                    "border-[#3d5a3a] bg-[#1a2a1c] shadow-[0_4px_0_#08140c] hover:border-lime-400/70 hover:bg-[#243628] hover:shadow-[0_4px_0_#14532d,0_0_18px_rgba(163,230,53,0.25)] disabled:hover:border-[#3d5a3a] disabled:hover:bg-[#1a2a1c] disabled:hover:shadow-[0_4px_0_#08140c]",
+                  revealed && t === "safe" && "border-emerald-400/50 bg-emerald-500/20",
+                  revealed && isMine && "border-rose-400/50 bg-rose-500/20",
                 )}
               >
                 {revealed &&
                   (isMine ? (
-                    <Bomb className="h-6 w-6 text-rose-400" />
+                    <motion.span initial={{ scale: 0.4, rotate: -20 }} animate={{ scale: 1, rotate: 0 }}>
+                      <Bomb className="h-6 w-6 text-rose-400" />
+                    </motion.span>
                   ) : (
-                    <Gem className="h-6 w-6 text-emerald-300" />
+                    <motion.span initial={{ scale: 0.4, rotate: 16 }} animate={{ scale: 1, rotate: 0 }}>
+                      <Gem className="h-6 w-6 text-emerald-300" />
+                    </motion.span>
                   ))}
-              </button>
+              </motion.button>
             );
           })}
         </div>

@@ -1,0 +1,92 @@
+import { NavLink, useNavigate } from "react-router-dom";
+import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, Hash, ChevronLeft, ChevronRight, PanelLeft } from "lucide-react";
+import { clsx } from "clsx";
+import { useSettingsStore } from "../../store/settingsStore";
+import { sound } from "../../lib/sound";
+
+const LINKS = [
+  { to: "/", label: "Home", icon: Gem, end: true },
+  { to: "/mines", label: "Mines", icon: Bomb, end: false },
+  { to: "/blackjack", label: "Blackjack", icon: Spade, end: false },
+  { to: "/cases", label: "Cases", icon: Package, end: false },
+  { to: "/battles", label: "Battles", icon: Swords, end: false },
+  { to: "/jackpot", label: "Jackpot", icon: Coins, end: false },
+  { to: "/coinflip", label: "Coin Flip", icon: Circle, end: false },
+];
+
+export function GameSidebar() {
+  const open = useSettingsStore((s) => s.leftNavOpen);
+  const toggle = useSettingsStore((s) => s.toggleLeftNav);
+  const navigate = useNavigate();
+
+  return (
+    <aside
+      className={clsx(
+        "relative flex shrink-0 flex-col border-r-2 border-[#2a3a28] bg-[#0c1410] transition-[width] duration-200 ease-out",
+        open ? "w-[232px]" : "w-12",
+      )}
+    >
+      <button
+        type="button"
+        onClick={() => {
+          sound.click();
+          toggle();
+        }}
+        className="absolute -right-3 top-4 z-20 grid h-6 w-6 place-items-center rounded-md border-2 border-[#3d5a3a] bg-[#152018] text-emerald-200 shadow-[2px_2px_0_#050805]"
+        title={open ? "Collapse games" : "Open games"}
+      >
+        {open ? <ChevronLeft className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}
+      </button>
+
+      <div className={clsx("flex items-center gap-2 px-3 py-4", !open && "justify-center px-1")}>
+        <PanelLeft className="h-4 w-4 shrink-0 text-emerald-300" />
+        {open && (
+          <p className="pixel-label text-[15px] font-extrabold uppercase text-emerald-200/80">Games</p>
+        )}
+      </div>
+
+      <nav className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-2 pb-4 scrollbar-thin">
+        {LINKS.map(({ to, label, icon: Icon, end }) => (
+          <NavLink
+            key={to}
+            to={to}
+            end={end}
+            title={label}
+            className={({ isActive }) =>
+              clsx(
+                "flex items-center gap-2.5 rounded-md border-2 px-2.5 py-2 text-[13px] font-semibold transition-colors",
+                open ? "justify-start" : "justify-center px-0",
+                isActive
+                  ? "border-emerald-400/50 bg-emerald-400/15 text-white"
+                  : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200",
+              )
+            }
+          >
+            <Icon className="h-4 w-4 shrink-0" />
+            {open && <span className="truncate">{label}</span>}
+          </NavLink>
+        ))}
+        <button
+          type="button"
+          title="Keno — coming soon"
+          onClick={() => {
+            sound.click();
+            navigate("/keno");
+          }}
+          className={clsx(
+            "flex items-center gap-2.5 rounded-md border-2 border-transparent px-2.5 py-2 text-[13px] font-semibold text-slate-500 hover:bg-white/[0.03]",
+            open ? "justify-start" : "justify-center px-0",
+          )}
+        >
+          <Hash className="h-4 w-4 shrink-0" />
+          {open && (
+            <span className="flex min-w-0 items-center gap-1 truncate">
+              Keno
+              <span className="rounded bg-white/10 px-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">Soon</span>
+            </span>
+          )}
+        </button>
+      </nav>
+    </aside>
+  );
+}

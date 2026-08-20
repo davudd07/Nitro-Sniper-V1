@@ -78,7 +78,7 @@ export function JackpotCircleWheel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
-  const gradient = conicWithSeparators(slices);
+  const gradient = conicFromSlices(slices);
 
   const winnerName = done && winnerId ? tickets.find((t) => t.playerId === winnerId)?.name : null;
 
@@ -136,23 +136,9 @@ export function JackpotCircleWheel({
 
 type Slice = { ticket: JackpotTicket; start: number; sweep: number; index: number };
 
-const SLICE_LINE_DEG = 0.45;
-const SLICE_LINE_COLOR = "#94a3b8";
-
-function conicWithSeparators(slices: Slice[]): string {
+function conicFromSlices(slices: Slice[]): string {
   if (slices.length === 0) return "";
-  return slices
-    .map((s) => {
-      const line = Math.min(SLICE_LINE_DEG, Math.max(0.15, s.sweep / 8));
-      const a = s.start;
-      const b = s.start + s.sweep;
-      return [
-        `${SLICE_LINE_COLOR} ${a}deg ${a + line}deg`,
-        `${s.ticket.color} ${a + line}deg ${b - line}deg`,
-        `${SLICE_LINE_COLOR} ${b - line}deg ${b}deg`,
-      ].join(", ");
-    })
-    .join(", ");
+  return slices.map((s) => `${s.ticket.color} ${s.start}deg ${s.start + s.sweep}deg`).join(", ");
 }
 
 function buildSlices(tickets: JackpotTicket[]): Slice[] {

@@ -1,5 +1,5 @@
 import { NavLink } from "react-router-dom";
-import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, Hash, Volume2, VolumeX, RotateCcw } from "lucide-react";
+import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, Volume2, VolumeX, RotateCcw } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../../store/economyStore";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -14,7 +14,6 @@ const LINKS = [
   { to: "/battles", label: "Battles", icon: Swords, end: false },
   { to: "/jackpot", label: "Jackpot", icon: Coins, end: false },
   { to: "/coinflip", label: "Coin", icon: Circle, end: false },
-  { to: "/keno", label: "Keno", icon: Hash, end: false },
 ];
 
 export function NavBar({ wide = false }: { wide?: boolean }) {

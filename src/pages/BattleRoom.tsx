@@ -19,6 +19,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { randomBotName, BOT_NAMES } from "../data/botNames";
 import { BattleCost } from "../components/battles/BattleCost";
+import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { formatCredits } from "../lib/format";
 import { fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { sound } from "../lib/sound";
@@ -100,6 +101,8 @@ export function BattleRoom() {
   const [liveOdds, setLiveOdds] = useState<Record<number, number>>({});
   const [tieBreak, setTieBreak] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
+  const [payout, setPayout] = useState<BattlePayout | null>(null);
+  const [resultOpen, setResultOpen] = useState(false);
   const borrowPct =
     battle?.source === "you"
       ? Math.max(joinIntent?.borrowPct ?? 0, battle.creatorBorrowPct)
@@ -258,17 +261,25 @@ export function BattleRoom() {
       const n = Math.max(1, players.length);
       const share = pot / n;
       const youPlayed = players.some((p) => p.kind === "you");
+      const paid = youPlayed ? winPayout(share, borrowPct) : 0;
       if (youPlayed && share > 0) {
-        const paid = winPayout(share, borrowPct);
         credit(paid);
-        push(
-          borrowPct > 0
-            ? `Shared split. You keep ${pctLabel(1 - borrowPct)} after borrow: +${formatCredits(paid)} SH`
-            : `Shared battle — pot split equally. +${formatCredits(paid)} SH`,
-          "success",
-        );
         sound.win("big");
       }
+      setPayout({
+        shared: true,
+        youWon: youPlayed,
+        pot,
+        share,
+        youPaid: paid,
+        borrowPct,
+        winningTeam: null,
+        winners: players.map((p) => ({
+          name: p.kind === "you" ? "You" : p.name || `Player ${p.slotIndex + 1}`,
+          color: p.color,
+        })),
+      });
+      setResultOpen(true);
       setPhase("finished");
       return;
     }
@@ -352,22 +363,27 @@ export function BattleRoom() {
     const teamMembers = players.filter((p) => p.teamIndex === winnerTeam);
     const share = pot / Math.max(1, teamMembers.length);
     const youWon = teamMembers.some((p) => p.kind === "you");
+    const paid = youWon ? winPayout(share, borrowPct) : 0;
     if (youWon && share > 0) {
-      const paid = winPayout(share, borrowPct);
       credit(paid);
-      if (borrowPct > 0) {
-        push(
-          `Your team won! You keep ${pctLabel(1 - borrowPct)} after borrow: +${formatCredits(paid)} SH`,
-          "success",
-        );
-      } else {
-        push(`Your team won the battle! +${formatCredits(paid)} SH`, "success");
-      }
       sound.win("big");
     } else {
-      push("Your team didn't win this battle.", "info");
       sound.lose();
     }
+    setPayout({
+      shared: false,
+      youWon,
+      pot,
+      share,
+      youPaid: paid,
+      borrowPct: youWon ? borrowPct : 0,
+      winningTeam: winnerTeam,
+      winners: teamMembers.map((p) => ({
+        name: p.kind === "you" ? "You" : p.name || `Player ${p.slotIndex + 1}`,
+        color: p.color,
+      })),
+    });
+    setResultOpen(true);
   }
 
   function handleJackpotFinished() {
@@ -634,7 +650,12 @@ export function BattleRoom() {
         <div className="rounded-2xl border border-sky-400/30 bg-sky-500/10 p-5 text-center">
           <Users className="mx-auto mb-2 h-8 w-8 text-sky-300" />
           <p className="text-lg font-bold text-white">Shared battle — pot split equally</p>
-          <p className="mt-1 text-sm text-slate-300">Total pot: {formatCredits(pot)} SH</p>
+          <p className="mt-1 text-sm text-slate-300">
+            Total pot {formatCredits(pot)} SH · each player {formatCredits(payout?.share ?? pot / Math.max(1, players.length))} SH
+          </p>
+          {payout && payout.youPaid > 0 && (
+            <p className="mt-1 font-mono text-lg font-bold text-amber-300">You received +{formatCredits(payout.youPaid)} SH</p>
+          )}
           <Link
             to="/battles/create"
             onClick={() => sound.click()}
@@ -649,13 +670,21 @@ export function BattleRoom() {
         <div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/10 p-5 text-center">
           <Crown className="mx-auto mb-2 h-8 w-8 text-amber-300" />
           <p className="text-lg font-bold text-white">
-            Team {winningTeam + 1} wins the battle!{" "}
+            Team {winningTeam + 1} won {formatCredits(pot)} SH
+          </p>
+          <p className="mt-1 text-sm text-slate-300">
             {players
               .filter((p) => p.teamIndex === winningTeam)
               .map((p) => (p.kind === "you" ? "You" : p.name))
               .join(" & ")}
+            {" · "}
+            each winner {formatCredits(payout?.share ?? pot)} SH
           </p>
-          <p className="mt-1 text-sm text-slate-300">Total pot: {formatCredits(pot)} SH</p>
+          {payout?.youWon && (
+            <p className="mt-2 font-mono text-lg font-bold text-amber-300">
+              You received +{formatCredits(payout.youPaid)} SH
+            </p>
+          )}
           <Link
             to="/battles/create"
             onClick={() => sound.click()}
@@ -664,6 +693,10 @@ export function BattleRoom() {
             Start another battle
           </Link>
         </div>
+      )}
+
+      {resultOpen && payout && (
+        <BattleResultOverlay result={payout} onClose={() => setResultOpen(false)} />
       )}
     </div>
   );

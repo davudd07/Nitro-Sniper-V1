@@ -16,7 +16,9 @@ import { CreateBattle } from "./pages/CreateBattle";
 import { BattleRoom } from "./pages/BattleRoom";
 import { JackpotPage } from "./pages/Jackpot";
 import { CoinFlip } from "./pages/CoinFlip";
-import { Keno } from "./pages/Keno";
+import { ComingSoon } from "./pages/ComingSoon";
+import { PATH_TO_GAME } from "./data/lobbyGames";
+import { trackRecent } from "./lib/recentGames";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -39,6 +41,16 @@ export default function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balance]);
 
+  useEffect(() => {
+    const path = location.pathname;
+    if (path.startsWith("/battles")) trackRecent("battles");
+    else if (path.startsWith("/cases")) trackRecent("cases");
+    else {
+      const id = PATH_TO_GAME[path];
+      if (id) trackRecent(id);
+    }
+  }, [location.pathname]);
+
   return (
     <div className="flex min-h-full flex-col">
       <NavBar wide={isBattleRoom} />
@@ -55,7 +67,7 @@ export default function App() {
           <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
           <Route path="/jackpot" element={<JackpotPage />} />
           <Route path="/coinflip" element={<CoinFlip />} />
-          <Route path="/keno" element={<Keno />} />
+          <Route path="/keno" element={<ComingSoon title="Keno" />} />
         </Routes>
       </main>
       <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">

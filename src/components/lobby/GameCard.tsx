@@ -1,0 +1,46 @@
+import { Link } from "react-router-dom";
+import { clsx } from "clsx";
+import type { LobbyGame } from "../../data/lobbyGames";
+
+export function GameCard({ game, onSoon }: { game: LobbyGame; onSoon?: () => void }) {
+  const body = (
+    <>
+      <img src={game.image} alt="" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pb-3 pt-10">
+        <p className="text-[15px] font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow">{game.name}</p>
+        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55">{game.subtitle}</p>
+      </div>
+      {game.isNew && (
+        <span className="absolute left-2 top-2 rounded-full bg-fuchsia-500 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white shadow">
+          New
+        </span>
+      )}
+      {game.comingSoon && (
+        <div className="absolute inset-0 z-10 grid place-items-center bg-black/55 backdrop-blur-[2px]">
+          <span className="-rotate-6 rounded-md border border-white/25 bg-black/75 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-[0.22em] text-white shadow-lg">
+            Coming Soon
+          </span>
+        </div>
+      )}
+    </>
+  );
+
+  const className = clsx(
+    "group relative block aspect-[3/4] w-[158px] shrink-0 overflow-hidden rounded-xl ring-1 ring-white/10 transition-transform sm:w-[176px]",
+    !game.comingSoon && "hover:-translate-y-1 hover:ring-white/25",
+  );
+
+  if (game.comingSoon || !game.to) {
+    return (
+      <button type="button" onClick={onSoon} className={className}>
+        {body}
+      </button>
+    );
+  }
+
+  return (
+    <Link to={game.to} className={className}>
+      {body}
+    </Link>
+  );
+}

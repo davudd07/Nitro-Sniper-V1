@@ -8,6 +8,7 @@
   --color-bg-600: #262633;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-brand: "Oswald", ui-sans-serif, sans-serif;
 }
 
 html,
@@ -133,6 +134,23 @@ body {
 .pixel-label {
   font-family: "VT323", ui-monospace, monospace;
   letter-spacing: 0.12em;
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.brand-wordmark {
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: 1.4rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  color: #019201;
+  -webkit-text-stroke: 2px #031403;
+  paint-order: stroke fill;
+  text-shadow: 0 1px 0 #000, 1px 1px 0 #000;
 }
 
 .rain-banner {

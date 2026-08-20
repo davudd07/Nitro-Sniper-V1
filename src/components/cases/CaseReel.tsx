@@ -20,12 +20,12 @@ type Orientation = "horizontal" | "vertical";
 // width when many players are on screen at once.
 const SIZE_CONFIG = {
   md: {
-    horizontal: { itemSize: 132, boxSize: 124 },
+    horizontal: { itemSize: 132, boxSize: 132 },
     vertical: { itemSize: 80, boxSize: 256 },
     icon: "md" as const,
   },
   lg: {
-    horizontal: { itemSize: 172, boxSize: 148 },
+    horizontal: { itemSize: 172, boxSize: 168 },
     vertical: { itemSize: 96, boxSize: 304 },
     icon: "lg" as const,
   },
@@ -92,9 +92,9 @@ export function CaseReel({
   const lastTickIndexRef = useRef(-1);
   const cfg = SIZE_CONFIG[size][orientation];
   const isHorizontal = orientation === "horizontal";
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Fill the track with a preview strip so the reel always spans the
-  // container (idle "Waiting to spin" text made it look empty/cut off).
+  // Fill the track with a preview strip so the reel always spans the container.
   useEffect(() => {
     if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
     const rand = mulberry32(laneSeed + 17);
@@ -119,7 +119,7 @@ export function CaseReel({
         setPhase("charge");
         sound.goldCharge();
         onGoldTriggered?.();
-        setTimeout(() => {
+        timeoutRef.current = setTimeout(() => {
           const goldRand = mulberry32(seedBase * 104729 + 3);
           const goldStrip = buildStrip(goldPool.length ? goldPool : [result.item], result.item, goldRand);
           setStrip(goldStrip);
@@ -138,18 +138,23 @@ export function CaseReel({
         onLanded?.(result.item, false);
       }
     });
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
   function animateTo(seed: number, dur: number, done: () => void) {
-    const containerDim = isHorizontal
-      ? (containerRef.current?.clientWidth ?? cfg.boxSize)
-      : (containerRef.current?.clientHeight ?? cfg.boxSize);
-    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
-    const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const start = performance.now();
 
     function tick(now: number) {
+      const containerDim = isHorizontal
+        ? (containerRef.current?.clientWidth || cfg.boxSize)
+        : (containerRef.current?.clientHeight || cfg.boxSize);
+      const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
+      const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
       const t = Math.min(1, (now - start) / dur);
       const eased = easeOutQuart(t);
       const pos = targetOffset * eased;
@@ -171,9 +176,13 @@ export function CaseReel({
     rafRef.current = requestAnimationFrame(tick);
   }
 
-  useEffect(() => () => {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    },
+    [],
+  );
 
   const isGoldPhase = phase === "gold" || phase === "charge";
 
@@ -209,11 +218,11 @@ export function CaseReel({
           </div>
         )}
         <div
-          className={clsx(
-            "absolute flex",
-            isHorizontal ? "left-0 top-1/2 -translate-y-1/2 flex-row" : "left-0 top-0 w-full flex-col",
-          )}
-          style={{ transform: isHorizontal ? `translate(${-offset}px, -50%)` : `translateY(${-offset}px)` }}
+          className={clsx("absolute flex", isHorizontal ? "inset-y-0 left-0 flex-row" : "inset-x-0 top-0 w-full flex-col")}
+          style={{
+            transform: isHorizontal ? `translateX(${-offset}px)` : `translateY(${-offset}px)`,
+            willChange: "transform",
+          }}
         >
           {strip.map((item, i) => (
             <ReelSlot key={i} item={item} itemSize={cfg.itemSize} iconSize={SIZE_CONFIG[size].icon} orientation={orientation} />
@@ -241,7 +250,7 @@ function ReelSlot({
 
   if (orientation === "horizontal") {
     return (
-      <div className="flex h-full shrink-0 flex-col items-center justify-center gap-1 overflow-hidden py-2" style={{ width: itemSize }}>
+      <div className="flex h-full shrink-0 flex-col items-center justify-center gap-1 px-1" style={{ width: itemSize }}>
         <div className={clsx("rounded-lg", isIndicator && "gold-pulse")} style={goldGlow}>
           <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} />
         </div>

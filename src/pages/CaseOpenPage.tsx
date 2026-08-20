@@ -89,15 +89,18 @@ export function CaseOpenPage() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          <CaseReel
-            pool={pool}
-            goldPool={goldPool}
-            result={pendingResult}
-            spinToken={spinToken}
-            goldSpinEnabled={goldSpin}
-            orientation="horizontal"
-            onLanded={handleLanded}
-          />
+          <div className="surface min-w-0 overflow-hidden p-3">
+            <CaseReel
+              pool={pool}
+              goldPool={goldPool}
+              result={pendingResult}
+              spinToken={spinToken}
+              goldSpinEnabled={goldSpin}
+              size="lg"
+              orientation="horizontal"
+              onLanded={handleLanded}
+            />
+          </div>
 
           <div className="surface flex flex-wrap items-center justify-between gap-3 p-3">
             <div className="flex items-center gap-2 text-sm text-slate-300">

@@ -356,122 +356,137 @@ export function BattleRoom() {
         <ArrowLeft className="h-4 w-4" /> Back to battles
       </Link>
 
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-bg-800/60 p-4">
-        <div className="flex items-center gap-2">
-          <Swords className="h-5 w-5 text-amber-300" />
-          <span className="text-lg font-bold text-white">{mode.label} Battle</span>
-          {battle.crazy && (
-            <span className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-300">
-              <Shuffle className="h-3 w-3" /> Crazy
-            </span>
-          )}
-          {battle.jackpot && (
-            <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">
-              <Coins className="h-3 w-3" /> Jackpot
-            </span>
-          )}
-          {battle.terminal && (
-            <span className="flex items-center gap-1 rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-300">
-              <Flag className="h-3 w-3" /> Terminal
-            </span>
-          )}
-          {battle.goldSpin && (
-            <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-300">
-              <Sparkles className="h-3 w-3" /> Gold Spin
-            </span>
-          )}
-        </div>
-        <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
-          <span>
-            Pot: <span className="font-mono font-semibold text-amber-300">{formatCredits(pot)} SH</span>
-          </span>
-          {battle.terminal && (
-            <span className="text-pink-300">
-              {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
-              {battle.jackpot ? " · jackpot odds from last case" : ""}
-            </span>
-          )}
-          {phase === "running" && currentCase && (
+      <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-white/10 bg-bg-800/50">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+          <div className="flex flex-wrap items-center gap-2">
+            <Swords className="h-5 w-5 text-amber-300" />
+            <span className="text-lg font-bold text-white">{mode.label} Battle</span>
+            {battle.crazy && (
+              <span className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-300">
+                <Shuffle className="h-3 w-3" /> Crazy
+              </span>
+            )}
+            {battle.jackpot && (
+              <span className="flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-300">
+                <Coins className="h-3 w-3" /> Jackpot
+              </span>
+            )}
+            {battle.terminal && (
+              <span className="flex items-center gap-1 rounded-full bg-pink-500/15 px-2 py-0.5 text-xs font-medium text-pink-300">
+                <Flag className="h-3 w-3" /> Terminal
+              </span>
+            )}
+            {battle.goldSpin && (
+              <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-300">
+                <Sparkles className="h-3 w-3" /> Gold Spin
+              </span>
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-sm text-slate-400">
             <span>
-              Case {caseIndex + 1}/{caseSequence.length}: <span className="text-white">{currentCase.name}</span>
+              Pot: <span className="font-mono font-semibold text-amber-300">{formatCredits(pot)} SH</span>
             </span>
-          )}
+            {battle.terminal && (
+              <span className="text-pink-300">
+                {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
+                {battle.jackpot ? " · jackpot odds from last case" : ""}
+              </span>
+            )}
+            {phase === "running" && currentCase && (
+              <span>
+                Case {caseIndex + 1}/{caseSequence.length}: <span className="text-white">{currentCase.name}</span>
+              </span>
+            )}
+          </div>
         </div>
-      </div>
 
-      <div className="flex gap-2 overflow-x-auto rounded-xl border border-white/10 bg-bg-800/40 p-2 scrollbar-thin">
-        {caseSequence.map((id, i) => {
-          const c = getCase(id)!;
-          const activeIdx = i === caseIndex && phase === "running";
-          const doneIdx = i < caseIndex || phase === "finished" || phase === "jackpot";
-          return (
-            <div
-              key={i}
-              className={clsx(
-                "flex shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5 transition-opacity",
-                activeIdx ? "border-fuchsia-400/60" : "border-white/5",
-                doneIdx && !activeIdx && "opacity-40",
-              )}
-            >
-              <CaseThumb c={c} className="h-10 w-10 rounded" />
-            </div>
-          );
-        })}
-        {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
-      </div>
-
-      {phase === "countdown" && <BattleCountdown countdown={countdown} />}
-
-      <div className="flex min-w-0 w-full items-stretch gap-2 sm:gap-3">
-        {teams.map((teamPlayers, teamIdx) => {
-          const isTeam = teamPlayers.length > 1;
-          const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
-          const reelSize = players.length <= 4 ? "lg" : "md";
-          return (
-            <Fragment key={teamIdx}>
-              {teamIdx > 0 && <TeamDivider />}
+        <div className="flex gap-2 overflow-x-auto border-b border-white/10 bg-black/20 px-3 py-2 scrollbar-thin">
+          {caseSequence.map((id, i) => {
+            const c = getCase(id)!;
+            const activeIdx = i === caseIndex && phase === "running";
+            const doneIdx = i < caseIndex || phase === "finished" || phase === "jackpot";
+            return (
               <div
+                key={i}
                 className={clsx(
-                  "flex min-w-0 flex-1 flex-col gap-2 rounded-2xl transition-colors",
-                  isTeam && "border p-2 sm:p-3",
+                  "flex shrink-0 flex-col items-center gap-1 rounded-lg border p-1.5 transition-opacity",
+                  activeIdx ? "border-fuchsia-400/60" : "border-white/5",
+                  doneIdx && !activeIdx && "opacity-40",
                 )}
-                style={
-                  isTeam
-                    ? { borderColor: `${teamColor}30`, background: `linear-gradient(160deg, ${teamColor}14, transparent 65%)` }
-                    : undefined
-                }
               >
-                {isTeam && (
-                  <p className="text-center text-[11px] font-bold uppercase tracking-widest" style={{ color: teamColor }}>
-                    Team {teamIdx + 1}
-                  </p>
-                )}
-                <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
-                  {teamPlayers.map((p) => (
-                    <div key={p.slotIndex} className="min-w-0 flex-1">
-                      <PlayerColumn
-                        player={p}
-                        result={pendingResults[p.slotIndex] ?? null}
-                        spinToken={spinToken}
-                        goldSpinEnabled={battle.goldSpin}
-                        state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
-                        battleActive={phase === "running"}
-                        activeCase={currentCase ?? CASES[0]}
-                        costPerPlayer={battle.costPerPlayer}
-                        jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
-                        terminal={battle.terminal}
-                        reelSize={reelSize}
-                        onLanded={(item) => handleLanded(p.slotIndex, item)}
-                        onCallBot={() => callBot(p.slotIndex)}
-                        onSimulateJoin={() => simulateJoin(p.slotIndex)}
-                      />
-                    </div>
-                  ))}
-                </div>
+                <CaseThumb c={c} className="h-10 w-10 rounded" />
               </div>
-            </Fragment>
-          );
-        })}
+            );
+          })}
+          {caseSequence.length === 0 && <span className="p-2 text-xs text-slate-500">No cases configured.</span>}
+        </div>
+
+        <div className="relative min-w-0 w-full p-3">
+          {phase === "countdown" && <BattleCountdown countdown={countdown} />}
+          <div
+            className="grid w-full min-w-0 items-stretch"
+            style={{
+              gridTemplateColumns: teams.map((_, i) => (i === 0 ? "minmax(0,1fr)" : "auto minmax(0,1fr)")).join(" "),
+            }}
+          >
+            {teams.map((teamPlayers, teamIdx) => {
+              const isTeam = teamPlayers.length > 1;
+              const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+              const reelSize = players.length <= 4 ? "lg" : "md";
+              return (
+                <Fragment key={teamIdx}>
+                  {teamIdx > 0 && <TeamDivider />}
+                  <div
+                    className="flex min-w-0 flex-col overflow-hidden rounded-xl"
+                    style={
+                      isTeam
+                        ? {
+                            border: `1px solid ${teamColor}40`,
+                            background: `linear-gradient(180deg, ${teamColor}18, transparent 42%)`,
+                          }
+                        : undefined
+                    }
+                  >
+                    {isTeam && (
+                      <p className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest" style={{ color: teamColor }}>
+                        Team {teamIdx + 1}
+                      </p>
+                    )}
+                    <div
+                      className="grid min-w-0 flex-1"
+                      style={{ gridTemplateColumns: `repeat(${teamPlayers.length}, minmax(0, 1fr))` }}
+                    >
+                      {teamPlayers.map((p, i) => (
+                        <div
+                          key={p.slotIndex}
+                          className={clsx("min-w-0", isTeam && i > 0 && "border-l border-white/10")}
+                        >
+                          <PlayerColumn
+                            player={p}
+                            result={pendingResults[p.slotIndex] ?? null}
+                            spinToken={spinToken}
+                            goldSpinEnabled={battle.goldSpin}
+                            state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
+                            battleActive={phase === "running"}
+                            activeCase={currentCase ?? CASES[0]}
+                            costPerPlayer={battle.costPerPlayer}
+                            jackpotOdds={battle.jackpot ? liveOdds[p.slotIndex] : undefined}
+                            terminal={battle.terminal}
+                            grouped={isTeam}
+                            reelSize={reelSize}
+                            onLanded={(item) => handleLanded(p.slotIndex, item)}
+                            onCallBot={() => callBot(p.slotIndex)}
+                            onSimulateJoin={() => simulateJoin(p.slotIndex)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </Fragment>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {phase === "jackpot" && jackpotTickets && (
@@ -520,11 +535,10 @@ export function BattleRoom() {
 
 function TeamDivider() {
   return (
-    <div className="relative flex w-6 shrink-0 items-center justify-center self-stretch sm:w-10">
-      <div className="absolute inset-y-6 left-1/2 w-px -translate-x-1/2 bg-gradient-to-b from-transparent via-white/15 to-transparent" />
-      <div className="relative z-10 flex flex-col items-center gap-0.5 rounded-full border border-white/10 bg-bg-900 p-2 shadow-lg">
-        <Swords className="h-4 w-4 text-slate-400" />
-        <span className="text-[8px] font-bold uppercase tracking-widest text-slate-500">vs</span>
+    <div className="flex w-9 shrink-0 items-center justify-center self-stretch sm:w-11">
+      <div className="flex flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15">
+        <Swords className="h-4 w-4 text-slate-300" />
+        <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
       </div>
     </div>
   );
@@ -532,21 +546,23 @@ function TeamDivider() {
 
 function BattleCountdown({ countdown }: { countdown: number }) {
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-fuchsia-400/30 bg-gradient-to-br from-fuchsia-500/15 via-bg-800 to-cyan-500/10 py-10 text-center">
-      <div className="pointer-events-none absolute inset-0 shimmer opacity-40" />
-      <p className="relative text-sm font-semibold uppercase tracking-widest text-fuchsia-200">Battle starting in</p>
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={countdown}
-          initial={{ opacity: 0, scale: 1.6 }}
-          animate={{ opacity: 1, scale: 1 }}
-          exit={{ opacity: 0, scale: 0.7 }}
-          transition={{ duration: 0.35, ease: "easeOut" }}
-          className="relative text-7xl font-black text-white drop-shadow-[0_0_20px_rgba(232,121,249,0.6)] sm:text-8xl"
-        >
-          {countdown}
-        </motion.p>
-      </AnimatePresence>
+    <div className="absolute inset-0 z-30 grid place-items-center overflow-hidden rounded-xl bg-bg-950/80 backdrop-blur-md">
+      <div className="pointer-events-none absolute inset-0 shimmer opacity-30" />
+      <div className="relative text-center">
+        <p className="text-sm font-semibold uppercase tracking-[0.35em] text-fuchsia-200">Battle starting in</p>
+        <AnimatePresence mode="wait">
+          <motion.p
+            key={countdown}
+            initial={{ opacity: 0, scale: 1.6 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.7 }}
+            transition={{ duration: 0.35, ease: "easeOut" }}
+            className="text-8xl font-black text-white drop-shadow-[0_0_28px_rgba(232,121,249,0.75)] sm:text-9xl"
+          >
+            {countdown}
+          </motion.p>
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
@@ -562,6 +578,7 @@ function PlayerColumn({
   costPerPlayer,
   jackpotOdds,
   terminal = false,
+  grouped = false,
   reelSize = "lg",
   onLanded,
   onCallBot,
@@ -577,6 +594,7 @@ function PlayerColumn({
   costPerPlayer: number;
   jackpotOdds?: number;
   terminal?: boolean;
+  grouped?: boolean;
   reelSize?: "md" | "lg";
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
@@ -586,7 +604,10 @@ function PlayerColumn({
   const goldPool = activeCase.odds.filter((o) => o.goldTier).map((o) => o.item);
 
   return (
-    <div className="flex flex-col rounded-2xl border border-white/10 bg-bg-800/50 p-3" style={{ borderTopColor: player.color, borderTopWidth: 3 }}>
+    <div
+      className={clsx("flex h-full w-full flex-col p-3", !grouped && "rounded-xl border border-white/10 bg-black/20")}
+      style={grouped ? { boxShadow: `inset 0 3px 0 ${player.color}` } : { borderTopColor: player.color, borderTopWidth: 3 }}
+    >
       <div className="mb-2 flex items-center gap-2">
         <span
           className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-bg-950"
@@ -608,12 +629,17 @@ function PlayerColumn({
           </p>
         </div>
         <span className="ml-auto shrink-0 text-right">
-          <span className={clsx("block font-mono text-sm font-bold", terminal ? "text-pink-300" : "text-emerald-300")}>
+          <span
+            className={clsx(
+              "inline-block rounded-md px-1.5 py-0.5 font-mono text-sm font-bold",
+              terminal ? "bg-pink-500/15 text-pink-300" : "text-emerald-300",
+            )}
+          >
             {formatCredits(terminal ? (state.history[0]?.item.value ?? 0) : state.total)}
           </span>
           {terminal && (
-            <span className="block text-[9px] font-semibold uppercase tracking-wide text-slate-500">
-              last · pot {formatCredits(state.total)}
+            <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-wide text-pink-400/80">
+              last case · pot {formatCredits(state.total)}
             </span>
           )}
         </span>

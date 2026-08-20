@@ -135,6 +135,33 @@ body {
   letter-spacing: 0.12em;
 }
 
+.rain-banner {
+  background:
+    radial-gradient(ellipse at 28% 50%, rgba(251, 146, 60, 0.22), transparent 58%),
+    repeating-linear-gradient(
+      0deg,
+      rgba(251, 146, 60, 0.07) 0 1px,
+      transparent 1px 10px
+    ),
+    repeating-linear-gradient(
+      90deg,
+      rgba(251, 146, 60, 0.07) 0 1px,
+      transparent 1px 10px
+    ),
+    #12100c;
+}
+
+.rain-title {
+  font-family: "VT323", ui-monospace, monospace;
+  letter-spacing: 0.08em;
+  background: linear-gradient(180deg, #fef3c7 0%, #f59e0b 55%, #ea580c 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: none;
+  filter: drop-shadow(2px 2px 0 #7c2d12);
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;

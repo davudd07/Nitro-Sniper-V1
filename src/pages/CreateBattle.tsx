@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   Plus,
@@ -19,6 +19,7 @@ import {
   Users,
   ArrowDownUp,
   Gem,
+  ChevronDown,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
@@ -71,6 +72,9 @@ export function CreateBattle() {
   const [fastSpin, setFastSpin] = useState(false);
   const [callAllBots, setCallAllBots] = useState(false);
   const [sortAsc, setSortAsc] = useState(true);
+  const [youSeat, setYouSeat] = useState(0);
+  const [botSeats, setBotSeats] = useState<Set<number>>(() => new Set());
+  const [movingYou, setMovingYou] = useState(false);
 
   useEffect(() => {
     const draft = consumeBattleDraft();
@@ -88,7 +92,18 @@ export function CreateBattle() {
     setBorrowOn(draft.creatorBorrowPct > 0);
     setBorrowPct(draft.creatorBorrowPct || 0.5);
     setIsPrivate(draft.isPrivate);
-    setCallAllBots(draft.prefillBots > 0);
+    const seat = Math.max(0, draft.creatorSeat ?? 0);
+    setYouSeat(seat);
+    const n = totalPlayers(BATTLE_MODES.find((m) => m.id === draft.modeId) ?? BATTLE_MODES[0]);
+    const bots = new Set(draft.botSeats ?? []);
+    if (bots.size === 0 && draft.prefillBots > 0) {
+      for (let i = 0; bots.size < draft.prefillBots && i < n; i++) {
+        if (i === seat) continue;
+        bots.add(i);
+      }
+    }
+    setBotSeats(bots);
+    setCallAllBots(n > 1 && bots.size >= n - 1);
   }, []);
 
   const createBattle = useBattleStore((s) => s.createBattle);
@@ -183,7 +198,9 @@ export function CreateBattle() {
       fundedPct: effectiveFund,
       isPrivate,
       source: "you",
-      prefillBots: callAllBots ? players - 1 : 0,
+      prefillBots: botSeats.size,
+      creatorSeat: youSeat,
+      botSeats: [...botSeats],
       creatorBorrowPct: effectiveBorrow,
     });
     setJoinIntent(id, { borrowPct: effectiveBorrow });
@@ -343,47 +360,127 @@ export function CreateBattle() {
 
           <div className="surface p-4">
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Add players</p>
-            <label className="mb-3 block">
+            <div className="mb-3">
               <span className="sr-only">Battle format</span>
-              <select
+              <ModeDropdown
                 value={modeId}
-                onChange={(e) => {
+                onChange={(id) => {
                   sound.click();
-                  setModeId(e.target.value);
+                  const nextMode = BATTLE_MODES.find((m) => m.id === id)!;
+                  const n = totalPlayers(nextMode);
+                  const nextYou = youSeat >= n ? 0 : youSeat;
+                  setModeId(id);
+                  setYouSeat(nextYou);
+                  setBotSeats((prev) => {
+                    if (callAllBots) {
+                      return new Set(Array.from({ length: n }, (_, i) => i).filter((i) => i !== nextYou));
+                    }
+                    return new Set([...prev].filter((i) => i < n && i !== nextYou));
+                  });
+                  setMovingYou(false);
                 }}
-                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm font-semibold text-white outline-none focus:border-fuchsia-400/40"
-              >
-                {BATTLE_MODES.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+              />
+            </div>
+            <p className="mb-2 text-[10px] text-slate-500">
+              {movingYou
+                ? "Pick a slot to move to — bots swap, empty seats take you."
+                : "Click empty to call a bot. Click You, then another slot to move."}
+            </p>
             <div className="flex flex-wrap gap-3">
               {Array.from({ length: players }, (_, i) => {
-                const filled = i === 0 || callAllBots;
+                const isYou = i === youSeat;
+                const isBot = botSeats.has(i);
+                const filled = isYou || isBot;
                 return (
-                  <div key={i} className="flex w-14 flex-col items-center gap-1">
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      sound.click();
+                      if (movingYou) {
+                        if (isYou) {
+                          setMovingYou(false);
+                          return;
+                        }
+                        setBotSeats((prev) => {
+                          const next = new Set(prev);
+                          next.delete(i);
+                          if (isBot) next.add(youSeat);
+                          return next;
+                        });
+                        setYouSeat(i);
+                        setMovingYou(false);
+                        return;
+                      }
+                      if (isYou) {
+                        setMovingYou(true);
+                        return;
+                      }
+                      if (isBot) return;
+                      setBotSeats((prev) => {
+                        const next = new Set(prev);
+                        next.add(i);
+                        const allFilled = Array.from({ length: players }, (_, s) => s).every(
+                          (s) => s === youSeat || next.has(s),
+                        );
+                        setCallAllBots(allFilled);
+                        return next;
+                      });
+                    }}
+                    className="flex w-14 flex-col items-center gap-1"
+                    title={
+                      isYou
+                        ? movingYou
+                          ? "Cancel move"
+                          : "Click, then pick a slot to move"
+                        : isBot
+                          ? movingYou
+                            ? "Swap with this bot"
+                            : "Bot"
+                          : movingYou
+                            ? "Move here"
+                            : "Call a bot into this seat"
+                    }
+                  >
                     <div
                       className={clsx(
-                        "grid h-11 w-11 place-items-center rounded-full text-xs font-bold",
-                        filled ? "text-bg-950" : "border border-dashed border-white/20 text-slate-600",
+                        "grid h-11 w-11 place-items-center rounded-full text-xs font-bold transition-all",
+                        isYou && "ring-2 ring-rose-300/80",
+                        movingYou && !isYou && "ring-2 ring-cyan-300/70 ring-offset-2 ring-offset-[#0c1410]",
+                        filled ? "text-bg-950" : "border-2 border-dashed border-slate-500 text-slate-600 hover:border-cyan-400/70 hover:bg-cyan-400/5",
                       )}
-                      style={filled ? { background: PLAYER_COLORS[i % PLAYER_COLORS.length] } : undefined}
+                      style={
+                        isYou
+                          ? { background: "#f43f5e" }
+                          : isBot
+                            ? { background: PLAYER_COLORS[i % PLAYER_COLORS.length] }
+                            : undefined
+                      }
                     >
-                      {i === 0 ? <User className="h-4 w-4" /> : filled ? <Bot className="h-4 w-4" /> : null}
+                      {isYou ? <User className="h-4 w-4" /> : isBot ? <Bot className="h-4 w-4" /> : null}
                     </div>
                     <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                      {i === 0 ? "You" : callAllBots ? "Bot" : "Empty"}
+                      {isYou ? "You" : isBot ? "Bot" : "Empty"}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
             <div className="mt-4 flex items-center justify-between border-t border-white/8 pt-3">
               <span className="text-sm font-medium text-slate-200">Call all bots</span>
-              <Switch checked={callAllBots} onChange={setCallAllBots} color="#22d3ee" />
+              <Switch
+                checked={callAllBots}
+                onChange={(v) => {
+                  setCallAllBots(v);
+                  setMovingYou(false);
+                  setBotSeats(
+                    v
+                      ? new Set(Array.from({ length: players }, (_, i) => i).filter((i) => i !== youSeat))
+                      : new Set(),
+                  );
+                }}
+                color="#22d3ee"
+              />
             </div>
           </div>
 
@@ -519,6 +616,66 @@ export function CreateBattle() {
       />
       <CasePreviewModal caseId={previewId} onClose={() => setPreviewId(null)} />
     </>
+  );
+}
+
+function ModeDropdown({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const current = BATTLE_MODES.find((m) => m.id === value);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (ev: MouseEvent) => {
+      if (!rootRef.current?.contains(ev.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [open]);
+
+  return (
+    <div ref={rootRef} className="relative">
+      <button
+        type="button"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        onClick={() => {
+          sound.click();
+          setOpen((v) => !v);
+        }}
+        className="flex w-full items-center justify-between rounded-xl border border-slate-600/70 bg-[#0c1410] px-3 py-2.5 text-sm font-semibold text-white outline-none hover:border-cyan-400/40 focus:border-cyan-400/50"
+      >
+        <span>{current?.label ?? value}</span>
+        <ChevronDown className={clsx("h-4 w-4 text-slate-400 transition-transform", open && "rotate-180")} />
+      </button>
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-40 mt-1 w-full overflow-hidden rounded-xl border border-slate-600/80 bg-[#0c1410] py-1 shadow-[0_12px_32px_rgba(0,0,0,0.55)]"
+        >
+          {BATTLE_MODES.map((m) => {
+            const active = m.id === value;
+            return (
+              <li key={m.id} role="option" aria-selected={active}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChange(m.id);
+                    setOpen(false);
+                  }}
+                  className={clsx(
+                    "w-full px-3 py-2 text-left text-sm font-semibold",
+                    active ? "bg-cyan-400/15 text-cyan-100" : "text-slate-200 hover:bg-cyan-400/10 hover:text-white",
+                  )}
+                >
+                  {m.label}
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </div>
   );
 }
 

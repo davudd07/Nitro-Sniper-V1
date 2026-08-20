@@ -35,6 +35,7 @@ export function Mines() {
   const [phase, setPhase] = useState<Phase>("idle");
   const [reveals, setReveals] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [roundId, setRoundId] = useState(0);
 
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -59,6 +60,7 @@ export function Mines() {
     setMinePositions(minesSet);
     setTiles(Array(GRID_SIZE).fill("hidden"));
     setReveals(0);
+    setRoundId((n) => n + 1);
     setPhase("playing");
     setBusy(false);
     sound.chip();
@@ -232,10 +234,11 @@ export function Mines() {
             const revealed = t !== "hidden" || (revealAllMines && isMine);
             return (
               <motion.button
-                key={i}
+                key={`${roundId}-${i}`}
                 type="button"
                 onClick={() => revealTile(i)}
                 disabled={phase !== "playing" || t !== "hidden"}
+                animate={{ scale: 1, y: 0 }}
                 whileHover={phase === "playing" && t === "hidden" ? { scale: 1.08, y: -3 } : undefined}
                 whileTap={phase === "playing" && t === "hidden" ? { scale: 0.9 } : undefined}
                 transition={{ type: "spring", stiffness: 520, damping: 22 }}

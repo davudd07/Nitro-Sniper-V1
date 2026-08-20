@@ -22,6 +22,12 @@ import { formatCredits, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
 
+function jackpotPresets(id: JackpotPotId): number[] {
+  if (id === "small") return [5, 50, 100];
+  if (id === "large") return [100, 500, 1000, 5000, 10_000];
+  return [10_000, 25_000, 50_000, 100_000];
+}
+
 export function JackpotPage() {
   const [potId, setPotId] = useState<JackpotPotId>("small");
   const def = JACKPOT_POTS.find((p) => p.id === potId)!;
@@ -271,8 +277,8 @@ export function JackpotPage() {
                   onChange={(e) => setAmount(Number(e.target.value))}
                   className="w-full accent-amber-400"
                 />
-                <div className="flex gap-2">
-                  {[def.min, Math.round((def.min + def.max) / 2), def.max].map((v) => (
+                <div className="flex flex-wrap gap-2">
+                  {jackpotPresets(potId).map((v) => (
                     <button
                       key={v}
                       type="button"

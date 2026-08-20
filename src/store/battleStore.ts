@@ -31,6 +31,10 @@ export interface BattleConfig {
   source: "you" | "lobby";
   /** Other seats already filled with bots when the room opens. */
   prefillBots: number;
+  /** Seat index the creator occupies (jackpot position). Defaults to 0. */
+  creatorSeat?: number;
+  /** Explicit bot seat indexes. When omitted, bots fill the first `prefillBots` non-creator seats. */
+  botSeats?: number[];
   /** 0–1. Creator borrowed this fraction of their own seat. */
   creatorBorrowPct: number;
 }

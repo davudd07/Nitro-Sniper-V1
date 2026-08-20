@@ -1,4 +1,3 @@
-import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
 import { Crown, Gem, RotateCcw, Users, X } from "lucide-react";
 import { formatCredits } from "../../lib/format";
@@ -33,13 +32,13 @@ export function BattleResultOverlay({
   const headline = result.shared ? `${winnerLine} split the pot` : `${winnerLine} won`;
   const shown = result.youWon || result.shared ? result.youPaid : result.share;
 
-  return createPortal(
-    <div className="fixed inset-0 z-[80] grid place-items-center bg-[#05080a]/88 p-4 backdrop-blur-md">
+  return (
+    <div className="absolute inset-0 z-20 grid place-items-center overflow-hidden bg-[#05080a]/82 p-3 backdrop-blur-[2px]">
       <motion.div
-        initial={{ opacity: 0, scale: 0.9, y: 16 }}
+        initial={{ opacity: 0, scale: 0.94, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ type: "spring", stiffness: 320, damping: 24 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-2xl border border-cyan-400/25 bg-[#0b1218] px-6 py-8 text-center shadow-[0_0_80px_rgba(34,211,238,0.18)]"
+        className="relative max-h-full w-full max-w-md overflow-y-auto rounded-2xl border border-cyan-400/25 bg-[#0b1218] px-5 py-6 text-center shadow-[0_0_48px_rgba(34,211,238,0.16)] scrollbar-thin"
       >
         <button
           type="button"
@@ -55,20 +54,20 @@ export function BattleResultOverlay({
 
         <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-slate-400">Battle finished</p>
 
-        <div className="mx-auto mt-4 grid h-14 w-14 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-sky-600 text-bg-950 shadow-[0_0_28px_rgba(34,211,238,0.35)]">
-          {result.shared ? <Users className="h-7 w-7" /> : <Crown className="h-7 w-7" />}
+        <div className="mx-auto mt-3 grid h-12 w-12 place-items-center rounded-full bg-gradient-to-br from-cyan-300 to-sky-600 text-bg-950 shadow-[0_0_28px_rgba(34,211,238,0.35)]">
+          {result.shared ? <Users className="h-6 w-6" /> : <Crown className="h-6 w-6" />}
         </div>
 
-        <p className="mt-4 text-xl font-extrabold uppercase leading-snug tracking-wide text-white sm:text-2xl">
+        <p className="mt-3 text-lg font-extrabold uppercase leading-snug tracking-wide text-white sm:text-xl">
           {headline}
         </p>
         {!result.shared && result.winningTeam !== null && (
           <p className="mt-1 text-sm text-slate-400">Team {result.winningTeam + 1}</p>
         )}
 
-        <div className="mt-5 flex items-center justify-center gap-2">
-          <Gem className="h-7 w-7 text-cyan-300" />
-          <span className="font-mono text-4xl font-black tabular-nums text-white sm:text-5xl">
+        <div className="mt-4 flex items-center justify-center gap-2">
+          <Gem className="h-6 w-6 text-cyan-300" />
+          <span className="font-mono text-3xl font-black tabular-nums text-white sm:text-4xl">
             {formatCredits(result.pot)}
           </span>
         </div>
@@ -87,7 +86,7 @@ export function BattleResultOverlay({
             sound.click();
             onRecreate();
           }}
-          className="btn-primary mt-7 w-full py-3 text-sm"
+          className="btn-primary mt-5 w-full py-3 text-sm"
         >
           Recreate {formatCredits(recreateCost)} SH
         </button>
@@ -102,7 +101,6 @@ export function BattleResultOverlay({
           <RotateCcw className="h-3.5 w-3.5" /> Replay
         </button>
       </motion.div>
-    </div>,
-    document.body,
+    </div>
   );
 }

@@ -35,6 +35,7 @@ export function CaseOpenPage() {
   const landedRef = useRef(0);
   const roundCountRef = useRef(1);
   const roundItemsRef = useRef<CaseItem[]>([]);
+  const demoRoundRef = useRef(false);
 
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -51,13 +52,15 @@ export function CaseOpenPage() {
   const totalPrice = c.price * openCount;
   const reelSize = openCount >= 3 ? "md" : "lg";
 
-  async function openCase() {
+  async function openCase(demo = false) {
     if (spinning || !c) return;
     const n = openCount;
-    if (!takeStake(c.price * n, HOUSE_EDGE.cases)) {
+    const stake = demo ? 0 : c.price * n;
+    if (!takeStake(stake, HOUSE_EDGE.cases)) {
       push(`You need ${formatCredits(c.price * n)} SH to open this case.`, "danger");
       return;
     }
+    demoRoundRef.current = demo;
     setSpinning(true);
     landedRef.current = 0;
     roundCountRef.current = n;
@@ -69,8 +72,13 @@ export function CaseOpenPage() {
 
   function handleLanded(item: CaseItem) {
     if (!c) return;
-    credit(item.value);
-    recordRound(c.price, item.value);
+    const demo = demoRoundRef.current;
+    if (!demo) {
+      credit(item.value);
+      recordRound(c.price, item.value);
+    } else {
+      recordRound(0, 0);
+    }
     roundItemsRef.current.push(item);
     setHistory((h) => [{ item, id: `${Date.now()}-${h.length}-${item.id}` }, ...h].slice(0, 24));
     landedRef.current += 1;
@@ -78,17 +86,18 @@ export function CaseOpenPage() {
     setSpinning(false);
     const items = roundItemsRef.current;
     const totalValue = items.reduce((s, i) => s + i.value, 0);
-    const cost = c.price * items.length;
+    const cost = demo ? 0 : c.price * items.length;
     const profit = totalValue - cost;
+    const prefix = demo ? "Demo · " : "";
     if (items.length === 1) {
       const it = items[0];
       push(
-        profit >= 0 ? `Unboxed ${it.name} worth ${formatCredits(it.value)} SH!` : `Unboxed ${it.name} (${formatCredits(it.value)} SH).`,
+        `${prefix}Unboxed ${it.name} worth ${formatCredits(it.value)} SH${demo ? " (no stake)" : "!"}`,
         profit >= 0 ? "success" : "info",
       );
     } else {
       push(
-        `Unboxed ${items.length} items worth ${formatCredits(totalValue)} SH (${profit >= 0 ? "+" : ""}${formatCredits(profit)}).`,
+        `${prefix}Unboxed ${items.length} items worth ${formatCredits(totalValue)} SH${demo ? " (no stake)" : ` (${profit >= 0 ? "+" : ""}${formatCredits(profit)})`}.`,
         profit >= 0 ? "success" : "info",
       );
     }
@@ -167,17 +176,28 @@ export function CaseOpenPage() {
                 ))}
               </div>
             </div>
-            <button
-              onClick={() => void openCase()}
-              disabled={spinning}
-              className="btn-primary px-8 py-2.5 disabled:opacity-50"
-            >
-              {spinning
-                ? "Opening…"
-                : openCount === 1
-                  ? `Open · ${formatCredits(c.price)} SH`
-                  : `Open ${openCount}× · ${formatCredits(totalPrice)} SH`}
-            </button>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => void openCase(true)}
+                disabled={spinning}
+                className="rounded-md border-2 border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-50"
+                title="Same reel and odds — no SH spent or credited"
+              >
+                {spinning ? "Opening…" : "Demo spin"}
+              </button>
+              <button
+                onClick={() => void openCase(false)}
+                disabled={spinning}
+                className="btn-primary px-8 py-2.5 disabled:opacity-50"
+              >
+                {spinning
+                  ? "Opening…"
+                  : openCount === 1
+                    ? `Open · ${formatCredits(c.price)} SH`
+                    : `Open ${openCount}× · ${formatCredits(totalPrice)} SH`}
+              </button>
+            </div>
           </div>
 
           {history.length > 0 && (

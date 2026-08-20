@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useParams, Navigate, Link, useNavigate } from "react-router-dom";
+import { useParams, Navigate, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, User, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote } from "lucide-react";
+import { ArrowLeft, Bot, User, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
 import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
@@ -46,10 +46,12 @@ type Phase = "filling" | "countdown" | "running" | "jackpot" | "finished";
 
 export function BattleRoom() {
   const { battleId } = useParams();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const battle = useBattleStore((s) => (battleId ? s.getBattle(battleId) : undefined));
   const joinIntent = useBattleStore((s) => (battleId ? s.joinIntents[battleId] : undefined));
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
+  const spectating = Boolean(battle && battle.source !== "you" && searchParams.get("spectate") === "1" && !joinIntent);
   const play = useFairnessStore((s) => s.play);
   const spend = useEconomyStore((s) => s.spend);
   const awardRakeback = useEconomyStore((s) => s.awardRakeback);
@@ -59,28 +61,46 @@ export function BattleRoom() {
   const mode = useMemo(() => (battle ? BATTLE_MODES.find((m) => m.id === battle.modeId) : undefined), [battle]);
 
   const initialPlayers = useMemo<BattlePlayer[]>(() => {
-    if (!mode) return [];
+    if (!mode || !battle) return [];
     const players: BattlePlayer[] = [];
+    const creatorSeat = battle.source === "you" ? (battle.creatorSeat ?? 0) : 0;
+    const explicitBots = battle.botSeats ? new Set(battle.botSeats) : null;
     let slot = 0;
     mode.teamSizes.forEach((size, teamIndex) => {
       for (let i = 0; i < size; i++) {
+        const isYou = !spectating && (battle.source === "you" ? slot === creatorSeat : slot === 0);
+        let kind: SlotKind;
+        if (isYou) {
+          kind = "you";
+        } else if (explicitBots) {
+          kind = explicitBots.has(slot) ? "bot" : "empty";
+        } else if (battle.source === "you") {
+          const total = mode.teamSizes.reduce((s, n) => s + n, 0);
+          const bots: number[] = [];
+          for (let s = 0; bots.length < battle.prefillBots && s < total; s++) {
+            if (s === creatorSeat) continue;
+            bots.push(s);
+          }
+          kind = bots.includes(slot) ? "bot" : "empty";
+        } else {
+          kind = slot !== 0 && slot <= battle.prefillBots ? "bot" : "empty";
+        }
         players.push({
           slotIndex: slot,
           teamIndex,
-          kind: slot === 0 ? "you" : slot <= (battle?.prefillBots ?? 0) ? "bot" : "empty",
-          name:
-            slot === 0
-              ? "You"
-              : slot <= (battle?.prefillBots ?? 0)
-                ? BOT_NAMES[(slot + (battle?.id.length ?? 0)) % BOT_NAMES.length]
-                : "",
+          kind,
+          name: isYou
+            ? "You"
+            : kind === "bot"
+              ? BOT_NAMES[(slot + battle.id.length) % BOT_NAMES.length]
+              : "",
           color: PLAYER_COLORS[slot % PLAYER_COLORS.length],
         });
         slot++;
       }
     });
     return players;
-  }, [mode, battle?.prefillBots, battle?.id]);
+  }, [mode, battle, spectating]);
 
   const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers);
   const teams = useMemo(() => {
@@ -106,11 +126,12 @@ export function BattleRoom() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [payout, setPayout] = useState<BattlePayout | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
+  const [spectatorJoin, setSpectatorJoin] = useState(false);
   const borrowPct =
     battle?.source === "you"
       ? Math.max(joinIntent?.borrowPct ?? 0, battle.creatorBorrowPct)
       : (joinIntent?.borrowPct ?? 0);
-  const needsJoinGate = Boolean(battle && battle.source !== "you" && !joinIntent);
+  const needsJoinGate = Boolean(battle && battle.source !== "you" && !joinIntent && !spectating);
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
@@ -450,6 +471,8 @@ export function BattleRoom() {
       fundedPct: battle.fundedPct,
       isPrivate: battle.isPrivate,
       creatorBorrowPct: battle.creatorBorrowPct,
+      creatorSeat: battle.creatorSeat,
+      botSeats: battle.botSeats,
       prefillBots: battle.prefillBots,
     });
     navigate("/battles/create");
@@ -555,6 +578,11 @@ export function BattleRoom() {
                 Private
               </span>
             )}
+            {spectating && (
+              <span className="flex items-center gap-1 rounded-full bg-slate-500/20 px-2 py-0.5 text-xs font-medium text-slate-200">
+                <Eye className="h-3 w-3" /> Spectating
+              </span>
+            )}
           </div>
           <div className="flex flex-wrap items-center justify-end gap-4 text-sm text-slate-400">
             {battle.isPrivate && (
@@ -569,6 +597,18 @@ export function BattleRoom() {
                 className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/5"
               >
                 <Link2 className="h-3.5 w-3.5" /> Copy link
+              </button>
+            )}
+            {spectating && phase === "filling" && players.some((p) => p.kind === "empty") && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.click();
+                  setSpectatorJoin(true);
+                }}
+                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-bg-950 hover:brightness-110"
+              >
+                Join seat
               </button>
             )}
             <BattleCost costPerPlayer={battle.costPerPlayer} borrowPct={borrowPct} />
@@ -645,9 +685,8 @@ export function BattleRoom() {
             {teams.map((teamPlayers, teamIdx) => {
               const isTeam = teamPlayers.length > 1;
               const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
-              const reelSize = players.length <= 4 ? "lg" : "md";
               return (
-                <Fragment key={teamIdx}>
+                <Fragment key={`head-${teamIdx}`}>
                   {teamIdx > 0 && <TeamDivider />}
                   <div
                     className="flex min-w-0 flex-col overflow-hidden"
@@ -656,8 +695,10 @@ export function BattleRoom() {
                       width: 0,
                       ...(isTeam
                         ? {
-                            border: `1px solid ${teamColor}40`,
-                            background: `linear-gradient(180deg, ${teamColor}18, transparent 42%)`,
+                            borderLeft: `1px solid ${teamColor}40`,
+                            borderRight: `1px solid ${teamColor}40`,
+                            borderTop: `1px solid ${teamColor}40`,
+                            background: `linear-gradient(180deg, ${teamColor}18, transparent 88%)`,
                           }
                         : undefined),
                     }}
@@ -667,22 +708,16 @@ export function BattleRoom() {
                         Team {teamIdx + 1}
                       </p>
                     )}
-                    <div className="flex min-w-0 w-full flex-1">
+                    <div className="flex min-w-0 w-full">
                       {teamPlayers.map((p, i) => (
                         <div
                           key={p.slotIndex}
                           className={clsx("min-w-0", isTeam && i > 0 && "border-l border-solid border-white/15")}
                           style={{ flex: "1 1 0%", width: 0 }}
                         >
-                          <PlayerColumn
+                          <PlayerHeader
                             player={p}
-                            result={pendingResults[p.slotIndex] ?? null}
-                            spinToken={spinToken}
-                            goldSpinEnabled={battle.goldSpin}
                             state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
-                            battleActive={phase === "running"}
-                            activeCase={currentCase ?? CASES[0]}
-                            costPerPlayer={battle.costPerPlayer}
                             jackpotOdds={
                               battle.jackpot && (!battle.terminal || liveOdds[p.slotIndex] !== undefined)
                                 ? liveOdds[p.slotIndex]
@@ -690,13 +725,7 @@ export function BattleRoom() {
                             }
                             terminal={battle.terminal}
                             grouped={isTeam}
-                            reelSize={reelSize}
-                            fastSpin={battle.fastSpin}
                             borrowPct={p.kind === "you" ? borrowPct : 0}
-                            fundedPct={battle.fundedPct}
-                            onLanded={(item) => handleLanded(p.slotIndex, item)}
-                            onCallBot={() => callBot(p.slotIndex)}
-                            onSimulateJoin={() => simulateJoin(p.slotIndex)}
                           />
                         </div>
                       ))}
@@ -705,6 +734,73 @@ export function BattleRoom() {
                 </Fragment>
               );
             })}
+          </div>
+
+          <div className="relative min-w-0 w-full">
+            {resultOpen && payout && (
+              <BattleResultOverlay
+                result={payout}
+                recreateCost={battle.costPerPlayer}
+                onClose={() => setResultOpen(false)}
+                onRecreate={recreateBattle}
+                onReplay={replayBattle}
+              />
+            )}
+            <div className="flex w-full min-w-0 items-stretch">
+              {teams.map((teamPlayers, teamIdx) => {
+                const isTeam = teamPlayers.length > 1;
+                const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+                const reelSize = players.length <= 4 ? "lg" : "md";
+                return (
+                  <Fragment key={`stage-${teamIdx}`}>
+                    {teamIdx > 0 && <TeamDivider mark={false} />}
+                    <div
+                      className="flex min-w-0 flex-col overflow-hidden"
+                      style={{
+                        flex: "1 1 0%",
+                        width: 0,
+                        ...(isTeam
+                          ? {
+                              borderLeft: `1px solid ${teamColor}40`,
+                              borderRight: `1px solid ${teamColor}40`,
+                              borderBottom: `1px solid ${teamColor}40`,
+                            }
+                          : undefined),
+                      }}
+                    >
+                      <div className="flex min-w-0 w-full flex-1">
+                        {teamPlayers.map((p, i) => (
+                          <div
+                            key={p.slotIndex}
+                            className={clsx("min-w-0", isTeam && i > 0 && "border-l border-solid border-white/15")}
+                            style={{ flex: "1 1 0%", width: 0 }}
+                          >
+                            <PlayerStage
+                              player={p}
+                              result={pendingResults[p.slotIndex] ?? null}
+                              spinToken={spinToken}
+                              goldSpinEnabled={battle.goldSpin}
+                              state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
+                              battleActive={phase === "running"}
+                              activeCase={currentCase ?? CASES[0]}
+                              costPerPlayer={battle.costPerPlayer}
+                              grouped={isTeam}
+                              reelSize={reelSize}
+                              fastSpin={battle.fastSpin}
+                              fundedPct={battle.fundedPct}
+                              canManageSeats={!spectating && phase === "filling"}
+                              onLanded={(item) => handleLanded(p.slotIndex, item)}
+                              onCallBot={() => callBot(p.slotIndex)}
+                              onSimulateJoin={() => simulateJoin(p.slotIndex)}
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </Fragment>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -725,27 +821,36 @@ export function BattleRoom() {
           }}
         />
       )}
-
-      {resultOpen && payout && (
-        <BattleResultOverlay
-          result={payout}
-          recreateCost={battle.costPerPlayer}
-          onClose={() => setResultOpen(false)}
-          onRecreate={recreateBattle}
-          onReplay={replayBattle}
+      {spectatorJoin && spectating && (
+        <JoinBattleModal
+          battle={battle}
+          onClose={() => setSpectatorJoin(false)}
+          onConfirm={(pct) => {
+            const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
+            if (!spend(cost)) {
+              push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
+              return;
+            }
+            awardRakeback(cost, HOUSE_EDGE.battles);
+            setSpectatorJoin(false);
+            setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });
+            navigate(`/battles/${battle.id}`, { replace: true });
+          }}
         />
       )}
     </div>
   );
 }
 
-function TeamDivider() {
+function TeamDivider({ mark = true }: { mark?: boolean }) {
   return (
     <div className="flex w-9 shrink-0 items-center justify-center self-stretch sm:w-11">
-      <div className="flex flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15">
-        <Swords className="h-4 w-4 text-slate-300" />
-        <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
-      </div>
+      {mark ? (
+        <div className="flex flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15">
+          <Swords className="h-4 w-4 text-slate-300" />
+          <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -773,54 +878,27 @@ function BattleCountdown({ countdown }: { countdown: number }) {
   );
 }
 
-function PlayerColumn({
+function PlayerHeader({
   player,
-  result,
-  spinToken,
-  goldSpinEnabled,
   state,
-  battleActive,
-  activeCase,
-  costPerPlayer,
   jackpotOdds,
   terminal = false,
   grouped = false,
-  reelSize = "lg",
-  fastSpin = false,
   borrowPct = 0,
-  fundedPct = 0,
-  onLanded,
-  onCallBot,
-  onSimulateJoin,
 }: {
   player: BattlePlayer;
-  result: CaseOddsEntry | null;
-  spinToken: number;
-  goldSpinEnabled: boolean;
   state: PlayerRoundState;
-  battleActive: boolean;
-  activeCase: (typeof CASES)[number];
-  costPerPlayer: number;
   jackpotOdds?: number;
   terminal?: boolean;
   grouped?: boolean;
-  reelSize?: "md" | "lg";
-  fastSpin?: boolean;
   borrowPct?: number;
-  fundedPct?: number;
-  onLanded: (item: CaseOddsEntry["item"]) => void;
-  onCallBot: () => void;
-  onSimulateJoin: () => void;
 }) {
-  const pool = activeCase.odds.map((o) => o.item);
-  const goldPool = activeCase.odds.filter((o) => o.goldTier).map((o) => o.item);
-
   return (
     <div
-      className={clsx("flex h-full w-full flex-col p-3", !grouped && "rounded-xl border border-white/10 bg-black/20")}
+      className={clsx("w-full px-3 pt-3 pb-2", !grouped && "rounded-t-xl border border-b-0 border-white/10 bg-black/20")}
       style={grouped ? { boxShadow: `inset 0 3px 0 ${player.color}` } : { borderTopColor: player.color, borderTopWidth: 3 }}
     >
-      <div className="mb-2 flex items-center gap-2">
+      <div className="flex items-center gap-2">
         <span
           className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-bg-950"
           style={{ background: player.color }}
@@ -861,7 +939,50 @@ function PlayerColumn({
           )}
         </span>
       </div>
+    </div>
+  );
+}
 
+function PlayerStage({
+  player,
+  result,
+  spinToken,
+  goldSpinEnabled,
+  state,
+  battleActive,
+  activeCase,
+  costPerPlayer,
+  grouped = false,
+  reelSize = "lg",
+  fastSpin = false,
+  fundedPct = 0,
+  canManageSeats = true,
+  onLanded,
+  onCallBot,
+  onSimulateJoin,
+}: {
+  player: BattlePlayer;
+  result: CaseOddsEntry | null;
+  spinToken: number;
+  goldSpinEnabled: boolean;
+  state: PlayerRoundState;
+  battleActive: boolean;
+  activeCase: (typeof CASES)[number];
+  costPerPlayer: number;
+  grouped?: boolean;
+  reelSize?: "md" | "lg";
+  fastSpin?: boolean;
+  fundedPct?: number;
+  canManageSeats?: boolean;
+  onLanded: (item: CaseOddsEntry["item"]) => void;
+  onCallBot: () => void;
+  onSimulateJoin: () => void;
+}) {
+  const pool = activeCase.odds.map((o) => o.item);
+  const goldPool = activeCase.odds.filter((o) => o.goldTier).map((o) => o.item);
+
+  return (
+    <div className={clsx("flex h-full w-full flex-col px-3 pb-3", !grouped && "rounded-b-xl border border-t-0 border-white/10 bg-black/20")}>
       {player.kind === "empty" || player.kind === "joining" ? (
         <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 rounded-lg bg-black/25 p-3 text-center">
           {player.kind === "joining" ? (
@@ -872,26 +993,28 @@ function PlayerColumn({
                 Empty seat · {formatCredits(fundedSeatCost(costPerPlayer, fundedPct))} SH to join
                 {fundedPct > 0 ? ` (${pctLabel(fundedPct)} funded)` : ""}
               </p>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => {
-                    sound.click();
-                    onCallBot();
-                  }}
-                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
-                >
-                  <Bot className="h-3.5 w-3.5" /> Call Bot
-                </button>
-                <button
-                  onClick={() => {
-                    sound.click();
-                    onSimulateJoin();
-                  }}
-                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
-                >
-                  <UserPlus className="h-3.5 w-3.5" /> Simulate Join
-                </button>
-              </div>
+              {canManageSeats && (
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => {
+                      sound.click();
+                      onCallBot();
+                    }}
+                    className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
+                  >
+                    <Bot className="h-3.5 w-3.5" /> Call Bot
+                  </button>
+                  <button
+                    onClick={() => {
+                      sound.click();
+                      onSimulateJoin();
+                    }}
+                    className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
+                  >
+                    <UserPlus className="h-3.5 w-3.5" /> Simulate Join
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>

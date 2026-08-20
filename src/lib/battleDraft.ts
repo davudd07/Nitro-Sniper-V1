@@ -15,6 +15,8 @@ export interface BattleDraft {
   isPrivate: boolean;
   creatorBorrowPct: number;
   prefillBots: number;
+  creatorSeat?: number;
+  botSeats?: number[];
 }
 
 export function saveBattleDraft(draft: BattleDraft): void {

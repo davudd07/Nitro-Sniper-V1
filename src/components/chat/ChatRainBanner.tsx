@@ -40,20 +40,20 @@ export function ChatRainBanner() {
   }
 
   return (
-    <div className="rain-banner mx-2 mt-2 shrink-0 overflow-hidden rounded-lg border border-amber-500/25">
+    <div className="rain-banner mx-2 mt-2 shrink-0 overflow-hidden rounded-lg border border-cyan-500/25">
       <div className="flex items-center justify-between gap-2 px-3 py-2">
         <div className="min-w-0 leading-none">
           <p className="flex items-center gap-1 text-[10px] font-extrabold tracking-[0.18em] text-white">
             CHAT
-            <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-amber-500 text-bg-950">
+            <span className="grid h-3.5 w-3.5 place-items-center rounded-full bg-amber-400 text-bg-950">
               <Gem className="h-2.5 w-2.5" />
             </span>
           </p>
           <p className="rain-title text-[28px] font-extrabold uppercase leading-none">Rain</p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-white/10 bg-black/55 py-1 pl-2 pr-1">
-          <span className="grid h-5 w-5 place-items-center rounded-full bg-amber-500 text-bg-950">
+        <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-cyan-400/20 bg-[#0c1410] py-1 pl-2 pr-1">
+          <span className="grid h-5 w-5 place-items-center rounded-full bg-cyan-400 text-bg-950">
             <Gem className="h-3 w-3" />
           </span>
           <span className="px-0.5 font-mono text-[13px] font-bold tabular-nums text-white">
@@ -72,7 +72,7 @@ export function ChatRainBanner() {
             }
             className={clsx(
               "grid h-8 w-8 place-items-center rounded-md transition-opacity",
-              joinOpen && !youJoined ? "bg-amber-400 text-bg-950" : "bg-amber-400/35 text-bg-950/70",
+              joinOpen && !youJoined ? "bg-cyan-400 text-bg-950" : "bg-cyan-400/35 text-bg-950/70",
             )}
           >
             <HandCoins className="h-4 w-4" />

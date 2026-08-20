@@ -528,27 +528,23 @@ export function CoinFlip() {
             </AnimatePresence>
           </div>
 
-          {phase === "lost" && ghostRun && ghostRun.length > 0 && (
-            <div className="mt-2 rounded-lg border border-white/10 bg-black/25 px-3 py-2.5">
-              <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-400">
-                If you kept going to max win
-              </p>
-              <div className="flex items-center gap-1.5 overflow-x-auto px-0.5 py-1.5 scrollbar-thin">
-                {ghostRun.map((g, i) => (
-                  <HistoryCoin key={`ghost-${i}`} side={g.side} ghost hit={g.hit} />
-                ))}
-              </div>
-              <p className="mt-1 text-[10px] text-slate-500">
-                Next {ghostRun.length} flip{ghostRun.length === 1 ? "" : "s"} from the same seed. Bright ring = would have matched your side.
-              </p>
-            </div>
-          )}
-
           <div className="mt-4 flex items-center gap-1.5 overflow-x-auto px-0.5 py-2 scrollbar-thin">
-            {history.length === 0 ? (
-              <p className="text-xs text-slate-500">Recent flips land here.</p>
+            {history.length === 0 && !(ghostRun && ghostRun.length > 0) ? (
+              <p className="text-xs text-slate-500">Recent flips land here. Missed-run ghosts join this row.</p>
             ) : (
-              history.map((side, i) => <HistoryCoin key={`${side}-${i}`} side={side} fresh={i === 0} />)
+              <>
+                {[...history].reverse().map((side, i, arr) => (
+                  <HistoryCoin key={`real-${arr.length - 1 - i}-${side}`} side={side} fresh={i === arr.length - 1} />
+                ))}
+                {ghostRun && ghostRun.length > 0 && (
+                  <>
+                    <span className="mx-0.5 h-5 w-px shrink-0 bg-white/15" aria-hidden />
+                    {ghostRun.map((g, i) => (
+                      <HistoryCoin key={`ghost-${i}`} side={g.side} ghost hit={g.hit} />
+                    ))}
+                  </>
+                )}
+              </>
             )}
           </div>
         </div>

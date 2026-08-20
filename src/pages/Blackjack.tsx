@@ -40,22 +40,43 @@ const CUSTOM_CHIP_STYLE = { from: "#c4b5fd", to: "#6d28d9", text: "#fff" } as co
 type SpotId = "pairs" | "main" | "plus3";
 
 function ChipFace({ chip, size }: { chip: ChipDef; size: number }) {
+  const rim = Math.max(2, Math.round(size * 0.07));
+  const label =
+    chip.value >= 1000
+      ? `${chip.value % 1000 === 0 ? chip.value / 1000 : (chip.value / 1000).toFixed(1)}k`
+      : String(chip.value);
   return (
     <div
-      className="grid shrink-0 place-items-center rounded-full font-bold select-none"
+      className="relative grid shrink-0 place-items-center overflow-hidden rounded-full font-black select-none"
       style={{
         width: size,
         height: size,
-        fontSize: size > 40 ? 12 : 10,
         color: chip.text,
-        background: `radial-gradient(circle at 32% 28%, ${chip.from}, ${chip.to})`,
-        boxShadow: "0 3px 8px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.45), inset 0 -2px 0 rgba(0,0,0,0.25)",
-        border: "2px solid rgba(255,255,255,0.28)",
+        background: `radial-gradient(circle at 50% 50%, ${chip.to} 0%, ${chip.to} 58%, #0b1220 100%)`,
+        boxShadow: `0 ${Math.round(size * 0.08)}px ${Math.round(size * 0.16)}px rgba(0,0,0,0.55), inset 0 1px 1px rgba(255,255,255,0.4), inset 0 -${Math.max(2, rim)}px 0 rgba(0,0,0,0.38)`,
       }}
     >
-      {chip.value >= 1000
-        ? `${chip.value % 1000 === 0 ? chip.value / 1000 : (chip.value / 1000).toFixed(1)}k`
-        : chip.value}
+      <span
+        className="pointer-events-none absolute inset-[7%] rounded-full"
+        style={{
+          border: `${rim}px dashed rgba(255,255,255,0.42)`,
+          boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.25)",
+        }}
+      />
+      <span
+        className="pointer-events-none absolute inset-[22%] rounded-full"
+        style={{
+          background: `radial-gradient(circle at 32% 28%, ${chip.from}, ${chip.to} 78%)`,
+          boxShadow: "inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -2px 3px rgba(0,0,0,0.35), 0 0 0 1px rgba(0,0,0,0.28)",
+        }}
+      />
+      <span
+        className="pointer-events-none absolute inset-x-[18%] top-[9%] h-[18%] rounded-full opacity-50"
+        style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.55), transparent)" }}
+      />
+      <span className="relative z-10 tabular-nums leading-none" style={{ fontSize: size > 42 ? 12 : size > 34 ? 10 : 8 }}>
+        {label}
+      </span>
     </div>
   );
 }
@@ -726,9 +747,9 @@ export function Blackjack() {
                 draggable={false}
                 onClick={() => onChipClick(chip)}
                 onPointerDown={(e) => onChipPointerDown(e, chip)}
-                className={`relative rounded-full touch-none select-none transition-[transform,opacity,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
+                className={`relative rounded-full touch-none select-none transition-[transform,opacity,box-shadow] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-40 ${
                   drag ? "cursor-grabbing" : "cursor-pointer"
-                } ${selected ? "scale-110" : "hover:scale-105"}`}
+                } ${selected ? "scale-110" : "hover:scale-105 active:scale-95"}`}
                 style={{
                   boxShadow: selected ? `0 0 0 3px #f8fafc, 0 0 18px ${chip.from}` : "0 0 0 0 transparent",
                   opacity: activeChip && !selected ? 0.42 : 1,
@@ -767,9 +788,9 @@ export function Blackjack() {
               draggable={false}
               onClick={() => onChipClick(customChip)}
               onPointerDown={(e) => onChipPointerDown(e, customChip)}
-              className={`relative rounded-full touch-none select-none transition-[transform,opacity,box-shadow] duration-150 disabled:cursor-not-allowed disabled:opacity-40 ${
+              className={`relative rounded-full touch-none select-none transition-[transform,opacity,box-shadow] duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-40 ${
                 drag ? "cursor-grabbing" : "cursor-pointer"
-              } ${activeChip?.custom ? "scale-110" : "hover:scale-105"}`}
+              } ${activeChip?.custom ? "scale-110" : "hover:scale-105 active:scale-95"}`}
               style={{
                 boxShadow: activeChip?.custom ? `0 0 0 3px #f8fafc, 0 0 18px ${CUSTOM_CHIP_STYLE.from}` : "0 0 0 0 transparent",
                 opacity: activeChip && !activeChip.custom ? 0.42 : 1,

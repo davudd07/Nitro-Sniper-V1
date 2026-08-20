@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Eye } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
 import { useBattleStore, type BattleConfig } from "../store/battleStore";
@@ -52,8 +52,14 @@ export function CaseBattlesLobby() {
   function occupied(b: (typeof battles)[number]) {
     const mode = BATTLE_MODES.find((m) => m.id === b.modeId);
     const seats = mode ? totalPlayers(mode) : 0;
-    const filled = b.source === "you" ? 1 : Math.min(seats, b.prefillBots);
+    const bots = b.botSeats?.length ?? b.prefillBots;
+    const filled = b.source === "you" ? Math.min(seats, 1 + bots) : Math.min(seats, bots);
     return { filled, seats };
+  }
+
+  function spectateBattle(b: BattleConfig) {
+    sound.click();
+    navigate(`/battles/${b.id}?spectate=1`);
   }
 
   function openJoin(b: BattleConfig) {
@@ -64,7 +70,7 @@ export function CaseBattlesLobby() {
     }
     const { filled, seats } = occupied(b);
     if (filled >= seats) {
-      navigate(`/battles/${b.id}`);
+      spectateBattle(b);
       return;
     }
     setJoinTarget(b);
@@ -117,7 +123,7 @@ export function CaseBattlesLobby() {
       </div>
 
       <div className="surface overflow-hidden">
-        <div className="hidden grid-cols-[1fr_80px_170px_140px_150px_110px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
+        <div className="hidden grid-cols-[1fr_80px_170px_140px_150px_168px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
           <span>Cases</span>
           <span>Mode</span>
           <span>Cost</span>
@@ -139,14 +145,26 @@ export function CaseBattlesLobby() {
                   key={b.id}
                   role="button"
                   tabIndex={0}
-                  onClick={() => openJoin(b)}
+                  onClick={() => {
+                    if (b.source === "you") {
+                      sound.click();
+                      navigate(`/battles/${b.id}`);
+                      return;
+                    }
+                    spectateBattle(b);
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      openJoin(b);
+                      if (b.source === "you") {
+                        sound.click();
+                        navigate(`/battles/${b.id}`);
+                        return;
+                      }
+                      spectateBattle(b);
                     }
                   }}
-                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[1fr_80px_170px_140px_150px_110px] hover:bg-white/[0.03]"
+                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[1fr_80px_170px_140px_150px_168px] hover:bg-white/[0.03]"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex -space-x-2">
@@ -254,7 +272,19 @@ export function CaseBattlesLobby() {
                       <span className="rounded-full bg-fuchsia-500/15 px-1.5 py-0.5 text-[10px] font-medium text-fuchsia-300">Yours</span>
                     )}
                   </div>
-                  <div className="flex justify-end">
+                  <div className="flex justify-end gap-1.5">
+                    {b.source !== "you" && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          spectateBattle(b);
+                        }}
+                        className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-white/5"
+                      >
+                        <Eye className="h-3 w-3" /> Spectate
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={(e) => {
@@ -263,10 +293,14 @@ export function CaseBattlesLobby() {
                       }}
                       className={clsx(
                         "rounded-lg px-3 py-1.5 text-xs font-semibold transition-transform active:scale-95",
-                        waiting ? "bg-emerald-500 text-bg-950" : "border border-white/15 text-white hover:bg-white/5",
+                        b.source === "you"
+                          ? "border border-white/15 text-white hover:bg-white/5"
+                          : waiting
+                            ? "bg-emerald-500 text-bg-950"
+                            : "border border-white/15 text-white hover:bg-white/5",
                       )}
                     >
-                      {b.source === "you" ? "Open" : waiting ? (b.fundedPct > 0 ? "Join" : "Join / Borrow") : "Watch"}
+                      {b.source === "you" ? "Open" : waiting ? (b.fundedPct > 0 ? "Join" : "Join") : "Watch"}
                     </button>
                   </div>
                 </div>

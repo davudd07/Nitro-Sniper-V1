@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
-import { UserRound } from "lucide-react";
 import { useAuthStore } from "../../store/authStore";
+import { BrandMark } from "../layout/BrandMark";
 import { sound } from "../../lib/sound";
 
 export function AccountGate() {
@@ -47,9 +47,7 @@ export function AccountGate() {
     <div className="fixed inset-0 z-[80] grid place-items-center bg-black/75 p-4 backdrop-blur-sm">
       <form onSubmit={(e) => void submit(e)} className="surface w-full max-w-md p-6">
         <div className="mb-4 flex items-center gap-3">
-          <div className="grid h-11 w-11 place-items-center rounded-lg border-2 border-emerald-400/40 bg-emerald-400/10 text-emerald-200">
-            <UserRound className="h-5 w-5" />
-          </div>
+          <BrandMark size={44} />
           <div>
             <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-emerald-300">GrowBET</p>
             <h2 className="text-xl font-extrabold text-white">{mode === "register" ? "Create username" : "Sign in"}</h2>

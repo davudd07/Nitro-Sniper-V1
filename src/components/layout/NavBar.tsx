@@ -11,6 +11,7 @@ import { PlayerAvatar } from "../identity/PlayerAvatar";
 import { RoleBadge } from "../identity/RoleBadge";
 import { useIdentityStore } from "../../store/identityStore";
 import { CurrencySwitcher } from "./CurrencySwitcher";
+import { BrandMark } from "./BrandMark";
 import { sound } from "../../lib/sound";
 
 export function NavBar({ wide = false }: { wide?: boolean }) {
@@ -32,13 +33,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
       <div className={clsx("grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 pl-12 pr-12", wide ? "max-w-none" : "")}>
         <div className="flex min-w-0 items-center gap-2.5">
           <Link to="/" className="flex min-w-0 items-center gap-2 rounded-md hover:opacity-90" title="GrowBET home">
-            <img
-              src="/brand/growbet-logo.png"
-              alt="GrowBET"
-              width={36}
-              height={36}
-              className="pixelated h-9 w-9 shrink-0"
-            />
+            <BrandMark size={44} />
             <span className="brand-wordmark truncate">GrowBET</span>
           </Link>
         </div>

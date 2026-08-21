@@ -72,6 +72,13 @@ export function isBattlesLobbyPath(pathname: string): boolean {
   return pathname === "/battles" || pathname === "/battles/";
 }
 
+/** Games that render a local trophy on the play stage instead of the under-header strip. */
+export function hidesGlobalWinLeader(pathname: string): boolean {
+  if (isBattlesLobbyPath(pathname)) return true;
+  const game = winLeaderGameFromPath(pathname);
+  return game === "mines" || game === "coinflip" || game === "jackpot";
+}
+
 function isWinLeaderGame(value: string): value is WinLeaderGame {
   return (ACTIVITY_GAMES as readonly string[]).includes(value);
 }

@@ -17,6 +17,7 @@ import {
 } from "../store/jackpotStore";
 import { useEconomyStore } from "../store/economyStore";
 import { considerWinLeader } from "../store/winLeaderStore";
+import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { formatCredits, formatPercent } from "../lib/format";
@@ -238,14 +239,17 @@ export function JackpotPage() {
             )}
           </div>
 
-          <JackpotCircleWheel
-            tickets={tickets}
-            spinToken={pot.spinToken}
-            winnerId={pot.winnerId}
-            shouldSpin={pot.phase === "spinning"}
-            countdown={pot.phase === "open" ? countdownLeft : null}
-            onFinished={handleFinished}
-          />
+          <div className="relative mx-auto w-full max-w-sm">
+            <JackpotCircleWheel
+              tickets={tickets}
+              spinToken={pot.spinToken}
+              winnerId={pot.winnerId}
+              shouldSpin={pot.phase === "spinning"}
+              countdown={pot.phase === "open" ? countdownLeft : null}
+              onFinished={handleFinished}
+            />
+            <WinLeaderStageMark game="jackpot" />
+          </div>
 
           <div className="space-y-2">
             {pot.entries.length === 0 ? (

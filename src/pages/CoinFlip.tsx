@@ -10,6 +10,7 @@ import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
+import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
   COIN_BASE_MULT,
@@ -502,7 +503,7 @@ export function CoinFlip() {
           </div>
         </div>
 
-        <div className="surface p-5 sm:p-8">
+        <div className="relative surface p-5 sm:p-8">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <span>{status}</span>
             <span>
@@ -516,8 +517,9 @@ export function CoinFlip() {
             </span>
           </div>
 
-          <div className="mx-auto grid max-w-sm place-items-center py-4">
-            <div className="relative h-56 w-56 sm:h-64 sm:w-64" style={{ perspective: 900 }}>
+          <div className="relative mx-auto w-full max-w-sm place-items-center py-4 pb-10">
+            <WinLeaderStageMark game="coinflip" />
+            <div className="relative mx-auto h-56 w-56 sm:h-64 sm:w-64" style={{ perspective: 900 }}>
               <motion.div
                 className="relative h-full w-full"
                 style={{ transformStyle: "preserve-3d" }}

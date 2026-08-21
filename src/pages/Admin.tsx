@@ -26,6 +26,9 @@ import { useAuthStore } from "../store/authStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { VipDesk } from "../components/admin/VipDesk";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
+import { useIdentityStore } from "../store/identityStore";
+import { VISUAL_ROLE_LIST, type VisualRole } from "../lib/identity";
+import { RoleBadge } from "../components/identity/RoleBadge";
 import { normalizeUsername } from "../lib/playerAuth";
 
 export function Admin() {
@@ -143,6 +146,8 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const grantXp = useLoyaltyStore((s) => s.grantXp);
   const xpByUser = useLoyaltyStore((s) => s.xpByUser);
   const loyaltyConfig = useLoyaltyStore((s) => s.config);
+  const setRole = useIdentityStore((s) => s.setRole);
+  const currentRole = useIdentityStore((s) => s.roleFor(selected));
 
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
@@ -391,6 +396,35 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                   ) : null}
                 </div>
               </div>
+              <label className="mb-4 block max-w-xs text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                Visual role
+                <select
+                  value={currentRole ?? ""}
+                  onChange={(e) => {
+                    const v = e.target.value as VisualRole | "";
+                    setRole(selected, v || null);
+                    sound.click();
+                    push(v ? `${selected}: ${VISUAL_ROLE_LIST.find((r) => r.id === v)?.label} badge` : `${selected}: role cleared`, "success");
+                  }}
+                  className="mt-1 w-full rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-cyan-400/40"
+                >
+                  <option value="">None (visual only)</option>
+                  {VISUAL_ROLE_LIST.map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p className="mb-4 text-[11px] text-slate-500">
+                Badges show in chat, battles, and jackpot. They do not grant extra permissions.
+                {currentRole ? (
+                  <>
+                    {" "}
+                    Current: <RoleBadge role={currentRole} />
+                  </>
+                ) : null}
+              </p>
               <div className="mb-4 grid gap-2 sm:grid-cols-4">
                 <Mini label="Shards" value={formatCredits(snap.shards)} />
                 <Mini label="Fun Coins" value={formatFunCoins(snap.funCoins)} />

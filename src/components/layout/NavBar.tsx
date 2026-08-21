@@ -7,6 +7,9 @@ import { useToastStore } from "../../store/toastStore";
 import { useAuthStore } from "../../store/authStore";
 import { useLoyaltyStore } from "../../store/loyaltyStore";
 import { LOCAL_XP_USER, resolveVip } from "../../lib/loyalty";
+import { PlayerAvatar } from "../identity/PlayerAvatar";
+import { RoleBadge } from "../identity/RoleBadge";
+import { useIdentityStore } from "../../store/identityStore";
 import { CurrencySwitcher } from "./CurrencySwitcher";
 import { sound } from "../../lib/sound";
 
@@ -18,6 +21,8 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
   const session = useAuthStore((s) => s.session);
   const openGate = useAuthStore((s) => s.openGate);
   const logout = useAuthStore((s) => s.logout);
+  const avatar = useIdentityStore((s) => s.avatarFor("You"));
+  const role = useIdentityStore((s) => s.roleFor("You"));
   const lifetimeXp = useLoyaltyStore((s) => s.xpByUser[LOCAL_XP_USER] ?? 0);
   const tiers = useLoyaltyStore((s) => s.config.tiers);
   const vip = resolveVip(lifetimeXp, tiers);
@@ -52,8 +57,10 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
             {vip.current.name}
           </Link>
           {session ? (
-            <span className="hidden max-w-[9rem] truncate font-mono text-xs font-semibold text-emerald-200 sm:inline">
-              {session}
+            <span className="hidden max-w-[11rem] items-center gap-1.5 sm:inline-flex">
+              <PlayerAvatar src={avatar} name={session} color="#019201" size={22} kind="you" />
+              <span className="truncate font-mono text-xs font-semibold text-emerald-200">{session}</span>
+              <RoleBadge role={role} />
             </span>
           ) : null}
           <button

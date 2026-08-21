@@ -9,3 +9,4 @@ export * from "./activityStore";
 export * from "./supportStore";
 export * from "./authStore";
 export * from "./loyaltyStore";
+export * from "./identityStore";

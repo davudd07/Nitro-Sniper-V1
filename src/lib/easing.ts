@@ -21,3 +21,9 @@ export function longBrake(t: number): number {
   const x = Math.min(1, Math.max(0, t));
   return 1 - Math.pow(1 - x, 6);
 }
+
+/** Longer hang at the end than longBrake — battle jackpot strip. */
+export function slowBrake(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return 1 - Math.pow(1 - x, 8);
+}

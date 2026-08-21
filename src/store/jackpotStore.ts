@@ -1,7 +1,20 @@
 import { create } from "zustand";
 import { shortId } from "../lib/format";
-import { PLAYER_COLORS } from "../data/battleModes";
 import { randomBotName } from "../data/botNames";
+
+/** Slightly muted vs battle seat colors — used only on the jackpot table. */
+export const JACKPOT_COLORS = [
+  "#c45b6c",
+  "#4d74b0",
+  "#4d9a6e",
+  "#c4a05a",
+  "#8a6db0",
+  "#4d9aaa",
+  "#b06a8a",
+  "#7a9648",
+  "#c47a4a",
+  "#4d9a90",
+];
 
 export const JACKPOT_HOUSE_EDGE = 0.09;
 
@@ -79,7 +92,7 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       name: "You",
       kind: "you",
       amount,
-      color: PLAYER_COLORS[pot.entries.length % PLAYER_COLORS.length],
+      color: JACKPOT_COLORS[pot.entries.length % JACKPOT_COLORS.length],
     };
     set((s) => ({
       pots: { ...s.pots, [potId]: withCountdown({ ...pot, entries: [...pot.entries, entry] }) },
@@ -100,7 +113,7 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       name: randomBotName(used),
       kind: "bot",
       amount: you.amount,
-      color: PLAYER_COLORS[pot.entries.length % PLAYER_COLORS.length],
+      color: JACKPOT_COLORS[pot.entries.length % JACKPOT_COLORS.length],
     };
     set((s) => ({
       pots: {

@@ -6,6 +6,9 @@ import { useChatStore } from "../../store/chatStore";
 import { ChatRainBanner } from "../chat/ChatRainBanner";
 import { ChatModMenu } from "../admin/ChatModMenu";
 import { PlayerTipButton } from "../chat/PlayerTipButton";
+import { PlayerAvatar } from "../identity/PlayerAvatar";
+import { RoleBadge } from "../identity/RoleBadge";
+import { useIdentityStore } from "../../store/identityStore";
 import { useAdminViewStore } from "../../store/adminViewStore";
 import { sound } from "../../lib/sound";
 
@@ -18,6 +21,8 @@ export function ChatSidebar() {
   const messages = useChatStore((s) => s.messages);
   const send = useChatStore((s) => s.send);
   const adminView = useAdminViewStore((s) => s.active);
+  const avatars = useIdentityStore((s) => s.avatars);
+  const roles = useIdentityStore((s) => s.roles);
   const [draft, setDraft] = useState("");
   const listRef = useRef<HTMLDivElement>(null);
 
@@ -90,9 +95,19 @@ export function ChatSidebar() {
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
-                  <p className="text-[11px] font-bold" style={{ color: m.color }}>
-                    {m.name}
-                  </p>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <PlayerAvatar
+                      src={m.you ? avatars.local : avatars[m.name]}
+                      name={m.you ? "You" : m.name}
+                      color={m.color}
+                      size={20}
+                      kind={m.you ? "you" : "player"}
+                    />
+                    <p className="truncate text-[11px] font-bold" style={{ color: m.color }}>
+                      {m.name}
+                    </p>
+                    <RoleBadge role={m.you ? roles.local : roles[m.name]} />
+                  </div>
                   <span className="flex items-center gap-0.5">
                     {!m.rain && !m.you && !m.tip && <PlayerTipButton name={m.name} />}
                     {adminView && !m.rain && <ChatModMenu name={m.name} />}

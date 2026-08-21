@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, User, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye } from "lucide-react";
+import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
 import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS, totalPlayers } from "../data/battleModes";
@@ -10,7 +10,10 @@ import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
-import { CaseReel } from "../components/cases/CaseReel";
+import { BATTLE_REEL_HEIGHT, CaseReel } from "../components/cases/CaseReel";
+import { PlayerAvatar } from "../components/identity/PlayerAvatar";
+import { RoleBadge } from "../components/identity/RoleBadge";
+import { useIdentityStore } from "../store/identityStore";
 import { ItemCard } from "../components/ui/ItemCard";
 import { AnimatedPot } from "../components/ui/AnimatedPot";
 import { JackpotWheel, type JackpotTicket } from "../components/battles/JackpotWheel";
@@ -670,6 +673,7 @@ export function BattleRoom() {
               tickets={jackpotTickets}
               spinToken={jackpotSpinToken}
               winnerId={jackpotWinnerId}
+              duration={12000}
               onFinished={handleJackpotFinished}
             />
           </div>
@@ -776,7 +780,7 @@ export function BattleRoom() {
                 const reelSize = players.length <= 4 ? "lg" : "md";
                 return (
                   <Fragment key={`stage-${teamIdx}`}>
-                    {teamIdx > 0 && <TeamDivider />}
+                    {teamIdx > 0 && <TeamDivider reelSize={reelSize} />}
                     <div
                       className="flex min-w-0 flex-col overflow-hidden"
                       style={{
@@ -861,11 +865,15 @@ export function BattleRoom() {
   );
 }
 
-function TeamDivider({ mark = true }: { mark?: boolean }) {
+function TeamDivider({ mark = true, reelSize = "lg" }: { mark?: boolean; reelSize?: "md" | "lg" }) {
+  const mid = BATTLE_REEL_HEIGHT[reelSize] / 2;
   return (
-    <div className="flex w-9 shrink-0 items-center justify-center self-stretch sm:w-11">
+    <div className="relative w-9 shrink-0 self-stretch sm:w-11">
       {mark ? (
-        <div className="flex flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15">
+        <div
+          className="absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
+          style={{ top: mid }}
+        >
           <Swords className="h-4 w-4 text-slate-300" />
           <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
         </div>
@@ -912,21 +920,26 @@ function PlayerHeader({
   grouped?: boolean;
   borrowPct?: number;
 }) {
+  const label = player.kind === "you" ? "You" : player.name || `Player ${player.slotIndex + 1}`;
+  const avatar = useIdentityStore((s) => s.avatarFor(player.kind === "you" ? "You" : label));
+  const role = useIdentityStore((s) => s.roleFor(player.kind === "you" ? "You" : label));
   return (
     <div
       className={clsx("w-full px-3 pt-3 pb-2", !grouped && "rounded-t-xl border border-b-0 border-white/10 bg-black/20")}
       style={grouped ? { boxShadow: `inset 0 3px 0 ${player.color}` } : { borderTopColor: player.color, borderTopWidth: 3 }}
     >
       <div className="flex items-center gap-2">
-        <span
-          className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-xs font-bold text-bg-950"
-          style={{ background: player.color }}
-        >
-          {player.kind === "you" ? <User className="h-4 w-4" /> : player.kind === "bot" ? <Bot className="h-4 w-4" /> : (player.name || "?").slice(0, 1)}
-        </span>
+        <PlayerAvatar
+          src={avatar}
+          name={label}
+          color={player.color}
+          size={28}
+          kind={player.kind === "you" ? "you" : player.kind === "bot" ? "bot" : "player"}
+        />
         <div className="min-w-0">
           <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
-            {player.kind === "you" ? "You" : player.name || `Player ${player.slotIndex + 1}`}
+            {label}
+            <RoleBadge role={role} />
             {jackpotOdds !== undefined && (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-400/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-300">
                 <Coins className="h-2.5 w-2.5" /> {jackpotOdds.toFixed(1)}%

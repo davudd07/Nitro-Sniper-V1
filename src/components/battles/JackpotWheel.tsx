@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
-import { easeOutQuint } from "../../lib/easing";
+import { slowBrake } from "../../lib/easing";
 import { sound } from "../../lib/sound";
 
 export interface JackpotTicket {
@@ -8,6 +8,7 @@ export interface JackpotTicket {
   name: string;
   color: string;
   weight: number; // 0..1, sums to 1 across all tickets
+  avatar?: string | null;
 }
 
 const LOOP_BASE_WIDTH = 1400;
@@ -36,7 +37,7 @@ export function JackpotWheel({
   tickets,
   spinToken,
   winnerId,
-  duration = 8800,
+  duration = 12000,
   compact = false,
   onFinished,
 }: {
@@ -81,7 +82,7 @@ export function JackpotWheel({
 
     function frame(now: number) {
       const t = Math.min(1, (now - start) / duration);
-      const eased = easeOutQuint(t);
+      const eased = slowBrake(t);
       const pos = targetOffset * eased;
       setOffset(pos);
 

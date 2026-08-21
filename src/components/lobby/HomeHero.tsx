@@ -1,4 +1,7 @@
 import { Link } from "react-router-dom";
+import { AvatarPicker } from "../../components/identity/AvatarPicker";
+import { RoleBadge } from "../../components/identity/RoleBadge";
+import { useIdentityStore } from "../../store/identityStore";
 import { useAuthStore } from "../../store/authStore";
 import { useDemoProfileStore } from "../../store/demoProfileStore";
 import { sound } from "../../lib/sound";
@@ -9,6 +12,7 @@ export function HomeHero() {
   const openGate = useAuthStore((s) => s.openGate);
   const displayName = useDemoProfileStore((s) => s.displayName);
   const name = session ?? displayName;
+  const role = useIdentityStore((s) => s.roleFor("You"));
 
   return (
     <section className="relative overflow-hidden rounded-xl border-2 border-[#3d5a3a]/70 bg-gradient-to-br from-[#163326] via-[#0c1612] to-[#07100c] p-5 shadow-[6px_6px_0_#050805] sm:p-8">
@@ -19,22 +23,29 @@ export function HomeHero() {
           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-cyan-300/90">
             {session ? "Welcome back," : "Welcome,"}
           </p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="pixel-label text-4xl font-extrabold uppercase tracking-wide text-white sm:text-5xl">
-              {name}
-            </h1>
-            {!session ? (
-              <button
-                type="button"
-                onClick={() => {
-                  sound.click();
-                  openGate();
-                }}
-                className="rounded-md border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-200 hover:bg-emerald-400/20"
-              >
-                Create username
-              </button>
-            ) : null}
+          <div className="mt-1 flex flex-wrap items-center gap-3">
+            <AvatarPicker name="You" size={64} color="#019201" />
+            <div className="min-w-0">
+              <h1 className="pixel-label text-4xl font-extrabold uppercase tracking-wide text-white sm:text-5xl">
+                {name}
+              </h1>
+              <div className="mt-1 flex flex-wrap items-center gap-2">
+                <RoleBadge role={role} className="text-[10px] px-1.5 py-0.5" />
+                {!session ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.click();
+                      openGate();
+                    }}
+                    className="rounded-md border border-emerald-400/40 bg-emerald-400/10 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-emerald-200 hover:bg-emerald-400/20"
+                  >
+                    Create username
+                  </button>
+                ) : null}
+              </div>
+              <p className="mt-1 text-[11px] text-slate-500">PNG picture · up to 2 changes per week</p>
+            </div>
           </div>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-300">
             Play-money Prism Vault — provably fair tables, original cases, and Shards that never leave this demo.

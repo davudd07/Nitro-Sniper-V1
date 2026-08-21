@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { longBrake } from "../../lib/easing";
 import { sound } from "../../lib/sound";
 import type { JackpotTicket } from "../battles/JackpotWheel";
+import { PlayerAvatar } from "../identity/PlayerAvatar";
 
 const DURATION_MS = 12000;
 const EXTRA_SPINS = 12;
@@ -104,12 +105,41 @@ export function JackpotCircleWheel({
         <div
           ref={wheelRef}
           className="absolute inset-0 rounded-full shadow-[0_0_40px_rgba(0,0,0,0.45)] ring-4 ring-white/10"
-          style={{
-            background: slices.length ? `conic-gradient(from 0deg, ${gradient})` : "#1c1c28",
-            willChange: "transform",
-          }}
-        />
-        <div className="absolute inset-[22%] grid place-items-center rounded-full bg-bg-950 ring-2 ring-white/10">
+          style={{ willChange: "transform" }}
+        >
+          <div
+            className="absolute inset-0 rounded-full"
+            style={{ background: slices.length ? `conic-gradient(from 0deg, ${gradient})` : "#1c1c28" }}
+          />
+          {slices.map((s) => {
+            const mid = s.start + s.sweep / 2;
+            const rad = (mid * Math.PI) / 180;
+            const r = 38;
+            const left = 50 + r * Math.sin(rad);
+            const top = 50 - r * Math.cos(rad);
+            const size = s.sweep < 18 ? 22 : 32;
+            return (
+              <div
+                key={`${s.ticket.playerId}-${s.index}`}
+                className="pointer-events-none absolute z-10"
+                style={{
+                  left: `${left}%`,
+                  top: `${top}%`,
+                  transform: "translate(-50%, -50%)",
+                }}
+              >
+                <PlayerAvatar
+                  src={s.ticket.avatar}
+                  name={s.ticket.name}
+                  color={s.ticket.color}
+                  size={size}
+                  kind={s.ticket.name === "You" ? "you" : "player"}
+                />
+              </div>
+            );
+          })}
+        </div>
+        <div className="absolute inset-[22%] z-10 grid place-items-center rounded-full bg-bg-950 ring-2 ring-white/10">
           <div className="px-3 text-center">
             {winnerName ? (
               <>

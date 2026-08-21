@@ -48,6 +48,8 @@ type PendingSpin = {
 // pointer. Vertical (battles): items stack and scroll top-to-bottom past a
 // horizontal pointer, so each player's column takes up less side-by-side
 // width when many players are on screen at once.
+export const BATTLE_REEL_HEIGHT = { md: 276, lg: 324 } as const;
+
 const SIZE_CONFIG = {
   md: {
     horizontal: { itemSize: 140, boxSize: 140 },

@@ -708,7 +708,7 @@ export function BattleRoom() {
               const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
               return (
                 <Fragment key={`head-${teamIdx}`}>
-                  {teamIdx > 0 && <TeamDivider />}
+                  {teamIdx > 0 && <TeamDivider mark={false} />}
                   <div
                     className="flex min-w-0 flex-col overflow-hidden"
                     style={{
@@ -774,7 +774,7 @@ export function BattleRoom() {
                 const reelSize = players.length <= 4 ? "lg" : "md";
                 return (
                   <Fragment key={`stage-${teamIdx}`}>
-                    {teamIdx > 0 && <TeamDivider mark={false} />}
+                    {teamIdx > 0 && <TeamDivider />}
                     <div
                       className="flex min-w-0 flex-col overflow-hidden"
                       style={{

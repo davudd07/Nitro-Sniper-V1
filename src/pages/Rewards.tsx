@@ -48,7 +48,7 @@ function DropInfo({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function DropCard({
-  title,
+  word,
   variant,
   info,
   footer,
@@ -57,7 +57,7 @@ function DropCard({
   art,
   amount,
 }: {
-  title: string;
+  word: string;
   variant: "green" | "lime" | "gold";
   info?: ReactNode;
   footer: string;
@@ -78,10 +78,8 @@ function DropCard({
       : variant === "lime"
         ? "from-lime-400/15"
         : "from-amber-400/15";
-  const word =
+  const wordTone =
     variant === "green" ? "drop-word-green" : variant === "lime" ? "drop-word-lime" : "drop-word-gold";
-  const titleTone =
-    variant === "green" ? "drop-title-green" : variant === "lime" ? "drop-title-lime" : "drop-title-gold";
   const footerClass = footerDisabled
     ? "border-white/10 bg-[#0a100c] text-slate-400"
     : "border-lime-300/50 bg-gradient-to-b from-lime-400 to-green-700 text-[#052e16] shadow-[0_3px_0_#14532d]";
@@ -95,14 +93,9 @@ function DropCard({
     >
       <div className={clsx("pointer-events-none absolute inset-0 bg-gradient-to-b to-transparent", glow)} />
       <div className="relative flex h-10 items-start justify-end px-4 pt-4">{info}</div>
-      <div className="relative flex flex-1 flex-col items-center justify-center px-3 pb-2 pt-2">
-        <p className={clsx("drop-word", word)}>DROP</p>
-        <div className="relative -mt-6">
-          {art}
-          <p className={clsx("drop-title pointer-events-none absolute inset-x-0 top-3 z-10 text-center", titleTone)}>
-            {title}
-          </p>
-        </div>
+      <div className="relative flex flex-1 flex-col items-center justify-center px-2 pb-2 pt-2">
+        <p className={clsx("drop-word", wordTone, word.length >= 7 && "drop-word-long")}>{word}</p>
+        <div className="relative -mt-5">{art}</div>
         {amount ? <p className="mt-1 font-mono text-sm font-bold text-cyan-300">{amount}</p> : null}
       </div>
       <button
@@ -203,7 +196,7 @@ export function Rewards() {
 
       <div className="grid gap-4 lg:grid-cols-3">
         <DropCard
-          title="Instant Drop"
+          word="Instant"
           variant="green"
           art={<CoinStackArt accent="green" />}
           amount={canClaimInstant ? `${formatRakeback(pending)} SH` : undefined}
@@ -212,7 +205,7 @@ export function Rewards() {
           onFooter={handleClaimInstant}
         />
         <DropCard
-          title="Weekly Drop"
+          word="Weekly"
           variant="lime"
           art={<CoinStackArt accent="lime" />}
           amount={weeklyReady ? `${formatCredits(WEEKLY_DROP_SH)} SH` : undefined}
@@ -230,7 +223,7 @@ export function Rewards() {
           }
         />
         <DropCard
-          title="Monthly Drop"
+          word="Monthly"
           variant="gold"
           art={<TreasureChestArt />}
           amount={monthlyReady ? `${formatCredits(MONTHLY_DROP_SH)} SH` : undefined}

@@ -58,11 +58,11 @@ export function GameSidebar() {
             onClick={() => sound.click()}
             className={({ isActive }) =>
               clsx(
-                "relative flex items-center gap-2.5 rounded-lg border-2 px-2.5 font-extrabold uppercase tracking-wide shadow-[3px_3px_0_#78350f] transition-transform hover:-translate-y-0.5",
+                "relative flex items-center gap-2.5 rounded-lg border-2 px-2.5 font-extrabold uppercase tracking-wide shadow-[3px_3px_0_#14532d] transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0",
                 open ? "justify-start py-3 text-[13px]" : "justify-center px-0 py-3",
                 isActive
-                  ? "border-amber-300 bg-gradient-to-br from-amber-300 to-orange-500 text-bg-950"
-                  : "border-amber-400/70 bg-gradient-to-br from-amber-400/90 to-orange-600 text-bg-950",
+                  ? "border-lime-300 bg-gradient-to-br from-lime-300 to-emerald-600 text-[#052e16]"
+                  : "border-lime-400/70 bg-gradient-to-br from-lime-400/90 to-green-700 text-[#052e16]",
               )
             }
           >

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import type { CaseOddsEntry } from "../../data/cases";
 import type { CaseItem } from "../../data/items";
@@ -9,8 +9,20 @@ import { easeOutQuart } from "../../lib/easing";
 import { formatCredits } from "../../lib/format";
 import { sound } from "../../lib/sound";
 
-const REEL_LENGTH = 70;
+// Travel distance stays long (same land index) so the spin still flies past a
+// full column of items. Trim only the unused tail below the landing window.
+const REEL_LENGTH = 64;
 const LAND_INDEX = 58;
+
+// Shared tick clock so 2–6 battle lanes don't each spawn Web Audio nodes
+// on every item crossing (that stacks into audible + main-thread jank).
+let lastSharedTickAt = 0;
+function playSpinTick(speed: number) {
+  const now = performance.now();
+  if (now - lastSharedTickAt < 32) return;
+  lastSharedTickAt = now;
+  sound.tick(speed);
+}
 
 type Orientation = "horizontal" | "vertical";
 
@@ -30,6 +42,10 @@ const SIZE_CONFIG = {
     icon: "lg" as const,
   },
 };
+
+function stripTransform(horizontal: boolean, px: number) {
+  return horizontal ? `translate3d(${-px}px,0,0)` : `translate3d(0,${-px}px,0)`;
+}
 
 function buildStrip(pool: CaseItem[], landing: CaseItem, rand: () => number): CaseItem[] {
   const strip: CaseItem[] = [];
@@ -88,9 +104,10 @@ export function CaseReel({
   requireGoldConfirm?: boolean;
 }) {
   const [phase, setPhase] = useState<"idle" | "main" | "awaitingGold" | "charge" | "gold" | "done">("idle");
-  const [offset, setOffset] = useState(0);
   const [strip, setStrip] = useState<CaseItem[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
+  const stripRef = useRef<HTMLDivElement>(null);
+  const offsetRef = useRef(0);
   const rafRef = useRef<number | null>(null);
   const lastTickIndexRef = useRef(-1);
   const cfg = SIZE_CONFIG[size][orientation];
@@ -99,6 +116,13 @@ export function CaseReel({
   const goldSeedRef = useRef(0);
   const resultRef = useRef(result);
   resultRef.current = result;
+  const spinning = phase === "main" || phase === "gold";
+
+  function applyOffset(px: number) {
+    offsetRef.current = px;
+    const el = stripRef.current;
+    if (el) el.style.transform = stripTransform(isHorizontal, px);
+  }
 
   function runGoldSpin(seedBase: number, landed: CaseOddsEntry) {
     setPhase("charge");
@@ -108,7 +132,7 @@ export function CaseReel({
       const goldRand = mulberry32(seedBase * 104729 + 3);
       const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand);
       setStrip(goldStrip);
-      setOffset(0);
+      applyOffset(0);
       setPhase("gold");
       lastTickIndexRef.current = -1;
       animateTo(seedBase + 1, goldDuration, () => {
@@ -131,6 +155,7 @@ export function CaseReel({
     const rand = mulberry32(laneSeed + 17);
     const previewLen = isHorizontal ? 16 : 10;
     setStrip(Array.from({ length: previewLen }, () => pool[Math.floor(rand() * pool.length)]));
+    applyOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pool, spinToken, laneSeed]);
 
@@ -142,7 +167,7 @@ export function CaseReel({
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
     const mainStrip = buildStrip(pool, targetForMain, rand);
     setStrip(mainStrip);
-    setOffset(0);
+    applyOffset(0);
     setPhase("main");
     lastTickIndexRef.current = -1;
     animateTo(seedBase, duration, () => {
@@ -170,28 +195,33 @@ export function CaseReel({
   function animateTo(seed: number, dur: number, done: () => void) {
     if (rafRef.current) cancelAnimationFrame(rafRef.current);
     const start = performance.now();
+    const stripEl = stripRef.current;
+    // Measure once — reading clientWidth/Height every frame forces layout.
+    const containerDim = isHorizontal
+      ? (containerRef.current?.clientWidth || cfg.boxSize)
+      : (containerRef.current?.clientHeight || cfg.boxSize);
+    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
+    const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
+    if (stripEl) stripEl.style.willChange = "transform";
+    applyOffset(0);
 
     function tick(now: number) {
-      const containerDim = isHorizontal
-        ? (containerRef.current?.clientWidth || cfg.boxSize)
-        : (containerRef.current?.clientHeight || cfg.boxSize);
-      const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
-      const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
       const t = Math.min(1, (now - start) / dur);
       const eased = easeOutQuart(t);
       const pos = targetOffset * eased;
-      setOffset(pos);
+      applyOffset(pos);
 
       const currentIndex = Math.floor((pos + containerDim / 2) / cfg.itemSize);
       if (currentIndex !== lastTickIndexRef.current && t < 1) {
         lastTickIndexRef.current = currentIndex;
-        sound.tick(1 - t);
+        playSpinTick(1 - t);
       }
 
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
       } else {
-        setOffset(targetOffset);
+        applyOffset(targetOffset);
+        if (stripEl) stripEl.style.willChange = "auto";
         done();
       }
     }
@@ -214,10 +244,10 @@ export function CaseReel({
       <div
         ref={containerRef}
         className={clsx(
-          "relative w-full max-w-full overflow-hidden border-2 bg-black/50 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)] transition-shadow",
-          isGoldPhase ? "border-amber-400/70 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/20",
+          "relative w-full max-w-full overflow-hidden border-2 bg-black/50 isolate",
+          isGoldPhase ? "border-amber-400/70 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/20 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)]",
         )}
-        style={{ height: cfg.boxSize }}
+        style={{ height: cfg.boxSize, transform: "translateZ(0)" }}
       >
         {isHorizontal ? (
           <>
@@ -246,19 +276,27 @@ export function CaseReel({
           </div>
         )}
         {phase === "charge" && (
-          <div className="gold-pulse absolute inset-0 z-20 flex items-center justify-center bg-amber-400/10 backdrop-blur-[1px]">
+          <div className="gold-pulse absolute inset-0 z-20 flex items-center justify-center bg-amber-400/10">
             <span className="text-xs font-bold uppercase tracking-widest text-amber-300">Gold Spin!</span>
           </div>
         )}
         <div
+          ref={stripRef}
           className={clsx("pointer-events-none absolute flex", isHorizontal ? "inset-y-0 left-0 flex-row" : "inset-x-0 top-0 w-full flex-col")}
           style={{
-            transform: isHorizontal ? `translateX(${-offset}px)` : `translateY(${-offset}px)`,
-            willChange: "transform",
+            transform: stripTransform(isHorizontal, offsetRef.current),
+            backfaceVisibility: "hidden",
+            willChange: spinning ? "transform" : "auto",
           }}
         >
           {strip.map((item, i) => (
-            <ReelSlot key={i} item={item} itemSize={cfg.itemSize} iconSize={SIZE_CONFIG[size].icon} orientation={orientation} />
+            <ReelSlot
+              key={i}
+              item={item}
+              itemSize={cfg.itemSize}
+              iconSize={SIZE_CONFIG[size].icon}
+              orientation={orientation}
+            />
           ))}
         </div>
       </div>
@@ -266,7 +304,7 @@ export function CaseReel({
   );
 }
 
-function ReelSlot({
+const ReelSlot = memo(function ReelSlot({
   item,
   itemSize,
   iconSize,
@@ -282,16 +320,22 @@ function ReelSlot({
 
   if (orientation === "horizontal") {
     return (
-      <div className="relative h-full shrink-0" style={{ width: itemSize }}>
+      <div
+        className="relative h-full shrink-0"
+        style={{
+          width: itemSize,
+          contain: "layout paint",
+        }}
+      >
         <div
           className={clsx("absolute inset-0 flex flex-col items-center justify-center gap-0.5", isIndicator && "gold-pulse")}
           style={{
             background: `linear-gradient(165deg, ${r.from}66, ${r.to})`,
-            boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : `inset 0 0 16px ${r.ring}33`,
+            boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
             borderRight: `2px solid ${r.ring}`,
           }}
         >
-          <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none" />
+          <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none" lite />
           <span className="max-w-[92%] truncate px-0.5 text-[10px] font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
             {item.name}
           </span>
@@ -301,7 +345,13 @@ function ReelSlot({
   }
 
   return (
-    <div className="relative w-full shrink-0" style={{ height: itemSize }}>
+    <div
+      className="relative w-full shrink-0"
+      style={{
+        height: itemSize,
+        contain: "layout paint",
+      }}
+    >
       <div
         className={clsx("absolute inset-0 flex items-center gap-2.5 px-2", isIndicator && "gold-pulse")}
         style={{
@@ -310,7 +360,7 @@ function ReelSlot({
           borderBottom: `2px solid ${r.ring}`,
         }}
       >
-        <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none shrink-0" />
+        <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none shrink-0" lite />
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
             {item.name}
@@ -320,4 +370,4 @@ function ReelSlot({
       </div>
     </div>
   );
-}
+});

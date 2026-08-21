@@ -117,7 +117,7 @@ export function Keno() {
     const catches = kenoCatches(picks, nextDrawn);
     const payout = kenoPayout(stake, spots, catches);
     setLastCatches(catches);
-    recordRound(stake, payout);
+    recordRound(stake, payout, "keno");
     if (payout > 0) {
       setLastWin(payout);
       credit(payout);

@@ -17,10 +17,12 @@ export function JoinBattleModal({
   battle,
   onClose,
   onConfirm,
+  heading = "Join battle",
 }: {
   battle: BattleConfig;
   onClose: () => void;
   onConfirm: (borrowPct: number) => void;
+  heading?: string;
 }) {
   const funded = battle.fundedPct > 0;
   const [borrowPct, setBorrowPct] = useState(0);
@@ -38,7 +40,7 @@ export function JoinBattleModal({
       >
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-lg font-semibold text-white">Join battle</h3>
+            <h3 className="text-lg font-semibold text-white">{heading}</h3>
             <p className="text-sm text-slate-400">
               {mode?.label ?? "Battle"} · {seats} seats · {formatCredits(battle.costPerPlayer)} SH / seat
             </p>

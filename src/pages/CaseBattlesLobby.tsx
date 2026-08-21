@@ -93,7 +93,7 @@ export function CaseBattlesLobby() {
     }
     if (cost > 0) applyTipWager(cost);
     awardRakeback(cost, HOUSE_EDGE.battles);
-    setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct });
+    setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct, seat: 0 });
     setJoinTarget(null);
     navigate(`/battles/${b.id}`);
   }

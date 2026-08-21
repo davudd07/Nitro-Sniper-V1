@@ -482,7 +482,7 @@ export function Blackjack() {
     }
 
     if (winnings > 0) credit(winnings);
-    recordRound(finalBet, winnings);
+    recordRound(finalBet, winnings, "blackjack");
 
     const msgMap: Record<Exclude<Outcome, null>, string> = {
       blackjack: `Blackjack! Won ${formatCredits(winnings)} SH.`,

@@ -233,7 +233,7 @@ export function CoinFlip() {
   function cashOutInternal(streak: number) {
     const payout = payoutFor(bet, streak);
     credit(payout);
-    recordRound(bet, payout);
+    recordRound(bet, payout, "coinflip");
     setLastWin(payout);
     setSession((s) => s + payout);
     setPhase("idle");
@@ -285,7 +285,7 @@ export function CoinFlip() {
       winsRef.current = 0;
       setPhase("lost");
       phaseRef.current = "lost";
-      recordRound(bet, 0);
+      recordRound(bet, 0, "coinflip");
       sound.lose();
       push(`${landed === "heads" ? "Heads" : "Tails"} — lost ${formatCredits(bet)} SH.`, "danger");
       if (leftover > 0) {
@@ -309,7 +309,7 @@ export function CoinFlip() {
     if (isMaxWin(streak)) {
       const payout = payoutFor(bet, streak);
       credit(payout);
-      recordRound(bet, payout);
+      recordRound(bet, payout, "coinflip");
       setLastWin(payout);
       setSession((s) => s + payout);
       setPhase("maxed");

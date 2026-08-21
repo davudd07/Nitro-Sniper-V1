@@ -163,10 +163,10 @@ export function JackpotPage() {
     if (!winner || !me) return;
     if (winner.kind === "you") {
       credit(livePayout);
-      recordRound(me.amount, livePayout);
+      recordRound(me.amount, livePayout, "jackpot");
       push(`You won the jackpot! +${formatCredits(livePayout)} SH after 9% house edge.`, "success");
     } else {
-      recordRound(me.amount, 0);
+      recordRound(me.amount, 0, "jackpot");
       push(`${winner.name} took the pot. House kept ${formatCredits(liveTotal - livePayout)} SH.`, "info");
     }
   }

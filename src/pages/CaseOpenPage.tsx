@@ -75,9 +75,9 @@ export function CaseOpenPage() {
     const demo = demoRoundRef.current;
     if (!demo) {
       credit(item.value);
-      recordRound(c.price, item.value);
+      recordRound(c.price, item.value, "cases");
     } else {
-      recordRound(0, 0);
+      recordRound(0, 0, "cases");
     }
     roundItemsRef.current.push(item);
     setHistory((h) => [{ item, id: `${Date.now()}-${h.length}-${item.id}` }, ...h].slice(0, 24));

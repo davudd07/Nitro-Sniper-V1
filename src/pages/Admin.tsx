@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ban, Coins, Eye, Gift, LogOut, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
+import { Ban, Coins, Eye, Gift, Headphones, LogOut, MessageSquare, Search, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import {
   clearAdminSession,
@@ -16,6 +16,9 @@ import {
   useModerationStore,
 } from "../store/moderationStore";
 import { useEconomyStore } from "../store/economyStore";
+import { ACTIVITY_GAMES, ACTIVITY_GAME_LABELS, useActivityStore, type ActivityGame } from "../store/activityStore";
+import { useChatStore } from "../store/chatStore";
+import { useSupportStore, type SupportTicket } from "../store/supportStore";
 import { formatCredits, formatFunCoins, formatRakeback } from "../lib/format";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
@@ -97,8 +100,14 @@ function AdminLogin({ onOk }: { onOk: () => void }) {
 function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const [selected, setSelected] = useState<string>(LOCAL_PLAYER);
   const [filter, setFilter] = useState("");
+  const [lookup, setLookup] = useState("");
   const [amount, setAmount] = useState(1000);
   const [confirmView, setConfirmView] = useState(false);
+  const [deskTab, setDeskTab] = useState<"players" | "support">("players");
+  const [gameFilter, setGameFilter] = useState<ActivityGame | "all">("all");
+  const [chatWord, setChatWord] = useState("");
+  const [ticketId, setTicketId] = useState<string | null>(null);
+  const [wardenReply, setWardenReply] = useState("");
   const navigate = useNavigate();
   const enterView = useAdminViewStore((s) => s.enter);
   const exitView = useAdminViewStore((s) => s.exit);
@@ -116,6 +125,14 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const grantPendingRakeback = useModerationStore((s) => s.grantPendingRakeback);
   const resetPlayer = useModerationStore((s) => s.resetPlayer);
   const snapshot = useModerationStore((s) => s.snapshot);
+  const plays = useActivityStore((s) => s.plays);
+  const playsFor = useActivityStore((s) => s.playsFor);
+  const totalsFor = useActivityStore((s) => s.totalsFor);
+  const chatMessages = useChatStore((s) => s.messages);
+  const tickets = useSupportStore((s) => s.tickets);
+  const replyTicket = useSupportStore((s) => s.reply);
+  const closeTicket = useSupportStore((s) => s.closeTicket);
+  const reopenTicket = useSupportStore((s) => s.reopenTicket);
 
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
@@ -125,13 +142,39 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const roundsPlayed = useEconomyStore((s) => s.roundsPlayed);
 
   const q = filter.trim().toLowerCase();
-  const names = useMemo(
-    () => MODERATION_PLAYERS.filter((n) => !q || n.toLowerCase().includes(q)),
-    [q],
-  );
+  const names = useMemo(() => {
+    const extra = new Set<string>(MODERATION_PLAYERS);
+    extra.add(lookup.trim());
+    for (const p of plays) extra.add(p.name);
+    for (const m of chatMessages) extra.add(m.name);
+    const list = [...extra].filter(Boolean);
+    return list.filter((n) => !q || n.toLowerCase().includes(q));
+  }, [q, plays, chatMessages, lookup]);
 
   const snap = snapshot(selected);
   const youBanned = banned.includes(LOCAL_PLAYER);
+  const activityTotals = totalsFor(selected);
+  const ecoWagered = selected === LOCAL_PLAYER ? totalWagered : activityTotals.wagered || snap.wagered;
+  const ecoWon = selected === LOCAL_PLAYER ? totalWon : activityTotals.won;
+  const profit = ecoWon - ecoWagered;
+  const recentPlays = playsFor(selected, gameFilter);
+  const word = chatWord.trim().toLowerCase();
+  const playerChat = chatMessages.filter((m) => {
+    const mine = m.name.toLowerCase() === selected.toLowerCase() || (selected === LOCAL_PLAYER && m.you);
+    if (!mine) return false;
+    if (!word) return true;
+    return m.text.toLowerCase().includes(word);
+  });
+  const openTickets = tickets.filter((t) => t.status === "open").length;
+  const activeTicket = tickets.find((t) => t.id === ticketId) ?? null;
+
+  function lookUpTyped() {
+    const name = lookup.trim();
+    if (!name) return;
+    setSelected(name);
+    setFilter(name);
+    sound.click();
+  }
 
   function act(label: string, fn: () => void) {
     fn();
@@ -148,6 +191,31 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
           <span className="rounded-md border border-amber-400/30 bg-amber-400/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-200">
             Demo tools
           </span>
+          <div className="ml-2 flex rounded-md border border-white/10 p-0.5">
+            <button
+              type="button"
+              onClick={() => setDeskTab("players")}
+              className={clsx(
+                "rounded px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
+                deskTab === "players" ? "bg-cyan-400/20 text-white" : "text-slate-400 hover:text-white",
+              )}
+            >
+              Players
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeskTab("support")}
+              className={clsx(
+                "inline-flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
+                deskTab === "support" ? "bg-cyan-400/20 text-white" : "text-slate-400 hover:text-white",
+              )}
+            >
+              <Headphones className="h-3 w-3" /> Support
+              {openTickets > 0 && (
+                <span className="rounded-full bg-amber-400 px-1.5 text-[10px] font-black text-bg-950">{openTickets}</span>
+              )}
+            </button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -176,7 +244,8 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
       </header>
 
       <div className="min-h-0 flex-1 overflow-y-auto p-4">
-        <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-[260px_1fr]">
+        <div className={clsx("mx-auto grid max-w-6xl gap-4", deskTab === "players" && "lg:grid-cols-[260px_1fr]")}>
+          {deskTab === "players" && (
           <aside className="surface h-fit p-3">
             <input
               value={filter}
@@ -184,6 +253,23 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
               placeholder="Filter players…"
               className="mb-2 w-full rounded-md border border-white/10 bg-black/30 px-2.5 py-2 text-sm text-white outline-none focus:border-cyan-400/40"
             />
+            <form
+              className="mb-2 flex gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                lookUpTyped();
+              }}
+            >
+              <input
+                value={lookup}
+                onChange={(e) => setLookup(e.target.value)}
+                placeholder="Look up any name…"
+                className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/30 px-2.5 py-2 text-sm text-white outline-none focus:border-cyan-400/40"
+              />
+              <button type="submit" className="grid h-9 w-9 shrink-0 place-items-center rounded-md border border-cyan-400/40 text-cyan-200" title="Look up">
+                <Search className="h-4 w-4" />
+              </button>
+            </form>
             <ul className="max-h-[70vh] space-y-1 overflow-y-auto">
               {names.map((name) => {
                 const isYou = name === LOCAL_PLAYER;
@@ -210,8 +296,38 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
               })}
             </ul>
           </aside>
+          )}
 
           <div className="space-y-4">
+            {deskTab === "support" ? (
+              <SupportDesk
+                tickets={tickets}
+                active={activeTicket}
+                reply={wardenReply}
+                setReply={setWardenReply}
+                onSelect={setTicketId}
+                onSend={() => {
+                  if (!activeTicket || !wardenReply.trim()) return;
+                  replyTicket(activeTicket.id, wardenReply, "warden");
+                  setWardenReply("");
+                  sound.click();
+                  push("Reply sent.", "success");
+                }}
+                onClose={() => {
+                  if (!activeTicket) return;
+                  closeTicket(activeTicket.id);
+                  sound.click();
+                  push("Ticket closed.", "info");
+                }}
+                onReopen={() => {
+                  if (!activeTicket) return;
+                  reopenTicket(activeTicket.id);
+                  sound.click();
+                  push("Ticket reopened.", "success");
+                }}
+              />
+            ) : (
+              <>
             {youBanned && (
               <p className="rounded-md border-2 border-rose-400/40 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
                 Local player is banned — stakes and chat are blocked until you unban You.
@@ -244,9 +360,16 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
               <div className="mb-4 grid gap-2 sm:grid-cols-4">
                 <Mini label="Shards" value={formatCredits(snap.shards)} />
                 <Mini label="Fun Coins" value={formatFunCoins(snap.funCoins)} />
-                <Mini label="Pending RB" value={formatRakeback(snap.pendingRakeback)} />
-                <Mini label="Wagered" value={formatCredits(snap.wagered)} />
+                <Mini label="Wagered" value={formatCredits(ecoWagered)} />
+                <Mini
+                  label="Profit / loss"
+                  value={`${profit >= 0 ? "+" : ""}${formatCredits(profit)}`}
+                />
               </div>
+              <p className="mb-4 text-xs text-slate-500">
+                Won {formatCredits(ecoWon)} SH across {selected === LOCAL_PLAYER ? roundsPlayed : activityTotals.rounds} recorded
+                rounds. P/L is winnings minus wagered.
+              </p>
 
               <div className="mb-4 flex flex-wrap gap-2">
                 {snap.banned ? (
@@ -306,6 +429,79 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
             </div>
 
             <div className="surface p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Recent games</p>
+                <select
+                  value={gameFilter}
+                  onChange={(e) => setGameFilter(e.target.value as ActivityGame | "all")}
+                  className="rounded-md border border-white/10 bg-black/40 px-2 py-1 text-xs text-white outline-none focus:border-cyan-400/40"
+                >
+                  <option value="all">All games</option>
+                  {ACTIVITY_GAMES.map((g) => (
+                    <option key={g} value={g}>
+                      {ACTIVITY_GAME_LABELS[g]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              {recentPlays.length === 0 ? (
+                <p className="text-sm text-slate-500">No rounds on record for this player{gameFilter !== "all" ? ` in ${ACTIVITY_GAME_LABELS[gameFilter]}` : ""}.</p>
+              ) : (
+                <ul className="max-h-56 space-y-1.5 overflow-y-auto text-xs">
+                  {recentPlays.slice(0, 40).map((row) => {
+                    const delta = row.won - row.wagered;
+                    return (
+                      <li key={row.id} className="flex items-center justify-between gap-2 rounded-md bg-black/25 px-2 py-1.5">
+                        <span className="min-w-0">
+                          <span className="font-semibold text-white">{ACTIVITY_GAME_LABELS[row.game]}</span>
+                          <span className="ml-2 font-mono text-slate-500">{new Date(row.at).toLocaleString()}</span>
+                        </span>
+                        <span className="shrink-0 font-mono">
+                          <span className="text-slate-400">{formatCredits(row.wagered)} in</span>
+                          <span className={clsx("ml-2 font-bold", delta >= 0 ? "text-emerald-300" : "text-rose-300")}>
+                            {delta >= 0 ? "+" : ""}
+                            {formatCredits(delta)}
+                          </span>
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+
+            <div className="surface p-5">
+              <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                  <MessageSquare className="h-3.5 w-3.5" /> Recent chat
+                </p>
+                <input
+                  value={chatWord}
+                  onChange={(e) => setChatWord(e.target.value)}
+                  placeholder="Filter by word…"
+                  className="w-44 rounded-md border border-white/10 bg-black/40 px-2 py-1 text-xs text-white outline-none focus:border-cyan-400/40"
+                />
+              </div>
+              {playerChat.length === 0 ? (
+                <p className="text-sm text-slate-500">
+                  {word ? `No messages from ${selected} containing “${chatWord.trim()}”.` : `No chat from ${selected} yet.`}
+                </p>
+              ) : (
+                <ul className="max-h-56 space-y-1.5 overflow-y-auto text-xs text-slate-300">
+                  {playerChat
+                    .slice()
+                    .reverse()
+                    .map((m) => (
+                      <li key={m.id} className="rounded-md bg-black/25 px-2 py-1.5">
+                        <span className="mr-2 font-mono text-slate-500">{new Date(m.at).toLocaleTimeString()}</span>
+                        {m.text}
+                      </li>
+                    ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="surface p-5">
               <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Warden log</p>
               {log.length === 0 ? (
                 <p className="mt-2 text-sm text-slate-500">No actions yet this session.</p>
@@ -320,6 +516,8 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 </ul>
               )}
             </div>
+              </>
+            )}
           </div>
         </div>
       </div>
@@ -336,6 +534,118 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
           }}
         />
       )}
+    </div>
+  );
+}
+
+function SupportDesk({
+  tickets,
+  active,
+  reply,
+  setReply,
+  onSelect,
+  onSend,
+  onClose,
+  onReopen,
+}: {
+  tickets: SupportTicket[];
+  active: SupportTicket | null;
+  reply: string;
+  setReply: (v: string) => void;
+  onSelect: (id: string) => void;
+  onSend: () => void;
+  onClose: () => void;
+  onReopen: () => void;
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+      <div className="surface p-3">
+        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Tickets</p>
+        {tickets.length === 0 ? (
+          <p className="text-sm text-slate-500">No tickets yet. Players open them from the Support button on the live site.</p>
+        ) : (
+          <ul className="max-h-[60vh] space-y-1 overflow-y-auto">
+            {tickets.map((t) => (
+              <li key={t.id}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(t.id)}
+                  className={clsx(
+                    "flex w-full flex-col rounded-md px-2.5 py-2 text-left",
+                    active?.id === t.id ? "bg-cyan-400/15 text-white" : "text-slate-300 hover:bg-white/5",
+                  )}
+                >
+                  <span className="truncate text-sm font-semibold">{t.subject}</span>
+                  <span className="flex justify-between text-[10px] uppercase tracking-wide text-slate-500">
+                    <span>{t.from}</span>
+                    <span className={t.status === "open" ? "text-emerald-300" : "text-slate-500"}>{t.status}</span>
+                  </span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      <div className="surface flex min-h-[360px] flex-col p-5">
+        {!active ? (
+          <p className="m-auto text-sm text-slate-500">Select a ticket to read and reply.</p>
+        ) : (
+          <>
+            <div className="mb-3 flex flex-wrap items-start justify-between gap-2">
+              <div>
+                <h2 className="text-lg font-bold text-white">{active.subject}</h2>
+                <p className="text-xs text-slate-500">
+                  {active.from} · {new Date(active.createdAt).toLocaleString()}
+                </p>
+              </div>
+              {active.status === "open" ? (
+                <button type="button" onClick={onClose} className="rounded-md border border-white/15 px-2.5 py-1 text-[11px] font-bold uppercase text-slate-300">
+                  Close ticket
+                </button>
+              ) : (
+                <button type="button" onClick={onReopen} className="rounded-md border border-emerald-400/40 px-2.5 py-1 text-[11px] font-bold uppercase text-emerald-200">
+                  Reopen
+                </button>
+              )}
+            </div>
+            <div className="min-h-0 flex-1 space-y-2 overflow-y-auto">
+              {active.messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={clsx(
+                    "max-w-[90%] rounded-lg px-3 py-2 text-sm",
+                    m.from === "warden" ? "ml-auto bg-cyan-400/15 text-cyan-50" : "bg-black/30 text-slate-200",
+                  )}
+                >
+                  <p className="mb-0.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    {m.from === "warden" ? "Warden" : active.from} · {new Date(m.at).toLocaleTimeString()}
+                  </p>
+                  {m.text}
+                </div>
+              ))}
+            </div>
+            {active.status === "open" && (
+              <form
+                className="mt-3 flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  onSend();
+                }}
+              >
+                <input
+                  value={reply}
+                  onChange={(e) => setReply(e.target.value)}
+                  placeholder="Reply as warden…"
+                  className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/40"
+                />
+                <button type="submit" disabled={!reply.trim()} className="btn-primary px-4 py-2 text-xs disabled:opacity-40">
+                  Send
+                </button>
+              </form>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }

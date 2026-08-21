@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { rakebackAmount } from "../lib/rakeback";
+import { logPlay, type ActivityGame } from "./activityStore";
 
 export const STARTING_BALANCE = 10000;
 export const LOW_BALANCE_THRESHOLD = 100;
@@ -24,7 +25,7 @@ interface EconomyState {
   claimRakeback: () => number;
   receiveTip: (amount: number) => void;
   applyTipWager: (wagered: number) => void;
-  recordRound: (wagered: number, won: number) => void;
+  recordRound: (wagered: number, won: number, game?: ActivityGame) => void;
   reset: () => void;
   maybeTopUp: () => boolean;
 }
@@ -96,7 +97,7 @@ export const useEconomyStore = create<EconomyState>()(
           balance: s.balance + locked,
         }));
       },
-      recordRound: (wagered, won) =>
+      recordRound: (wagered, won, game) => {
         set((s) => {
           const left = s.tipWagerLeft ?? 0;
           const locked = s.lockedTips ?? 0;
@@ -118,7 +119,11 @@ export const useEconomyStore = create<EconomyState>()(
             lockedTips,
             balance,
           };
-        }),
+        });
+        if (game && (wagered > 0 || won > 0)) {
+          logPlay({ name: "You", game, wagered, won });
+        }
+      },
       reset: () =>
         set({
           balance: STARTING_BALANCE,

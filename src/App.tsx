@@ -21,6 +21,7 @@ import { JackpotPage } from "./pages/Jackpot";
 import { CoinFlip } from "./pages/CoinFlip";
 import { ComingSoon } from "./pages/ComingSoon";
 import { ChatRainController } from "./components/chat/ChatRainController";
+import { SupportWidget } from "./components/support/SupportWidget";
 import { PATH_TO_GAME } from "./data/lobbyGames";
 import { trackRecent } from "./lib/recentGames";
 import { Rewards } from "./pages/Rewards";
@@ -110,6 +111,7 @@ export default function App() {
       </div>
       <ChatSidebar />
       <ChatRainController />
+      <SupportWidget />
       <Toasts />
     </div>
   );

@@ -206,7 +206,7 @@ export function CreateBattle() {
       botSeats: [...botSeats],
       creatorBorrowPct: effectiveBorrow,
     });
-    setJoinIntent(id, { borrowPct: effectiveBorrow });
+    setJoinIntent(id, { borrowPct: effectiveBorrow, seat: youSeat });
     push(
       isPrivate
         ? "Private battle created. Share the link — it won’t show in the lobby."

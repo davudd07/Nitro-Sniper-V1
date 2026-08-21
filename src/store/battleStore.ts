@@ -47,6 +47,8 @@ export interface BattleConfig {
 
 export interface BattleJoinIntent {
   borrowPct: number;
+  /** Seat index the joiner occupies. Defaults to 0 for lobby joins. */
+  seat?: number;
 }
 
 interface BattleStoreState {

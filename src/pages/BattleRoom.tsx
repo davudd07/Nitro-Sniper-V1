@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Bot, User, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore } from "../store/battleStore";
-import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS } from "../data/battleModes";
+import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS, totalPlayers } from "../data/battleModes";
 import { getCase, rollCaseItem, type CaseOddsEntry } from "../data/cases";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
@@ -21,7 +21,7 @@ import { randomBotName, BOT_NAMES } from "../data/botNames";
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { formatCredits } from "../lib/format";
-import { fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
+import { creatorCreateCost, fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
@@ -58,6 +58,7 @@ export function BattleRoom() {
   const applyTipWager = useEconomyStore((s) => s.applyTipWager);
   const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
+  const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
 
   const mode = useMemo(() => (battle ? BATTLE_MODES.find((m) => m.id === battle.modeId) : undefined), [battle]);
@@ -66,11 +67,13 @@ export function BattleRoom() {
     if (!mode || !battle) return [];
     const players: BattlePlayer[] = [];
     const creatorSeat = battle.source === "you" ? (battle.creatorSeat ?? 0) : 0;
+    const joinSeat = joinIntent?.seat;
+    const youSeat = battle.source === "you" ? creatorSeat : (joinSeat ?? 0);
     const explicitBots = battle.botSeats ? new Set(battle.botSeats) : null;
     let slot = 0;
     mode.teamSizes.forEach((size, teamIndex) => {
       for (let i = 0; i < size; i++) {
-        const isYou = !spectating && (battle.source === "you" ? slot === creatorSeat : slot === 0);
+        const isYou = !spectating && slot === youSeat;
         let kind: SlotKind;
         if (isYou) {
           kind = "you";
@@ -102,7 +105,7 @@ export function BattleRoom() {
       }
     });
     return players;
-  }, [mode, battle, spectating]);
+  }, [mode, battle, spectating, joinIntent?.seat]);
 
   const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers);
   const teams = useMemo(() => {
@@ -128,12 +131,34 @@ export function BattleRoom() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [payout, setPayout] = useState<BattlePayout | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
-  const [spectatorJoin, setSpectatorJoin] = useState(false);
+  const [borrowSeat, setBorrowSeat] = useState<number | null>(null);
   const borrowPct =
     battle?.source === "you"
       ? Math.max(joinIntent?.borrowPct ?? 0, battle.creatorBorrowPct)
       : (joinIntent?.borrowPct ?? 0);
   const needsJoinGate = Boolean(battle && battle.source !== "you" && !joinIntent && !spectating);
+
+  function payAndJoin(seat: number, pct: number) {
+    if (!battle) return false;
+    const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
+    if (!spend(cost)) {
+      push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
+      return false;
+    }
+    if (cost > 0) applyTipWager(cost);
+    awardRakeback(cost, HOUSE_EDGE.battles);
+    setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct, seat });
+    navigate(`/battles/${battle.id}`, { replace: true });
+    return true;
+  }
+
+  function youStakeAmount() {
+    if (!battle || !mode) return 0;
+    if (battle.source === "you") {
+      return creatorCreateCost(battle.costPerPlayer, totalPlayers(mode), battle.fundedPct, borrowPct);
+    }
+    return joinCost(battle.costPerPlayer, battle.fundedPct, borrowPct);
+  }
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
@@ -318,6 +343,7 @@ export function BattleRoom() {
         credit(paid);
         sound.win("big");
       }
+      if (youPlayed) recordRound(youStakeAmount(), paid, "battles");
       setPayout({
         shared: true,
         youWon: youPlayed,
@@ -434,6 +460,7 @@ export function BattleRoom() {
     } else {
       sound.lose();
     }
+    if (players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles");
     setPayout({
       shared: false,
       youWon,
@@ -603,18 +630,6 @@ export function BattleRoom() {
                 className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/5"
               >
                 <Link2 className="h-3.5 w-3.5" /> Copy link
-              </button>
-            )}
-            {spectating && phase === "filling" && players.some((p) => p.kind === "empty") && (
-              <button
-                type="button"
-                onClick={() => {
-                  sound.click();
-                  setSpectatorJoin(true);
-                }}
-                className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1 text-xs font-semibold text-bg-950 hover:brightness-110"
-              >
-                Join seat
               </button>
             )}
             <BattleCost costPerPlayer={battle.costPerPlayer} borrowPct={borrowPct} />
@@ -795,9 +810,18 @@ export function BattleRoom() {
                               fastSpin={battle.fastSpin}
                               fundedPct={battle.fundedPct}
                               canManageSeats={!spectating && phase === "filling"}
+                              canJoinSeat={spectating && phase === "filling"}
                               onLanded={(item) => handleLanded(p.slotIndex, item)}
                               onCallBot={() => callBot(p.slotIndex)}
                               onSimulateJoin={() => simulateJoin(p.slotIndex)}
+                              onJoinBattle={() => {
+                                sound.click();
+                                payAndJoin(p.slotIndex, 0);
+                              }}
+                              onBorrowJoin={() => {
+                                sound.click();
+                                setBorrowSeat(p.slotIndex);
+                              }}
                             />
                           </div>
                         ))}
@@ -817,32 +841,17 @@ export function BattleRoom() {
           battle={battle}
           onClose={() => navigate("/battles")}
           onConfirm={(pct) => {
-            const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
-            if (!spend(cost)) {
-              push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
-              return;
-            }
-            if (cost > 0) applyTipWager(cost);
-            awardRakeback(cost, HOUSE_EDGE.battles);
-            setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });
+            payAndJoin(0, pct);
           }}
         />
       )}
-      {spectatorJoin && spectating && (
+      {borrowSeat !== null && spectating && (
         <JoinBattleModal
           battle={battle}
-          onClose={() => setSpectatorJoin(false)}
+          heading="Borrow join"
+          onClose={() => setBorrowSeat(null)}
           onConfirm={(pct) => {
-            const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
-            if (!spend(cost)) {
-              push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
-              return;
-            }
-            if (cost > 0) applyTipWager(cost);
-            awardRakeback(cost, HOUSE_EDGE.battles);
-            setSpectatorJoin(false);
-            setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });
-            navigate(`/battles/${battle.id}`, { replace: true });
+            if (payAndJoin(borrowSeat, pct)) setBorrowSeat(null);
           }}
         />
       )}
@@ -965,9 +974,12 @@ function PlayerStage({
   fastSpin = false,
   fundedPct = 0,
   canManageSeats = true,
+  canJoinSeat = false,
   onLanded,
   onCallBot,
   onSimulateJoin,
+  onJoinBattle,
+  onBorrowJoin,
 }: {
   player: BattlePlayer;
   result: CaseOddsEntry | null;
@@ -982,9 +994,12 @@ function PlayerStage({
   fastSpin?: boolean;
   fundedPct?: number;
   canManageSeats?: boolean;
+  canJoinSeat?: boolean;
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
   onSimulateJoin: () => void;
+  onJoinBattle?: () => void;
+  onBorrowJoin?: () => void;
 }) {
   const pool = activeCase.odds.map((o) => o.item);
   const goldPool = activeCase.odds.filter((o) => o.goldTier).map((o) => o.item);
@@ -1001,6 +1016,26 @@ function PlayerStage({
                 Empty seat · {formatCredits(fundedSeatCost(costPerPlayer, fundedPct))} SH to join
                 {fundedPct > 0 ? ` (${pctLabel(fundedPct)} funded)` : ""}
               </p>
+              {canJoinSeat && (
+                <div className="flex w-full max-w-[11rem] flex-col gap-1.5">
+                  <button
+                    type="button"
+                    onClick={onJoinBattle}
+                    className="flex items-center justify-center gap-1 rounded-lg bg-emerald-500 px-2.5 py-1.5 text-xs font-semibold text-bg-950 transition-all duration-150 hover:brightness-110 active:scale-95"
+                  >
+                    Join battle
+                  </button>
+                  <button
+                    type="button"
+                    disabled={fundedPct > 0}
+                    title={fundedPct > 0 ? "Borrow is disabled on funded battles" : "Join this seat with borrow"}
+                    onClick={onBorrowJoin}
+                    className="flex items-center justify-center gap-1 rounded-lg border border-sky-400/40 bg-sky-500/15 px-2.5 py-1.5 text-xs font-semibold text-sky-100 transition-all duration-150 hover:bg-sky-500/25 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <Handshake className="h-3.5 w-3.5" /> Borrow join
+                  </button>
+                </div>
+              )}
               {canManageSeats && (
                 <div className="flex gap-2">
                   <button

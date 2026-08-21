@@ -75,7 +75,7 @@ export function Mines() {
       setTiles(next.map((t, i) => (minePositions.has(i) ? "mine" : t === "hidden" ? "hidden" : t)));
       setPhase("busted");
       sound.lose();
-      recordRound(bet, 0);
+      recordRound(bet, 0, "mines");
       push(`Boom! Hit a mine. Lost ${formatCredits(bet)} SH.`, "danger");
       return;
     }
@@ -88,7 +88,7 @@ export function Mines() {
     if (newReveals === GRID_SIZE - mines) {
       const winnings = bet * fairMultiplier(newReveals, mines);
       credit(winnings);
-      recordRound(bet, winnings);
+      recordRound(bet, winnings, "mines");
       setPhase("cashed");
       sound.win("big");
       push(`Cleared the board! Won ${formatCredits(winnings)} SH.`, "success");
@@ -99,7 +99,7 @@ export function Mines() {
     if (phase !== "playing" || reveals === 0) return;
     const winnings = bet * currentMultiplier;
     credit(winnings);
-    recordRound(bet, winnings);
+    recordRound(bet, winnings, "mines");
     setPhase("cashed");
     sound.win(winnings > bet * 2 ? "big" : "small");
     push(`Cashed out ${formatCredits(winnings)} SH.`, "success");

@@ -5,3 +5,5 @@ export * from "./fairnessStore";
 export * from "./demoProfileStore";
 export * from "./moderationStore";
 export * from "./rewardsStore";
+export * from "./activityStore";
+export * from "./supportStore";

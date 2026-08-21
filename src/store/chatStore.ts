@@ -25,6 +25,9 @@ const SEED: Omit<ChatMessage, "id" | "at">[] = [
   { name: "PixelPete", text: "Chat rain starts at 25 SH. Tip the pot — and tip players from their message. They have to wager the tip to unlock it.", color: "#fbbf24" },
   { name: "CaseCat", text: "Anyone spinning Vault Cache?", color: "#e879f9" },
   { name: "ReelRex", text: "Rakeback lands as Shards on the Rewards tab.", color: "#34d399" },
+  { name: "NovaByte", text: "Hit a blackjack streak then dumped it on mines. Classic.", color: "#f472b6" },
+  { name: "ShardHunter", text: "Need a refund on that jackpot spin? Kidding. House edge is printed.", color: "#38bdf8" },
+  { name: "LuckyComet", text: "Who else is hopping into 2v2 battles tonight?", color: "#a3e635" },
 ];
 
 interface ChatState {

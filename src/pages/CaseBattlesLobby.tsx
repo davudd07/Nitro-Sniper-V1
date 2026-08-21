@@ -64,10 +64,6 @@ export function CaseBattlesLobby() {
 
   function spectateBattle(b: BattleConfig) {
     sound.click();
-    if (b.status === "finished") {
-      navigate(`/battles/${b.id}?replay=1`);
-      return;
-    }
     navigate(`/battles/${b.id}?spectate=1`);
   }
 

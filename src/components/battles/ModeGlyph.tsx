@@ -14,7 +14,7 @@ export function ModeGlyph({
   iconClass?: string;
 }) {
   return (
-    <span className={clsx("inline-flex items-center gap-0.5", className)} title={mode.label} aria-label={mode.label}>
+    <span className={clsx("inline-flex max-w-full flex-wrap items-center gap-0.5", className)} title={mode.label} aria-label={mode.label}>
       {mode.teamSizes.map((size, ti) => (
         <Fragment key={ti}>
           {ti > 0 && (

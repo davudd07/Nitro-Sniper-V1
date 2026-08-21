@@ -565,7 +565,9 @@ function SupportDesk({
           <p className="text-sm text-slate-500">No tickets yet. Players open them from the Support button on the live site.</p>
         ) : (
           <ul className="max-h-[60vh] space-y-1 overflow-y-auto">
-            {tickets.map((t) => (
+            {[...tickets]
+              .sort((a, b) => (b.updatedAt ?? b.createdAt) - (a.updatedAt ?? a.createdAt))
+              .map((t) => (
               <li key={t.id}>
                 <button
                   type="button"

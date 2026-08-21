@@ -133,7 +133,7 @@ export function CaseBattlesLobby() {
       </div>
 
       <div className="surface overflow-hidden">
-        <div className="hidden grid-cols-[1fr_80px_170px_140px_150px_168px] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
+        <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
           <span>Cases</span>
           <span>Mode</span>
           <span>Cost</span>
@@ -176,7 +176,7 @@ export function CaseBattlesLobby() {
                       spectateBattle(b);
                     }
                   }}
-                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[1fr_80px_170px_140px_150px_168px] hover:bg-white/[0.03]"
+                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem] hover:bg-white/[0.03]"
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex -space-x-2">
@@ -212,10 +212,10 @@ export function CaseBattlesLobby() {
                       </p>
                     </div>
                   </div>
-                  <p className="hidden md:block">
-                    {mode ? <ModeGlyph mode={mode} /> : b.modeId}
+                  <p className="hidden min-w-0 md:block">
+                    {mode ? <ModeGlyph mode={mode} className="flex-wrap" /> : b.modeId}
                   </p>
-                  <div className="hidden md:block">
+                  <div className="hidden min-w-0 md:block">
                     {b.status === "finished" ? (
                       <p className="font-mono text-sm font-semibold text-emerald-300">
                         {formatCredits(b.payout ?? 0)}

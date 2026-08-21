@@ -7,6 +7,7 @@ import { useBattleStore, type BattleConfig } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { BATTLE_MODES, totalPlayers } from "../data/battleModes";
+import { ModeGlyph } from "../components/battles/ModeGlyph";
 import { getCase } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
@@ -17,16 +18,14 @@ import { HOUSE_EDGE } from "../lib/rakeback";
 import { BattleCost, BorrowBadge } from "../components/battles/BattleCost";
 
 const FILTERS = [
-  { id: "all", label: "All" },
-  { id: "1v1", label: "1v1" },
-  { id: "2v2", label: "2v2" },
-  { id: "crazy", label: "Crazy" },
-  { id: "jackpot", label: "Jackpot" },
+  { id: "active", label: "Active battles" },
+  { id: "open", label: "Open battles" },
+  { id: "finished", label: "Finished battles" },
 ] as const;
 
 export function CaseBattlesLobby() {
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("all");
+  const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("open");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [joinTarget, setJoinTarget] = useState<BattleConfig | null>(null);
   const battlesMap = useBattleStore((s) => s.battles);
@@ -36,22 +35,30 @@ export function CaseBattlesLobby() {
     [battlesMap],
   );
   const spend = useEconomyStore((s) => s.spend);
+  const applyTipWager = useEconomyStore((s) => s.applyTipWager);
   const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const push = useToastStore((s) => s.push);
 
   const rows = useMemo(() => {
-    return battles.filter((b) => {
+    const visible = battles.filter((b) => {
       if (b.isPrivate && b.source !== "you") return false;
-      if (filter === "all") return true;
-      if (filter === "crazy") return b.crazy;
-      if (filter === "jackpot") return b.jackpot;
-      return b.modeId.startsWith(filter);
+      const status = b.status ?? "open";
+      if (filter === "finished") return status === "finished";
+      if (filter === "active") return status === "active";
+      return status === "open";
     });
+    if (filter === "finished") {
+      return [...visible]
+        .sort((a, b) => (b.payout ?? 0) - (a.payout ?? 0) || (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
+        .slice(0, 10);
+    }
+    return visible;
   }, [battles, filter]);
 
   function occupied(b: (typeof battles)[number]) {
     const mode = BATTLE_MODES.find((m) => m.id === b.modeId);
     const seats = mode ? totalPlayers(mode) : 0;
+    if (b.status === "finished" || b.status === "active") return { filled: seats, seats };
     const bots = b.botSeats?.length ?? b.prefillBots;
     const filled = b.source === "you" ? Math.min(seats, 1 + bots) : Math.min(seats, bots);
     return { filled, seats };
@@ -84,6 +91,7 @@ export function CaseBattlesLobby() {
       push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
       return;
     }
+    if (cost > 0) applyTipWager(cost);
     awardRakeback(cost, HOUSE_EDGE.battles);
     setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct });
     setJoinTarget(null);
@@ -119,7 +127,9 @@ export function CaseBattlesLobby() {
             {f.label}
           </button>
         ))}
-        <span className="ml-auto text-xs text-slate-500">{rows.length} active</span>
+        <span className="ml-auto text-xs text-slate-500">
+          {filter === "finished" ? `${rows.length} biggest payouts` : `${rows.length} ${filter}`}
+        </span>
       </div>
 
       <div className="surface overflow-hidden">
@@ -132,7 +142,9 @@ export function CaseBattlesLobby() {
           <span className="text-right">Action</span>
         </div>
         {rows.length === 0 ? (
-          <p className="p-8 text-center text-sm text-slate-500">No battles in this filter. Create one to get started.</p>
+          <p className="p-8 text-center text-sm text-slate-500">
+            {filter === "finished" ? "No finished battles yet." : "No battles in this filter. Create one to get started."}
+          </p>
         ) : (
           <div className="divide-y divide-white/6">
             {rows.map((b) => {
@@ -200,9 +212,16 @@ export function CaseBattlesLobby() {
                       </p>
                     </div>
                   </div>
-                  <p className="hidden text-sm font-semibold text-white md:block">{mode?.label}</p>
+                  <p className="hidden md:block">
+                    {mode ? <ModeGlyph mode={mode} /> : b.modeId}
+                  </p>
                   <div className="hidden md:block">
-                    {b.source === "you" ? (
+                    {b.status === "finished" ? (
+                      <p className="font-mono text-sm font-semibold text-emerald-300">
+                        {formatCredits(b.payout ?? 0)}
+                        <span className="ml-1 text-[10px] font-normal uppercase tracking-wide text-slate-500">pot</span>
+                      </p>
+                    ) : b.source === "you" ? (
                       <BattleCost costPerPlayer={b.costPerPlayer} borrowPct={b.creatorBorrowPct} align="left" compact />
                     ) : b.fundedPct > 0 ? (
                       <p className="font-mono text-sm font-semibold text-amber-200">
@@ -300,7 +319,7 @@ export function CaseBattlesLobby() {
                             : "border border-white/15 text-white hover:bg-white/5",
                       )}
                     >
-                      {b.source === "you" ? "Open" : waiting ? (b.fundedPct > 0 ? "Join" : "Join") : "Watch"}
+                      {b.source === "you" ? "Open" : waiting ? "Join" : filter === "finished" ? "Replay" : "Watch"}
                     </button>
                   </div>
                 </div>

@@ -125,39 +125,45 @@ function HistoryCoin({
   fresh,
   ghost,
   hit,
+  unknown,
 }: {
-  side: CoinSide;
+  side?: CoinSide;
   fresh?: boolean;
   ghost?: boolean;
   hit?: boolean;
+  unknown?: boolean;
 }) {
   const gold = side === "heads";
   return (
     <span
       title={
-        ghost
-          ? `${gold ? "Heads" : "Tails"} — ${hit ? "would have matched your pick" : "would have missed"}`
-          : gold
-            ? "Heads"
-            : "Tails"
+        unknown
+          ? "Not pulled yet"
+          : ghost
+            ? `${gold ? "Heads" : "Tails"} — ${hit ? "would have matched your pick" : "would have missed"}`
+            : gold
+              ? "Heads"
+              : "Tails"
       }
       className={clsx(
-        "grid h-8 w-8 shrink-0 place-items-center rounded-full",
-        fresh
-          ? "opacity-100 ring-2 ring-white/70"
-          : ghost
-            ? hit
-              ? "opacity-90 ring-1 ring-emerald-300/80"
-              : "opacity-50"
-            : "opacity-45",
+        "grid h-14 w-14 shrink-0 place-items-center rounded-full sm:h-16 sm:w-16",
+        fresh && "ring-2 ring-white/80",
+        ghost && hit && "ring-1 ring-emerald-300/70",
       )}
       style={{
-        background: gold
-          ? "radial-gradient(circle at 30% 30%, #fde68a, #d97706)"
-          : "radial-gradient(circle at 30% 30%, #e2e8f0, #64748b)",
+        background: unknown
+          ? "radial-gradient(circle at 30% 30%, #334155, #0f172a)"
+          : gold
+            ? "radial-gradient(circle at 30% 30%, #fde68a, #d97706)"
+            : "radial-gradient(circle at 30% 30%, #e2e8f0, #64748b)",
+        opacity: ghost || unknown ? 0.55 : 1,
+        boxShadow: ghost || unknown
+          ? "inset 0 8px 16px rgba(0,0,0,0.65), 0 6px 14px rgba(0,0,0,0.55)"
+          : "inset 0 2px 0 rgba(255,255,255,0.45), 0 6px 12px rgba(0,0,0,0.35)",
+        filter: ghost || unknown ? "brightness(0.55) saturate(0.7)" : "none",
       }}
     >
-      <Star className="h-3.5 w-3.5 text-white" fill="currentColor" />
+      {!unknown && <Star className="h-6 w-6 text-white sm:h-7 sm:w-7" fill="currentColor" />}
     </span>
   );
 }
@@ -174,7 +180,7 @@ export function CoinFlip() {
   const [mode, setMode] = useState<Mode>("manual");
   const [autoLimit, setAutoLimit] = useState(3);
   const [autoRunning, setAutoRunning] = useState(false);
-  const [history, setHistory] = useState<CoinSide[]>([]);
+  const [runFlips, setRunFlips] = useState<CoinSide[]>([]);
   const [ghostRun, setGhostRun] = useState<{ side: CoinSide; hit: boolean }[] | null>(null);
 
   const winsRef = useRef(0);
@@ -209,6 +215,21 @@ export function CoinFlip() {
     setPick(side);
   }
 
+  async function revealRemainder(streak: number) {
+    const leftover = Math.max(0, COIN_MAX_WINS - streak);
+    if (leftover <= 0) {
+      setGhostRun([]);
+      return;
+    }
+    const extra = await play(leftover);
+    setGhostRun(
+      extra.map((r) => {
+        const side = rollCoin(r);
+        return { side, hit: side === pick };
+      }),
+    );
+  }
+
   function cashOutInternal(streak: number) {
     const payout = payoutFor(bet, streak);
     credit(payout);
@@ -221,6 +242,7 @@ export function CoinFlip() {
     phaseRef.current = "idle";
     sound.win(payout > bet * 4 ? "big" : "small");
     push(`Cashed out ${formatCredits(payout)} SH.`, "success");
+    void revealRemainder(streak);
   }
 
   async function flipOnce(): Promise<FlipOutcome> {
@@ -235,6 +257,7 @@ export function CoinFlip() {
       setWins(0);
       winsRef.current = 0;
       setSession((s) => s - bet);
+      setRunFlips([]);
       sound.chip();
     }
 
@@ -253,7 +276,7 @@ export function CoinFlip() {
     sound.coinFlip();
     await sleep(1250);
     setResult(landed);
-    setHistory((h) => [landed, ...h].slice(0, 16));
+    setRunFlips((prev) => [...prev, landed]);
 
     if (landed !== pick) {
       const streakAtLoss = winsRef.current;
@@ -528,22 +551,21 @@ export function CoinFlip() {
             </AnimatePresence>
           </div>
 
-          <div className="mt-4 flex items-center gap-1.5 overflow-x-auto px-0.5 py-2 scrollbar-thin">
-            {history.length === 0 && !(ghostRun && ghostRun.length > 0) ? (
-              <p className="text-xs text-slate-500">Recent flips land here. Missed-run ghosts join this row.</p>
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto px-0.5 py-3 scrollbar-thin">
+            {runFlips.length === 0 && !(ghostRun && ghostRun.length > 0) ? (
+              <p className="text-xs text-slate-500">Pulled coins land here. Unpulled remainder stays shadowed.</p>
             ) : (
               <>
-                {[...history].reverse().map((side, i, arr) => (
-                  <HistoryCoin key={`real-${arr.length - 1 - i}-${side}`} side={side} fresh={i === arr.length - 1} />
+                {runFlips.map((side, i) => (
+                  <HistoryCoin key={`real-${i}-${side}`} side={side} fresh={i === runFlips.length - 1 && !ghostRun} />
                 ))}
-                {ghostRun && ghostRun.length > 0 && (
-                  <>
-                    <span className="mx-0.5 h-5 w-px shrink-0 bg-white/15" aria-hidden />
-                    {ghostRun.map((g, i) => (
-                      <HistoryCoin key={`ghost-${i}`} side={g.side} ghost hit={g.hit} />
+                {ghostRun && ghostRun.length > 0
+                  ? ghostRun.map((g, i) => <HistoryCoin key={`ghost-${i}`} side={g.side} ghost hit={g.hit} />)
+                  : phase !== "lost" &&
+                    phase !== "maxed" &&
+                    Array.from({ length: Math.max(0, COIN_MAX_WINS - runFlips.length) }).map((_, i) => (
+                      <HistoryCoin key={`pending-${i}`} unknown />
                     ))}
-                  </>
-                )}
               </>
             )}
           </div>

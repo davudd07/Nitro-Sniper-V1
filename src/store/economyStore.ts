@@ -13,6 +13,8 @@ interface EconomyState {
   totalWon: number;
   totalRakeback: number;
   pendingRakeback: number;
+  lockedTips: number;
+  tipWagerLeft: number;
   roundsPlayed: number;
   spend: (amount: number) => boolean;
   credit: (amount: number) => void;
@@ -20,6 +22,8 @@ interface EconomyState {
   awardRakeback: (stake: number, houseEdge: number) => number;
   grantPendingRakeback: (amount: number) => void;
   claimRakeback: () => number;
+  receiveTip: (amount: number) => void;
+  applyTipWager: (wagered: number) => void;
   recordRound: (wagered: number, won: number) => void;
   reset: () => void;
   maybeTopUp: () => boolean;
@@ -34,6 +38,8 @@ export const useEconomyStore = create<EconomyState>()(
       totalWon: 0,
       totalRakeback: 0,
       pendingRakeback: 0,
+      lockedTips: 0,
+      tipWagerLeft: 0,
       roundsPlayed: 0,
       spend: (amount) => {
         const { balance } = get();
@@ -67,12 +73,52 @@ export const useEconomyStore = create<EconomyState>()(
         }));
         return amt;
       },
-      recordRound: (wagered, won) =>
+      receiveTip: (amount) => {
+        if (amount <= 0) return;
         set((s) => ({
-          totalWagered: s.totalWagered + wagered,
-          totalWon: s.totalWon + won,
-          roundsPlayed: s.roundsPlayed + 1,
-        })),
+          lockedTips: (s.lockedTips ?? 0) + amount,
+          tipWagerLeft: (s.tipWagerLeft ?? 0) + amount,
+        }));
+      },
+      applyTipWager: (wagered) => {
+        if (wagered <= 0) return;
+        const left = get().tipWagerLeft ?? 0;
+        const locked = get().lockedTips ?? 0;
+        if (left <= 0 || locked <= 0) return;
+        const nextLeft = Math.max(0, left - wagered);
+        if (nextLeft > 0) {
+          set({ tipWagerLeft: nextLeft });
+          return;
+        }
+        set((s) => ({
+          tipWagerLeft: 0,
+          lockedTips: 0,
+          balance: s.balance + locked,
+        }));
+      },
+      recordRound: (wagered, won) =>
+        set((s) => {
+          const left = s.tipWagerLeft ?? 0;
+          const locked = s.lockedTips ?? 0;
+          let tipWagerLeft = left;
+          let lockedTips = locked;
+          let balance = s.balance;
+          if (wagered > 0 && left > 0 && locked > 0) {
+            tipWagerLeft = Math.max(0, left - wagered);
+            if (tipWagerLeft === 0) {
+              lockedTips = 0;
+              balance += locked;
+            }
+          }
+          return {
+            totalWagered: s.totalWagered + wagered,
+            totalWon: s.totalWon + won,
+            roundsPlayed: s.roundsPlayed + 1,
+            tipWagerLeft,
+            lockedTips,
+            balance,
+          };
+        }),
       reset: () =>
         set({
           balance: STARTING_BALANCE,
@@ -81,6 +127,8 @@ export const useEconomyStore = create<EconomyState>()(
           totalWon: 0,
           totalRakeback: 0,
           pendingRakeback: 0,
+          lockedTips: 0,
+          tipWagerLeft: 0,
           roundsPlayed: 0,
         }),
       maybeTopUp: () => {

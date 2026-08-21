@@ -5,7 +5,7 @@ import { BOT_NAMES } from "../data/botNames";
 
 export const CHAT_RAIN_MS = 30 * 60 * 1000;
 export const CHAT_RAIN_JOIN_MS = 60_000;
-export const CHAT_RAIN_PRIZE = 25;
+export const CHAT_RAIN_BASE_POT = 25;
 export const CHAT_RAIN_WINNERS = 5;
 const CHAT_RAIN_JOIN_CAP = 12;
 
@@ -16,12 +16,13 @@ export interface ChatMessage {
   color: string;
   you?: boolean;
   rain?: boolean;
+  tip?: boolean;
   at: number;
 }
 
 const SEED: Omit<ChatMessage, "id" | "at">[] = [
   { name: "VaultBot", text: "Play-money only. Set bet to 0 for a demo round — anything above 0 spends Shards.", color: "#22d3ee" },
-  { name: "PixelPete", text: "Chat rain every 30 minutes. Join in the last 60 seconds — winners are picked from who joined, 25 SH each.", color: "#fbbf24" },
+  { name: "PixelPete", text: "Chat rain starts at 25 SH. Tip the pot — and tip players from their message. They have to wager the tip to unlock it.", color: "#fbbf24" },
   { name: "CaseCat", text: "Anyone spinning Vault Cache?", color: "#e879f9" },
   { name: "ReelRex", text: "Rakeback lands as Shards on the Rewards tab.", color: "#34d399" },
 ];
@@ -31,11 +32,13 @@ interface ChatState {
   nextRainAt: number;
   lastRainWinners: string[];
   joinedRain: string[];
+  rainPot: number;
   send: (text: string) => void;
   post: (msg: Omit<ChatMessage, "id" | "at">) => void;
   joinRain: () => boolean;
+  tipRain: (amount: number) => boolean;
   maybeFillJoins: (now: number) => void;
-  maybeRain: (now: number) => { winners: string[]; youWon: boolean } | null;
+  maybeRain: (now: number) => { winners: string[]; youWon: boolean; prizeEach: number; pot: number } | null;
 }
 
 function inJoinWindow(now: number, nextRainAt: number): boolean {
@@ -65,6 +68,7 @@ export const useChatStore = create<ChatState>()(
       nextRainAt: Date.now() + CHAT_RAIN_MS,
       lastRainWinners: [],
       joinedRain: [],
+      rainPot: CHAT_RAIN_BASE_POT,
       send: (text) => {
         const trimmed = text.trim().slice(0, 200);
         if (!trimmed) return;
@@ -84,6 +88,19 @@ export const useChatStore = create<ChatState>()(
         if (!inJoinWindow(Date.now(), nextRainAt)) return false;
         if (joined.includes("You")) return false;
         set({ joinedRain: [...joined, "You"] });
+        return true;
+      },
+      tipRain: (amount) => {
+        const n = Math.floor(amount);
+        if (n <= 0) return false;
+        set((s) => ({ rainPot: (s.rainPot ?? CHAT_RAIN_BASE_POT) + n }));
+        get().post({
+          name: "You",
+          you: true,
+          tip: true,
+          color: "#d946ef",
+          text: `Tipped the chat rain ${n} SH.`,
+        });
         return true;
       },
       maybeFillJoins: (now) => {
@@ -116,6 +133,8 @@ export const useChatStore = create<ChatState>()(
         const pool = get().joinedRain ?? [];
         const winners = pickWinnersFrom(pool);
         const youWon = winners.includes("You");
+        const pot = Math.max(0, Math.round(get().rainPot ?? CHAT_RAIN_BASE_POT));
+        const prizeEach = winners.length > 0 ? Math.floor(pot / winners.length) : 0;
 
         if (winners.length === 0) {
           get().post({
@@ -129,7 +148,7 @@ export const useChatStore = create<ChatState>()(
             name: "VaultBot",
             color: "#facc15",
             rain: true,
-            text: `Chat rain! ${winners.length} ${winners.length === 1 ? "player wins" : "players win"} ${CHAT_RAIN_PRIZE} SH each: ${winners.join(", ")}.`,
+            text: `Chat rain! Pot ${pot} SH → ${winners.length} ${winners.length === 1 ? "winner" : "winners"} get ${prizeEach} SH each: ${winners.join(", ")}.`,
           });
         }
 
@@ -137,8 +156,9 @@ export const useChatStore = create<ChatState>()(
           nextRainAt: now + CHAT_RAIN_MS,
           lastRainWinners: winners,
           joinedRain: [],
+          rainPot: CHAT_RAIN_BASE_POT,
         });
-        return { winners, youWon };
+        return { winners, youWon, prizeEach, pot };
       },
     }),
     { name: "prism-vault-chat" },

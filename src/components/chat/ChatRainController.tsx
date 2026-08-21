@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useChatStore, CHAT_RAIN_PRIZE } from "../../store/chatStore";
+import { useChatStore } from "../../store/chatStore";
 import { useEconomyStore } from "../../store/economyStore";
 import { useToastStore } from "../../store/toastStore";
 import { formatCredits } from "../../lib/format";
@@ -18,12 +18,12 @@ export function ChatRainController() {
       maybeFillJoins(now);
       const result = maybeRain(now);
       if (!result) return;
-      if (result.youWon) {
+      if (result.youWon && result.prizeEach > 0) {
         sound.win("small");
-        credit(CHAT_RAIN_PRIZE);
-        push(`Chat rain! You won ${formatCredits(CHAT_RAIN_PRIZE)} SH.`, "success");
+        credit(result.prizeEach);
+        push(`Chat rain! You won ${formatCredits(result.prizeEach)} SH.`, "success");
       } else if (result.winners.length > 0) {
-        push(`Chat rain — ${result.winners.join(", ")} each won ${formatCredits(CHAT_RAIN_PRIZE)} SH.`, "info");
+        push(`Chat rain — ${result.winners.join(", ")} each won ${formatCredits(result.prizeEach)} SH.`, "info");
       } else {
         push("Chat rain — nobody joined this round.", "info");
       }

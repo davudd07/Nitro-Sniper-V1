@@ -51,9 +51,11 @@ export function BattleRoom() {
   const battle = useBattleStore((s) => (battleId ? s.getBattle(battleId) : undefined));
   const joinIntent = useBattleStore((s) => (battleId ? s.joinIntents[battleId] : undefined));
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
+  const setBattleStatus = useBattleStore((s) => s.setBattleStatus);
   const spectating = Boolean(battle && battle.source !== "you" && searchParams.get("spectate") === "1" && !joinIntent);
   const play = useFairnessStore((s) => s.play);
   const spend = useEconomyStore((s) => s.spend);
+  const applyTipWager = useEconomyStore((s) => s.applyTipWager);
   const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const push = useToastStore((s) => s.push);
@@ -183,6 +185,7 @@ export function BattleRoom() {
           sound.countdownBeep(true);
           sound.battleStart();
           setPhase("running");
+          if (battleId) setBattleStatus(battleId, "active");
           setCaseIndex(0);
           return 0;
         }
@@ -330,6 +333,7 @@ export function BattleRoom() {
       });
       setResultOpen(true);
       setPhase("finished");
+      if (battle.id) setBattleStatus(battle.id, "finished", pot);
       return;
     }
 
@@ -414,6 +418,7 @@ export function BattleRoom() {
         setWinningTeam(winnerTeam);
         settlePayout(winnerTeam, pot);
         setPhase("finished");
+        setBattleStatus(battle.id, "finished", pot);
       }
     }
   }
@@ -455,6 +460,7 @@ export function BattleRoom() {
     const pot = jackpotTickets.length ? Object.values(roundStates).reduce((s, r) => s + r.total, 0) : 0;
     settlePayout(winningTeam, pot);
     setPhase("finished");
+    if (battle?.id) setBattleStatus(battle.id, "finished", pot);
   }
 
   function recreateBattle() {
@@ -816,6 +822,7 @@ export function BattleRoom() {
               push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
               return;
             }
+            if (cost > 0) applyTipWager(cost);
             awardRakeback(cost, HOUSE_EDGE.battles);
             setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });
           }}
@@ -831,6 +838,7 @@ export function BattleRoom() {
               push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
               return;
             }
+            if (cost > 0) applyTipWager(cost);
             awardRakeback(cost, HOUSE_EDGE.battles);
             setSpectatorJoin(false);
             setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct });

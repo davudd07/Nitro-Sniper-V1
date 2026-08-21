@@ -9,6 +9,8 @@ import { sound } from "../../lib/sound";
 export function CurrencySwitcher() {
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
+  const lockedTips = useEconomyStore((s) => s.lockedTips);
+  const tipWagerLeft = useEconomyStore((s) => s.tipWagerLeft);
   const selected = useSettingsStore((s) => s.displayCurrency) === "funcoins" ? "funcoins" : "shards";
   const setDisplayCurrency = useSettingsStore((s) => s.setDisplayCurrency);
   const [open, setOpen] = useState(false);
@@ -86,6 +88,11 @@ export function CurrencySwitcher() {
           <span className="font-mono text-sm font-semibold tabular-nums text-white">{secondary.value}</span>
           <span className={clsx("text-[10px] font-bold uppercase tracking-wider", secondary.suffixClass)}>{secondary.suffix}</span>
         </button>
+      )}
+      {(lockedTips ?? 0) > 0 && (
+        <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wide text-amber-300/90">
+          {formatCredits(lockedTips)} SH locked · wager {formatCredits(tipWagerLeft ?? 0)} to unlock
+        </p>
       )}
     </div>
   );

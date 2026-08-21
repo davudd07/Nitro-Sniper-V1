@@ -3,6 +3,7 @@ import { Ban, Coins, MoreHorizontal, Volume2, VolumeX, Wallet } from "lucide-rea
 import { clsx } from "clsx";
 import { LOCAL_PLAYER, useModerationStore } from "../../store/moderationStore";
 import { useToastStore } from "../../store/toastStore";
+import { receiveIncomingTip } from "../chat/PlayerTipButton";
 import { sound } from "../../lib/sound";
 
 export function ChatModMenu({ name }: { name: string }) {
@@ -59,6 +60,15 @@ export function ChatModMenu({ name }: { name: string }) {
           <MenuItem onClick={() => act(`+250 SH → ${label}`, () => topUpShards(name, 250))}>
             <Coins className="h-3 w-3" /> Top up 250 SH
           </MenuItem>
+          {name === LOCAL_PLAYER && (
+            <MenuItem
+              onClick={() =>
+                act("Locked 50 SH tip on You — wager 50 to unlock", () => receiveIncomingTip("Warden", 50))
+              }
+            >
+              <Coins className="h-3 w-3" /> Locked tip 50
+            </MenuItem>
+          )}
         </div>
       )}
     </div>

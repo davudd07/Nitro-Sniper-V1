@@ -27,7 +27,8 @@ import { Switch } from "../components/ui/Switch";
 import { AddCasesModal } from "../components/battles/AddCasesModal";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
-import { BATTLE_MODES, PLAYER_COLORS, totalPlayers } from "../data/battleModes";
+import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS, teamIndexForSeat, totalPlayers } from "../data/battleModes";
+import { ModeGlyph } from "../components/battles/ModeGlyph";
 import { getCase } from "../data/cases";
 import type { BattleCaseEntry } from "../store/battleStore";
 import { useBattleStore } from "../store/battleStore";
@@ -109,6 +110,7 @@ export function CreateBattle() {
   const createBattle = useBattleStore((s) => s.createBattle);
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const spend = useEconomyStore((s) => s.spend);
+  const applyTipWager = useEconomyStore((s) => s.applyTipWager);
   const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const push = useToastStore((s) => s.push);
 
@@ -184,6 +186,7 @@ export function CreateBattle() {
       push(`You need ${formatCredits(youPay)} SH to create this battle.`, "danger");
       return;
     }
+    if (youPay > 0) applyTipWager(youPay);
     awardRakeback(youPay, HOUSE_EDGE.battles);
     const id = createBattle({
       modeId,
@@ -359,7 +362,9 @@ export function CreateBattle() {
           </button>
 
           <div className="surface p-4">
-            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Add players</p>
+            <p className="mb-3 flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">
+              <Users className="h-3.5 w-3.5 text-emerald-300" /> Add players
+            </p>
             <div className="mb-3">
               <span className="sr-only">Battle format</span>
               <ModeDropdown
@@ -386,11 +391,13 @@ export function CreateBattle() {
                 ? "Pick a slot to move to — bots swap, empty seats take you."
                 : "Click empty to call a bot. Click You, then another slot to move."}
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="grid grid-cols-2 gap-2">
               {Array.from({ length: players }, (_, i) => {
                 const isYou = i === youSeat;
                 const isBot = botSeats.has(i);
                 const filled = isYou || isBot;
+                const team = teamIndexForSeat(mode, i);
+                const teamColor = TEAM_COLORS[team % TEAM_COLORS.length];
                 return (
                   <button
                     key={i}
@@ -427,7 +434,10 @@ export function CreateBattle() {
                         return next;
                       });
                     }}
-                    className="flex w-14 flex-col items-center gap-1"
+                    className={clsx(
+                      "flex items-center gap-2.5 rounded-xl border px-2 py-1.5 text-left transition-colors",
+                      movingYou && !isYou ? "border-cyan-400/40 bg-cyan-400/5" : "border-white/8 bg-black/20 hover:border-white/16",
+                    )}
                     title={
                       isYou
                         ? movingYou
@@ -444,10 +454,9 @@ export function CreateBattle() {
                   >
                     <div
                       className={clsx(
-                        "grid h-11 w-11 place-items-center rounded-full text-xs font-bold transition-all",
+                        "grid h-10 w-10 shrink-0 place-items-center rounded-full text-xs font-bold transition-all",
                         isYou && "ring-2 ring-rose-300/80",
-                        movingYou && !isYou && "ring-2 ring-cyan-300/70 ring-offset-2 ring-offset-[#0c1410]",
-                        filled ? "text-bg-950" : "border-2 border-dashed border-slate-500 text-slate-600 hover:border-cyan-400/70 hover:bg-cyan-400/5",
+                        filled ? "text-bg-950" : "border-2 border-dashed border-slate-500 text-slate-600",
                       )}
                       style={
                         isYou
@@ -459,8 +468,13 @@ export function CreateBattle() {
                     >
                       {isYou ? <User className="h-4 w-4" /> : isBot ? <Bot className="h-4 w-4" /> : null}
                     </div>
-                    <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">
-                      {isYou ? "You" : isBot ? "Bot" : "Empty"}
+                    <span className="min-w-0 leading-tight">
+                      <span className="block text-[10px] font-bold uppercase tracking-wider" style={{ color: teamColor }}>
+                        Team {team + 1}
+                      </span>
+                      <span className="block text-sm font-extrabold uppercase tracking-wide text-white">
+                        {isYou ? "You" : isBot ? "Bot" : "Empty"}
+                      </span>
                     </span>
                   </button>
                 );
@@ -645,7 +659,9 @@ function ModeDropdown({ value, onChange }: { value: string; onChange: (id: strin
         }}
         className="flex w-full items-center justify-between rounded-xl border border-slate-600/70 bg-[#0c1410] px-3 py-2.5 text-sm font-semibold text-white outline-none hover:border-cyan-400/40 focus:border-cyan-400/50"
       >
-        <span>{current?.label ?? value}</span>
+        <span className="flex min-w-0 items-center">
+          {current ? <ModeGlyph mode={current} iconClass="h-4 w-4" /> : value}
+        </span>
         <ChevronDown className={clsx("h-4 w-4 text-slate-400 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
@@ -664,11 +680,11 @@ function ModeDropdown({ value, onChange }: { value: string; onChange: (id: strin
                     setOpen(false);
                   }}
                   className={clsx(
-                    "w-full px-3 py-2 text-left text-sm font-semibold",
-                    active ? "bg-cyan-400/15 text-cyan-100" : "text-slate-200 hover:bg-cyan-400/10 hover:text-white",
+                    "flex w-full items-center px-3 py-2.5",
+                    active ? "bg-[#019201]/20" : "hover:bg-white/5",
                   )}
                 >
-                  {m.label}
+                  <ModeGlyph mode={m} iconClass="h-4 w-4" />
                 </button>
               </li>
             );

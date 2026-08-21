@@ -7,6 +7,8 @@ export interface BattleCaseEntry {
   count: number;
 }
 
+export type BattleLobbyStatus = "open" | "active" | "finished";
+
 export interface BattleConfig {
   id: string;
   modeId: string;
@@ -37,6 +39,10 @@ export interface BattleConfig {
   botSeats?: number[];
   /** 0–1. Creator borrowed this fraction of their own seat. */
   creatorBorrowPct: number;
+  status: BattleLobbyStatus;
+  /** Total pot paid out when finished. */
+  payout?: number;
+  finishedAt?: number;
 }
 
 export interface BattleJoinIntent {
@@ -46,10 +52,11 @@ export interface BattleJoinIntent {
 interface BattleStoreState {
   battles: Record<string, BattleConfig>;
   joinIntents: Record<string, BattleJoinIntent>;
-  createBattle: (cfg: Omit<BattleConfig, "id" | "createdAt">) => string;
+  createBattle: (cfg: Omit<BattleConfig, "id" | "createdAt" | "status"> & { status?: BattleLobbyStatus }) => string;
   getBattle: (id: string) => BattleConfig | undefined;
   listBattles: () => BattleConfig[];
   setJoinIntent: (battleId: string, intent: BattleJoinIntent) => void;
+  setBattleStatus: (id: string, status: BattleLobbyStatus, payout?: number) => void;
 }
 
 function costOf(cases: BattleCaseEntry[]): number {
@@ -57,7 +64,7 @@ function costOf(cases: BattleCaseEntry[]): number {
 }
 
 function seedBattle(
-  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct"> & {
+  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct" | "status"> & {
     id: string;
     createdAt: number;
     fundedPct?: number;
@@ -65,6 +72,9 @@ function seedBattle(
     shared?: boolean;
     fastSpin?: boolean;
     creatorBorrowPct?: number;
+    status?: BattleLobbyStatus;
+    payout?: number;
+    finishedAt?: number;
   },
 ): BattleConfig {
   return {
@@ -75,6 +85,7 @@ function seedBattle(
     shared: partial.shared ?? false,
     fastSpin: partial.fastSpin ?? false,
     creatorBorrowPct: partial.creatorBorrowPct ?? 0,
+    status: partial.status ?? "open",
     costPerPlayer: costOf(partial.cases),
   };
 }
@@ -112,7 +123,8 @@ function seedBattles(): Record<string, BattleConfig> {
       goldSpin: true,
       terminal: false,
       cases: [{ caseId: "vault", count: 2 }],
-      prefillBots: 1,
+      prefillBots: 3,
+      status: "active",
       createdAt: now - 25000,
     }),
     seedBattle({
@@ -134,7 +146,8 @@ function seedBattles(): Record<string, BattleConfig> {
       goldSpin: true,
       terminal: true,
       cases: [{ caseId: "elite", count: 1 }],
-      prefillBots: 2,
+      prefillBots: 3,
+      status: "active",
       createdAt: now - 12000,
     }),
     seedBattle({
@@ -145,7 +158,8 @@ function seedBattles(): Record<string, BattleConfig> {
       goldSpin: false,
       terminal: false,
       cases: [{ caseId: "chaos", count: 1 }, { caseId: "vault", count: 1 }],
-      prefillBots: 3,
+      prefillBots: 5,
+      status: "active",
       createdAt: now - 8000,
     }),
     seedBattle({
@@ -160,6 +174,160 @@ function seedBattles(): Record<string, BattleConfig> {
       fundedPct: 0.5,
       createdAt: now - 4000,
     }),
+    seedBattle({
+      id: "hist_whale",
+      modeId: "2v2",
+      crazy: false,
+      jackpot: true,
+      goldSpin: true,
+      terminal: false,
+      cases: [{ caseId: "whale", count: 2 }],
+      prefillBots: 3,
+      status: "finished",
+      payout: 48200,
+      finishedAt: now - 3600000,
+      createdAt: now - 3700000,
+    }),
+    seedBattle({
+      id: "hist_apex",
+      modeId: "1v1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: true,
+      terminal: false,
+      cases: [{ caseId: "apex", count: 1 }],
+      prefillBots: 2,
+      status: "finished",
+      payout: 31500,
+      finishedAt: now - 7200000,
+      createdAt: now - 7300000,
+    }),
+    seedBattle({
+      id: "hist_elite",
+      modeId: "2v2v2",
+      crazy: false,
+      jackpot: false,
+      goldSpin: true,
+      terminal: false,
+      cases: [{ caseId: "elite", count: 2 }],
+      prefillBots: 5,
+      status: "finished",
+      payout: 24800,
+      finishedAt: now - 5400000,
+      createdAt: now - 5500000,
+    }),
+    seedBattle({
+      id: "hist_chaos",
+      modeId: "3v3",
+      crazy: true,
+      jackpot: false,
+      goldSpin: false,
+      terminal: false,
+      cases: [{ caseId: "chaos", count: 1 }],
+      prefillBots: 5,
+      status: "finished",
+      payout: 19640,
+      finishedAt: now - 10800000,
+      createdAt: now - 10900000,
+    }),
+    seedBattle({
+      id: "hist_prime",
+      modeId: "1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: true,
+      terminal: false,
+      cases: [{ caseId: "prime", count: 3 }],
+      prefillBots: 1,
+      status: "finished",
+      payout: 15400,
+      finishedAt: now - 14400000,
+      createdAt: now - 14500000,
+    }),
+    seedBattle({
+      id: "hist_vault",
+      modeId: "2v2",
+      crazy: false,
+      jackpot: true,
+      goldSpin: true,
+      terminal: false,
+      cases: [{ caseId: "vault", count: 2 }],
+      prefillBots: 3,
+      status: "finished",
+      payout: 12150,
+      finishedAt: now - 18000000,
+      createdAt: now - 18100000,
+    }),
+    seedBattle({
+      id: "hist_starter",
+      modeId: "1v1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: true,
+      terminal: true,
+      cases: [{ caseId: "starter", count: 4 }],
+      prefillBots: 2,
+      status: "finished",
+      payout: 8800,
+      finishedAt: now - 21600000,
+      createdAt: now - 21700000,
+    }),
+    seedBattle({
+      id: "hist_steady",
+      modeId: "1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: true,
+      terminal: false,
+      cases: [{ caseId: "steady", count: 2 }],
+      prefillBots: 1,
+      status: "finished",
+      payout: 4200,
+      finishedAt: now - 25200000,
+      createdAt: now - 25300000,
+    }),
+    seedBattle({
+      id: "hist_pocket",
+      modeId: "1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: false,
+      terminal: false,
+      cases: [{ caseId: "pocket", count: 5 }],
+      prefillBots: 1,
+      status: "finished",
+      payout: 2650,
+      finishedAt: now - 28800000,
+      createdAt: now - 28900000,
+    }),
+    seedBattle({
+      id: "hist_small",
+      modeId: "1v1",
+      crazy: true,
+      jackpot: false,
+      goldSpin: false,
+      terminal: false,
+      cases: [{ caseId: "pocket", count: 1 }],
+      prefillBots: 1,
+      status: "finished",
+      payout: 980,
+      finishedAt: now - 32400000,
+      createdAt: now - 32500000,
+    }),
+    seedBattle({
+      id: "hist_tiny",
+      modeId: "1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: false,
+      terminal: false,
+      cases: [{ caseId: "pocket", count: 1 }],
+      prefillBots: 1,
+      status: "finished",
+      payout: 420,
+      finishedAt: now - 36000000,
+      createdAt: now - 36100000,
+    }),
   ];
   return Object.fromEntries(seeds.map((b) => [b.id, b]));
 }
@@ -169,7 +337,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   joinIntents: {},
   createBattle: (cfg) => {
     const id = shortId("battle");
-    const battle: BattleConfig = { ...cfg, id, createdAt: Date.now() };
+    const battle: BattleConfig = { ...cfg, id, createdAt: Date.now(), status: cfg.status ?? "open" };
     set((s) => ({ battles: { ...s.battles, [id]: battle } }));
     return id;
   },
@@ -177,5 +345,22 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   listBattles: () => Object.values(get().battles).sort((a, b) => b.createdAt - a.createdAt),
   setJoinIntent: (battleId, intent) => {
     set((s) => ({ joinIntents: { ...s.joinIntents, [battleId]: intent } }));
+  },
+  setBattleStatus: (id, status, payout) => {
+    set((s) => {
+      const cur = s.battles[id];
+      if (!cur) return s;
+      return {
+        battles: {
+          ...s.battles,
+          [id]: {
+            ...cur,
+            status,
+            payout: payout ?? cur.payout,
+            finishedAt: status === "finished" ? Date.now() : cur.finishedAt,
+          },
+        },
+      };
+    });
   },
 }));

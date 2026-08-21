@@ -5,6 +5,7 @@ import { useSettingsStore } from "../../store/settingsStore";
 import { useChatStore } from "../../store/chatStore";
 import { ChatRainBanner } from "../chat/ChatRainBanner";
 import { ChatModMenu } from "../admin/ChatModMenu";
+import { PlayerTipButton } from "../chat/PlayerTipButton";
 import { useAdminViewStore } from "../../store/adminViewStore";
 import { sound } from "../../lib/sound";
 
@@ -92,7 +93,10 @@ export function ChatSidebar() {
                   <p className="text-[11px] font-bold" style={{ color: m.color }}>
                     {m.name}
                   </p>
-                  {adminView && !m.rain && <ChatModMenu name={m.name} />}
+                  <span className="flex items-center gap-0.5">
+                    {!m.rain && !m.you && !m.tip && <PlayerTipButton name={m.name} />}
+                    {adminView && !m.rain && <ChatModMenu name={m.name} />}
+                  </span>
                 </div>
                 <p className="text-[12px] leading-snug text-slate-200">{m.text}</p>
               </div>

@@ -15,7 +15,7 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatCredits, formatPercent } from "../lib/format";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
-import { HOUSE_EDGE } from "../lib/rakeback";
+import { HOUSE_EDGE, rakebackAmount } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { PlayingCard } from "../components/ui/PlayingCard";
@@ -38,6 +38,10 @@ const CHIPS: ChipDef[] = [
 const CUSTOM_CHIP_STYLE = { from: "#c4b5fd", to: "#6d28d9", text: "#fff" } as const;
 
 type SpotId = "pairs" | "main" | "plus3";
+type UndoEntry =
+  | { kind: "spot"; spot: SpotId; previous: number }
+  | { kind: "hit"; player: Card[]; deck: Card[] }
+  | { kind: "double"; player: Card[]; deck: Card[]; extraStake: number };
 
 function ChipFace({ chip, size }: { chip: ChipDef; size: number }) {
   const rim = Math.max(2, Math.round(size * 0.07));
@@ -112,6 +116,7 @@ function BetSpot({
   armed,
   dropRef,
   onCircleClick,
+  onClear,
 }: {
   label: string;
   hint?: string;
@@ -124,6 +129,7 @@ function BetSpot({
   armed: boolean;
   dropRef: React.RefObject<HTMLButtonElement | null>;
   onCircleClick: () => void;
+  onClear?: () => void;
 }) {
   const stack = stackFromAmount(amount);
   const lit = highlighted || armed;
@@ -170,7 +176,8 @@ function BetSpot({
         disabled={disabled || amount === 0}
         onClick={() => {
           sound.click();
-          setAmount(0);
+          if (onClear) onClear();
+          else setAmount(0);
         }}
         className="text-[10px] font-medium uppercase tracking-wide text-slate-400 hover:text-white disabled:opacity-30"
       >
@@ -198,11 +205,17 @@ export function Blackjack() {
   const [hoverSpot, setHoverSpot] = useState<SpotId | null>(null);
   const [selectedChip, setSelectedChip] = useState<ChipDef | null>(null);
   const [customBetInput, setCustomBetInput] = useState("25");
+  const [undoStack, setUndoStack] = useState<UndoEntry[]>([]);
+  const [pendingBust, setPendingBust] = useState(false);
   const dragRef = useRef<{ chip: ChipDef; x: number; y: number } | null>(null);
   const ignoreClickUntilRef = useRef(0);
   const pairsRef = useRef<HTMLButtonElement>(null);
   const mainRef = useRef<HTMLButtonElement>(null);
   const plus3Ref = useRef<HTMLButtonElement>(null);
+  const betsRef = useRef({ main: 0, pairs: 0, plus3: 0 });
+  const undoStackRef = useRef<UndoEntry[]>([]);
+  betsRef.current = { main: bet, pairs: perfectPairsBet, plus3: twentyOnePlusThreeBet };
+  undoStackRef.current = undoStack;
 
   const customBetValue = Math.max(1, Math.round(Number(customBetInput)) || 1);
   const customChip: ChipDef = { value: customBetValue, ...CUSTOM_CHIP_STYLE, custom: true };
@@ -214,6 +227,56 @@ export function Blackjack() {
 
   const playerTotal = handTotal(player);
   const dealerTotal = handTotal(dealer);
+  const canUndo = undoStack.length > 0 && !busy && (phase === "betting" || phase === "player-turn");
+
+  function refundStake(amount: number) {
+    if (amount <= 0) return;
+    credit(amount);
+    const rb = rakebackAmount(amount, HOUSE_EDGE.blackjack);
+    if (rb <= 0) return;
+    useEconomyStore.setState((s) => ({
+      pendingRakeback: Math.max(0, (s.pendingRakeback ?? 0) - rb),
+    }));
+  }
+
+  function pushUndo(entry: UndoEntry) {
+    const next = [...undoStackRef.current, entry];
+    undoStackRef.current = next;
+    setUndoStack(next);
+  }
+
+  function snapshotSpot(id: SpotId) {
+    pushUndo({ kind: "spot", spot: id, previous: betsRef.current[id] });
+  }
+
+  function applySpot(id: SpotId, value: number) {
+    betsRef.current[id] = value;
+    if (id === "main") setBet(value);
+    else if (id === "pairs") setPerfectPairsBet(value);
+    else setTwentyOnePlusThreeBet(value);
+  }
+
+  function undo() {
+    if (busy || (phase !== "betting" && phase !== "player-turn")) return;
+    const last = undoStackRef.current[undoStackRef.current.length - 1];
+    if (!last) return;
+    sound.click();
+    const next = undoStackRef.current.slice(0, -1);
+    undoStackRef.current = next;
+    setUndoStack(next);
+    if (last.kind === "spot") {
+      applySpot(last.spot, last.previous);
+      return;
+    }
+    setPlayer(last.player);
+    setDeck(last.deck);
+    setPendingBust(false);
+    setMessage("");
+    if (last.kind === "double") {
+      setDoubled(false);
+      refundStake(last.extraStake);
+    }
+  }
 
   async function deal() {
     if (busy) return;
@@ -229,6 +292,9 @@ export function Blackjack() {
     setMessage("");
     setSideBetMessages([]);
     setDealerRevealed(false);
+    setPendingBust(false);
+    setUndoStack([]);
+    undoStackRef.current = [];
 
     const rolls = await playRoll(52);
     const freshShuffled = shuffleDeck(freshDeck(), rolls);
@@ -308,8 +374,9 @@ export function Blackjack() {
   }
 
   async function hit() {
-    if (phase !== "player-turn" || busy) return;
+    if (phase !== "player-turn" || busy || pendingBust) return;
     setBusy(true);
+    pushUndo({ kind: "hit", player: [...player], deck: [...deck] });
     const d = [...deck];
     const card = d.shift()!;
     const p = [...player, card];
@@ -321,7 +388,8 @@ export function Blackjack() {
 
     const total = handTotal(p).total;
     if (total > 21) {
-      await resolveRound(p, dealer, d, false);
+      setPendingBust(true);
+      setMessage("Busted — undo or end the hand.");
     }
   }
 
@@ -331,11 +399,12 @@ export function Blackjack() {
   }
 
   async function double() {
-    if (phase !== "player-turn" || busy || player.length !== 2) return;
+    if (phase !== "player-turn" || busy || pendingBust || player.length !== 2) return;
     if (!takeStake(bet, HOUSE_EDGE.blackjack)) {
       push("Not enough Shards to double.", "danger");
       return;
     }
+    pushUndo({ kind: "double", player: [...player], deck: [...deck], extraStake: bet });
     setDoubled(true);
     setBusy(true);
     const d = [...deck];
@@ -346,6 +415,12 @@ export function Blackjack() {
     sound.deal();
     await sleep(300);
     setBusy(false);
+
+    if (handTotal(p).total > 21) {
+      setPendingBust(true);
+      setMessage("Busted — undo or end the hand.");
+      return;
+    }
     await resolveRound(p, dealer, d, false, true);
   }
 
@@ -353,6 +428,9 @@ export function Blackjack() {
     setBusy(true);
     setPhase("dealer-turn");
     setDealerRevealed(true);
+    setPendingBust(false);
+    setUndoStack([]);
+    undoStackRef.current = [];
     sound.cardFlip();
     await sleep(500);
 
@@ -438,6 +516,9 @@ export function Blackjack() {
     setDoubled(false);
     setMessage("");
     setSideBetMessages([]);
+    setPendingBust(false);
+    setUndoStack([]);
+    undoStackRef.current = [];
   }
 
   const bettingLocked = phase !== "betting";
@@ -456,23 +537,28 @@ export function Blackjack() {
   }, []);
 
   function addToSpot(id: SpotId, value: number) {
+    snapshotSpot(id);
     sound.chip();
-    if (id === "main") setBet((v) => v + value);
-    else if (id === "pairs") setPerfectPairsBet((v) => v + value);
-    else setTwentyOnePlusThreeBet((v) => v + value);
+    applySpot(id, betsRef.current[id] + value);
   }
 
   function removeTop(id: SpotId) {
     if (bettingLocked) return;
-    const amount = id === "main" ? bet : id === "pairs" ? perfectPairsBet : twentyOnePlusThreeBet;
+    const amount = betsRef.current[id];
     const stack = stackFromAmount(amount);
     const top = stack[stack.length - 1];
     if (!top) return;
+    snapshotSpot(id);
     sound.click();
-    const next = Math.max(0, amount - top.value);
-    if (id === "main") setBet(next);
-    else if (id === "pairs") setPerfectPairsBet(next);
-    else setTwentyOnePlusThreeBet(next);
+    applySpot(id, Math.max(0, amount - top.value));
+  }
+
+  function clearSpot(id: SpotId) {
+    if (bettingLocked) return;
+    const amount = betsRef.current[id];
+    if (amount === 0) return;
+    snapshotSpot(id);
+    applySpot(id, 0);
   }
 
   function handleSpotClick(id: SpotId) {
@@ -567,61 +653,84 @@ export function Blackjack() {
               <StatRow label="21+3 — straight flush" value="40:1" />
               <p>
                 Place chips on the felt to bet — select a chip then click a circle, or drag from the tray onto a circle.
-                Click a stack with no chip selected to peel the top chip off. Side bets resolve immediately after the
-                initial deal, independent of how the main hand plays out.
+                Click a stack with no chip selected to peel the top chip off. Use Undo to reverse the last chip or the last
+                hit (including a busting hit, before you end the hand). Side bets resolve immediately after the initial
+                deal, independent of how the main hand plays out.
               </p>
             </InfoButton>
             </div>
           </div>
 
           {phase === "betting" || phase === "settled" ? (
-            <button
-              onClick={() => {
-                sound.click();
-                if (phase === "settled") newRound();
-                else void deal();
-              }}
-              disabled={busy}
-              className="btn-primary w-full py-3 disabled:opacity-50"
-            >
-              {phase === "settled" ? "New Round" : "Deal"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={() => {
+                  sound.click();
+                  if (phase === "settled") newRound();
+                  else void deal();
+                }}
+                disabled={busy}
+                className="btn-primary flex-1 py-3 disabled:opacity-50"
+              >
+                {phase === "settled" ? "New Round" : "Deal"}
+              </button>
+              {phase === "betting" && (
+                <button
+                  type="button"
+                  onClick={undo}
+                  disabled={!canUndo}
+                  className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 font-semibold text-white transition-transform duration-150 active:scale-95 disabled:opacity-40"
+                >
+                  Undo
+                </button>
+              )}
+            </div>
           ) : (
-            <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-2">
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  onClick={() => {
+                    sound.click();
+                    void hit();
+                  }}
+                  disabled={busy || phase !== "player-turn" || pendingBust}
+                  className="rounded-xl bg-emerald-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
+                >
+                  Hit
+                </button>
+                <button
+                  onClick={() => {
+                    sound.click();
+                    void stand();
+                  }}
+                  disabled={busy || phase !== "player-turn"}
+                  className="rounded-xl bg-sky-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
+                >
+                  {pendingBust ? "End hand" : "Stand"}
+                </button>
+                <button
+                  onClick={() => {
+                    sound.click();
+                    void double();
+                  }}
+                  disabled={busy || phase !== "player-turn" || pendingBust || player.length !== 2}
+                  className="rounded-xl bg-amber-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
+                >
+                  Double
+                </button>
+              </div>
               <button
-                onClick={() => {
-                  sound.click();
-                  void hit();
-                }}
-                disabled={busy || phase !== "player-turn"}
-                className="rounded-xl bg-emerald-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
+                type="button"
+                onClick={undo}
+                disabled={!canUndo}
+                className="w-full rounded-xl border border-white/10 bg-white/5 py-2.5 font-semibold text-white transition-transform duration-150 active:scale-95 disabled:opacity-40"
               >
-                Hit
-              </button>
-              <button
-                onClick={() => {
-                  sound.click();
-                  void stand();
-                }}
-                disabled={busy || phase !== "player-turn"}
-                className="rounded-xl bg-sky-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
-              >
-                Stand
-              </button>
-              <button
-                onClick={() => {
-                  sound.click();
-                  void double();
-                }}
-                disabled={busy || phase !== "player-turn" || player.length !== 2}
-                className="rounded-xl bg-amber-500 py-2.5 font-semibold text-bg-950 transition-transform duration-150 active:scale-95 disabled:opacity-40"
-              >
-                Double
+                Undo
               </button>
             </div>
           )}
 
-          {phase === "settled" && (
+          {(phase === "settled" || pendingBust) && message && (
             <div
               className={`mt-4 rounded-lg p-3 text-center text-sm font-semibold ${
                 outcome === "win" || outcome === "blackjack"
@@ -691,7 +800,7 @@ export function Blackjack() {
         {phase === "betting" && player.length === 0 && (
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="relative mb-4 text-center text-emerald-200/60">
             Select a chip (or type a custom size) and click a circle, or drag onto a circle. Click a stack to peel the
-            top chip off.
+            top chip off, or use Undo for the last chip / last hit.
           </motion.p>
         )}
 
@@ -707,6 +816,7 @@ export function Blackjack() {
             armed={Boolean(activeChip) && !drag}
             dropRef={pairsRef}
             onCircleClick={() => handleSpotClick("pairs")}
+            onClear={() => clearSpot("pairs")}
           />
           <BetSpot
             label="Main Bet"
@@ -719,6 +829,7 @@ export function Blackjack() {
             armed={Boolean(activeChip) && !drag}
             dropRef={mainRef}
             onCircleClick={() => handleSpotClick("main")}
+            onClear={() => clearSpot("main")}
           />
           <BetSpot
             label="21+3"
@@ -731,6 +842,7 @@ export function Blackjack() {
             armed={Boolean(activeChip) && !drag}
             dropRef={plus3Ref}
             onCircleClick={() => handleSpotClick("plus3")}
+            onClear={() => clearSpot("plus3")}
           />
         </div>
 

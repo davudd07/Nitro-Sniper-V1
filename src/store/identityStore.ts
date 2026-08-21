@@ -32,9 +32,15 @@ function identityKey(name: string): string {
   return n;
 }
 
+function isPngFile(file: File): boolean {
+  if (file.type === "image/png") return true;
+  if (file.type && file.type !== "application/octet-stream") return false;
+  return file.name.toLowerCase().endsWith(".png");
+}
+
 function readPng(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (file.type !== "image/png") {
+    if (!isPngFile(file)) {
       reject(new Error("PNG only."));
       return;
     }

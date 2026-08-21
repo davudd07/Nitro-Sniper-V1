@@ -24,5 +24,15 @@ export const AVATAR_SIZE_PX = 96;
 
 export function changesInWindow(timestamps: number[], now = Date.now()): number[] {
   const since = now - AVATAR_WEEK_MS;
-  return timestamps.filter((t) => t > since);
+  return timestamps.filter((t) => t > since).sort((a, b) => a - b);
+}
+
+export function formatAvatarResetAt(ts: number): string {
+  return new Date(ts).toLocaleString(undefined, {
+    weekday: "short",
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
 }

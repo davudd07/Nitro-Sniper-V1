@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { AvatarPicker } from "../../components/identity/AvatarPicker";
+import { AvatarChangeCopy, AvatarPicker } from "../../components/identity/AvatarPicker";
 import { RoleBadge } from "../../components/identity/RoleBadge";
 import { useIdentityStore } from "../../store/identityStore";
 import { useAuthStore } from "../../store/authStore";
@@ -44,7 +44,9 @@ export function HomeHero() {
                   </button>
                 ) : null}
               </div>
-              <p className="mt-1 text-[11px] text-slate-500">PNG picture · up to 2 changes per week</p>
+              <p className="mt-1 text-[11px] text-slate-500">
+                <AvatarChangeCopy />
+              </p>
             </div>
           </div>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-300">

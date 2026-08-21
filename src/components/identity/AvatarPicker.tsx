@@ -4,6 +4,7 @@ import { PlayerAvatar } from "./PlayerAvatar";
 import { useIdentityStore } from "../../store/identityStore";
 import { useToastStore } from "../../store/toastStore";
 import { sound } from "../../lib/sound";
+import { AVATAR_MAX_CHANGES_PER_WEEK, formatAvatarResetAt } from "../../lib/identity";
 import { LOCAL_PLAYER } from "../../store/moderationStore";
 
 export function AvatarPicker({
@@ -19,7 +20,8 @@ export function AvatarPicker({
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const avatar = useIdentityStore((s) => s.avatarFor(name));
-  const status = useIdentityStore((s) => s.avatarChangeStatus(name));
+  const remaining = useIdentityStore((s) => s.avatarChangeStatus(name).remaining);
+  const nextAt = useIdentityStore((s) => s.avatarChangeStatus(name).nextAt);
   const setAvatarPng = useIdentityStore((s) => s.setAvatarPng);
   const push = useToastStore((s) => s.push);
 
@@ -35,16 +37,27 @@ export function AvatarPicker({
     push("Profile picture updated.", "success");
   }
 
+  const hint =
+    remaining > 0
+      ? `Change picture — PNG only, ${remaining} of ${AVATAR_MAX_CHANGES_PER_WEEK} left this week`
+      : nextAt
+        ? `PNG change limit reached. Next change ${formatAvatarResetAt(nextAt)}`
+        : "PNG change limit reached for this week";
+
   return (
     <button
       type="button"
-      onClick={() => inputRef.current?.click()}
+      onClick={() => {
+        if (remaining <= 0) {
+          sound.lose();
+          push(hint, "warning");
+          return;
+        }
+        inputRef.current?.click();
+      }}
       className="group relative shrink-0"
-      title={
-        status.remaining > 0
-          ? `Change picture (PNG, ${status.remaining} left this week)`
-          : "Picture change limit reached for this week"
-      }
+      title={hint}
+      aria-label={hint}
     >
       <PlayerAvatar src={avatar} name={name} color={color} size={size} kind={kind} />
       <span className="absolute inset-0 grid place-items-center rounded-full bg-black/45 opacity-0 transition-opacity group-hover:opacity-100">
@@ -53,7 +66,7 @@ export function AvatarPicker({
       <input
         ref={inputRef}
         type="file"
-        accept="image/png"
+        accept="image/png,.png"
         className="hidden"
         onChange={(e) => {
           const file = e.target.files?.[0];
@@ -63,4 +76,20 @@ export function AvatarPicker({
       />
     </button>
   );
+}
+
+export function AvatarChangeCopy({ name = LOCAL_PLAYER }: { name?: string }) {
+  const remaining = useIdentityStore((s) => s.avatarChangeStatus(name).remaining);
+  const nextAt = useIdentityStore((s) => s.avatarChangeStatus(name).nextAt);
+  if (remaining > 0) {
+    return (
+      <>
+        PNG only · {remaining} of {AVATAR_MAX_CHANGES_PER_WEEK} change{remaining === 1 ? "" : "s"} left this week
+      </>
+    );
+  }
+  if (nextAt) {
+    return <>PNG only · next change {formatAvatarResetAt(nextAt)}</>;
+  }
+  return <>PNG only · {AVATAR_MAX_CHANGES_PER_WEEK} changes per rolling 7 days</>;
 }

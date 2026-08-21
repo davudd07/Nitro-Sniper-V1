@@ -23,8 +23,7 @@ import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
 import { useIdentityStore } from "../store/identityStore";
-import { PlayerAvatar } from "../components/identity/PlayerAvatar";
-import { RoleBadge } from "../components/identity/RoleBadge";
+import { PlayerTag } from "../components/identity/PlayerTag";
 
 function jackpotPresets(id: JackpotPotId): number[] {
   if (id === "small") return [5, 50, 100];
@@ -52,7 +51,7 @@ export function JackpotPage() {
   const spinLock = useRef(false);
   const lastBeep = useRef<number | null>(null);
   const avatars = useIdentityStore((s) => s.avatars);
-  const roles = useIdentityStore((s) => s.roles);
+  const avatarFor = useIdentityStore((s) => s.avatarFor);
 
   const total = potTotal(pot.entries);
   const you = youEntry(pot.entries);
@@ -68,9 +67,9 @@ export function JackpotPage() {
         name: e.name,
         color: e.color,
         weight: total > 0 ? e.amount / total : 0,
-        avatar: useIdentityStore.getState().avatarFor(e.kind === "you" ? "You" : e.name),
+        avatar: avatarFor(e.kind === "you" ? "You" : e.name),
       })),
-    [pot.entries, total, avatars, roles],
+    [pot.entries, total, avatars, avatarFor],
   );
 
   function switchPot(id: JackpotPotId) {
@@ -248,21 +247,16 @@ export function JackpotPage() {
                 const pct = total > 0 ? (e.amount / total) * 100 : 0;
                 return (
                   <div key={e.id} className="flex items-center gap-3 rounded-xl bg-black/25 px-3 py-2">
-                    <PlayerAvatar
-                      src={useIdentityStore.getState().avatarFor(e.kind === "you" ? "You" : e.name)}
+                    <PlayerTag
                       name={e.name}
+                      you={e.kind === "you"}
                       color={e.color}
                       size={28}
                       kind={e.kind === "you" ? "you" : e.kind === "bot" ? "bot" : "player"}
+                      className="min-w-0 flex-1"
+                      nameClassName="text-sm font-medium text-white"
                     />
-                    <p className="min-w-0 flex-1 truncate text-sm font-medium text-white">
-                      {e.name}
-                      <RoleBadge
-                        className="ml-1.5 align-middle"
-                        role={useIdentityStore.getState().roleFor(e.kind === "you" ? "You" : e.name)}
-                      />
-                      {e.kind === "bot" && <span className="ml-1.5 text-[10px] uppercase text-slate-500">bot</span>}
-                    </p>
+                    {e.kind === "bot" ? <span className="shrink-0 text-[10px] uppercase text-slate-500">bot</span> : null}
                     <p className="font-mono text-sm text-slate-300">{formatCredits(e.amount)}</p>
                     <p className="w-14 text-right font-mono text-xs text-amber-200">{pct.toFixed(1)}%</p>
                   </div>

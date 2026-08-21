@@ -866,16 +866,15 @@ export function BattleRoom() {
 }
 
 function TeamDivider({ mark = true, reelSize = "lg" }: { mark?: boolean; reelSize?: "md" | "lg" }) {
-  const mid = BATTLE_REEL_HEIGHT[reelSize] / 2;
+  const reelH = BATTLE_REEL_HEIGHT[reelSize];
   return (
     <div className="relative w-9 shrink-0 self-stretch sm:w-11">
       {mark ? (
-        <div
-          className="absolute left-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15"
-          style={{ top: mid }}
-        >
-          <Swords className="h-4 w-4 text-slate-300" />
-          <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
+        <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: reelH }}>
+          <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15">
+            <Swords className="h-4 w-4 text-slate-300" />
+            <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
+          </div>
         </div>
       ) : null}
     </div>

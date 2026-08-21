@@ -2,18 +2,18 @@ import { create } from "zustand";
 import { shortId } from "../lib/format";
 import { randomBotName } from "../data/botNames";
 
-/** Slightly muted vs battle seat colors — used only on the jackpot table. */
+/** Same hues as battle seats, slightly quieter — jackpot table only. */
 export const JACKPOT_COLORS = [
-  "#c45b6c",
-  "#4d74b0",
-  "#4d9a6e",
-  "#c4a05a",
-  "#8a6db0",
-  "#4d9aaa",
-  "#b06a8a",
-  "#7a9648",
-  "#c47a4a",
-  "#4d9a90",
+  "#e14b66",
+  "#4b7ee8",
+  "#2db862",
+  "#e8a01c",
+  "#9b5ce8",
+  "#1aabb8",
+  "#e0569a",
+  "#7cbe24",
+  "#ea7a2a",
+  "#1cafa0",
 ];
 
 export const JACKPOT_HOUSE_EDGE = 0.09;

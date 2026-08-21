@@ -114,10 +114,11 @@ export function JackpotCircleWheel({
           {slices.map((s) => {
             const mid = s.start + s.sweep / 2;
             const rad = (mid * Math.PI) / 180;
-            const r = 38;
+            // Hub is inset 22% (radius 28%). Color ring runs 28% → 50%. Sit in the middle.
+            const r = 39;
             const left = 50 + r * Math.sin(rad);
             const top = 50 - r * Math.cos(rad);
-            const size = s.sweep < 18 ? 22 : 32;
+            const size = s.sweep < 12 ? 18 : s.sweep < 22 ? 24 : 32;
             return (
               <div
                 key={`${s.ticket.playerId}-${s.index}`}

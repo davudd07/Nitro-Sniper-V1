@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { slowBrake } from "../../lib/easing";
 import { sound } from "../../lib/sound";
+import { RoleBadge } from "../identity/RoleBadge";
+import { useIdentityStore } from "../../store/identityStore";
 
 export interface JackpotTicket {
   playerId: string;
@@ -116,24 +118,7 @@ export function JackpotWheel({
       <div className="flex flex-wrap items-center justify-center gap-2">
         {tickets.map((t) => {
           const lit = activeSeg?.ticket.playerId === t.playerId;
-          return (
-            <div
-              key={t.playerId}
-              className={clsx(
-                "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-all duration-150",
-                lit ? "scale-105 text-white shadow-lg" : "border-white/10 text-slate-400",
-              )}
-              style={
-                lit
-                  ? { borderColor: t.color, background: `${t.color}28`, boxShadow: `0 0 18px ${t.color}55` }
-                  : undefined
-              }
-            >
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: t.color }} />
-              {t.name}
-              <span className="font-mono text-[10px] opacity-80">{(t.weight * 100).toFixed(1)}%</span>
-            </div>
-          );
+          return <TicketChip key={t.playerId} ticket={t} lit={lit} />;
         })}
       </div>
 
@@ -194,6 +179,28 @@ export function JackpotWheel({
           {tickets.find((t) => t.playerId === winnerId)?.name} takes the jackpot!
         </p>
       )}
+    </div>
+  );
+}
+
+function TicketChip({ ticket, lit }: { ticket: JackpotTicket; lit: boolean }) {
+  const role = useIdentityStore((s) => s.roleFor(ticket.name));
+  return (
+    <div
+      className={clsx(
+        "flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-semibold transition-all duration-150",
+        lit ? "scale-105 text-white shadow-lg" : "border-white/10 text-slate-400",
+      )}
+      style={
+        lit
+          ? { borderColor: ticket.color, background: `${ticket.color}28`, boxShadow: `0 0 18px ${ticket.color}55` }
+          : undefined
+      }
+    >
+      <span className="h-2.5 w-2.5 rounded-full" style={{ background: ticket.color }} />
+      {ticket.name}
+      <RoleBadge role={role} />
+      <span className="font-mono text-[10px] opacity-80">{(ticket.weight * 100).toFixed(1)}%</span>
     </div>
   );
 }

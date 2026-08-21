@@ -25,10 +25,12 @@ import { SupportWidget } from "./components/support/SupportWidget";
 import { PATH_TO_GAME } from "./data/lobbyGames";
 import { trackRecent } from "./lib/recentGames";
 import { Rewards } from "./pages/Rewards";
+import { Vip } from "./pages/Vip";
 import { Affiliate } from "./pages/Affiliate";
 import { Admin } from "./pages/Admin";
 import { AdminViewBar } from "./components/admin/AdminViewBar";
 import { installChatModeration } from "./lib/moderation";
+import { AccountGate } from "./components/auth/AccountGate";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -92,6 +94,7 @@ export default function App() {
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/rewards" element={<Rewards />} />
+            <Route path="/vip" element={<Vip />} />
             <Route path="/affiliate" element={<Affiliate />} />
             <Route path="/mines" element={<Mines />} />
             <Route path="/blackjack" element={<Blackjack />} />
@@ -112,6 +115,7 @@ export default function App() {
       <ChatSidebar />
       <ChatRainController />
       <SupportWidget />
+      <AccountGate />
       <Toasts />
     </div>
   );

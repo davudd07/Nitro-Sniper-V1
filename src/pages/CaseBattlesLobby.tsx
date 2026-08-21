@@ -6,7 +6,7 @@ import { sound } from "../lib/sound";
 import { useBattleStore, type BattleConfig } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { BATTLE_MODES, totalPlayers } from "../data/battleModes";
+import { BATTLE_MODES } from "../data/battleModes";
 import { ModeGlyph } from "../components/battles/ModeGlyph";
 import { getCase } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
@@ -15,6 +15,8 @@ import { JoinBattleModal } from "../components/battles/JoinBattleModal";
 import { formatCredits } from "../lib/format";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
+import { requireAccount } from "../lib/stake";
 import { BattleCost, BorrowBadge } from "../components/battles/BattleCost";
 
 const FILTERS = [
@@ -30,6 +32,7 @@ export function CaseBattlesLobby() {
   const [joinTarget, setJoinTarget] = useState<BattleConfig | null>(null);
   const battlesMap = useBattleStore((s) => s.battles);
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
+  const joinIntents = useBattleStore((s) => s.joinIntents);
   const battles = useMemo(
     () => Object.values(battlesMap).sort((a, b) => b.createdAt - a.createdAt),
     [battlesMap],
@@ -55,13 +58,8 @@ export function CaseBattlesLobby() {
     return visible;
   }, [battles, filter]);
 
-  function occupied(b: (typeof battles)[number]) {
-    const mode = BATTLE_MODES.find((m) => m.id === b.modeId);
-    const seats = mode ? totalPlayers(mode) : 0;
-    if (b.status === "finished" || b.status === "active") return { filled: seats, seats };
-    const bots = b.botSeats?.length ?? b.prefillBots;
-    const filled = b.source === "you" ? Math.min(seats, 1 + bots) : Math.min(seats, bots);
-    return { filled, seats };
+  function occupied(b: BattleConfig) {
+    return occupiedCount(occupiedSeatFlags(b, joinIntents[b.id]));
   }
 
   function spectateBattle(b: BattleConfig) {
@@ -86,6 +84,7 @@ export function CaseBattlesLobby() {
   function confirmJoin(borrowPct: number) {
     const b = joinTarget;
     if (!b) return;
+    if (!requireAccount()) return;
     const cost = joinCost(b.costPerPlayer, b.fundedPct, b.fundedPct > 0 ? 0 : borrowPct);
     if (!spend(cost)) {
       push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
@@ -93,7 +92,8 @@ export function CaseBattlesLobby() {
     }
     if (cost > 0) applyTipWager(cost);
     awardRakeback(cost, HOUSE_EDGE.battles);
-    setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct, seat: 0 });
+    const seat = firstEmptySeat(occupiedSeatFlags(b, joinIntents[b.id]));
+    setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct, seat });
     setJoinTarget(null);
     navigate(`/battles/${b.id}`);
   }
@@ -149,7 +149,8 @@ export function CaseBattlesLobby() {
           <div className="divide-y divide-white/6">
             {rows.map((b) => {
               const mode = BATTLE_MODES.find((m) => m.id === b.modeId);
-              const { filled, seats } = occupied(b);
+              const flags = occupiedSeatFlags(b, joinIntents[b.id]);
+              const { filled, seats } = occupiedCount(flags);
               const waiting = filled < seats;
               const joinerPrice = fundedSeatCost(b.costPerPlayer, b.fundedPct);
               return (
@@ -235,15 +236,15 @@ export function CaseBattlesLobby() {
                     )}
                   </div>
                   <div className="hidden items-center gap-1.5 md:flex">
-                    {Array.from({ length: seats }).map((_, i) => (
+                    {flags.map((taken, i) => (
                       <span
                         key={i}
                         className={clsx(
                           "grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold",
-                          i < filled ? "bg-white/15 text-white" : "border border-dashed border-white/20 text-slate-600",
+                          taken ? "bg-white/15 text-white" : "border border-dashed border-white/20 text-slate-600",
                         )}
                       >
-                        {i < filled ? <Users className="h-3 w-3" /> : ""}
+                        {taken ? <Users className="h-3 w-3" /> : ""}
                       </span>
                     ))}
                     <span className="text-[11px] text-slate-500">

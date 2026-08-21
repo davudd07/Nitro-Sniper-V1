@@ -21,6 +21,7 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { formatCredits, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { requireAccount } from "../lib/stake";
 
 function jackpotPresets(id: JackpotPotId): number[] {
   if (id === "small") return [5, 50, 100];
@@ -79,6 +80,7 @@ export function JackpotPage() {
       push(`Bet must be ${formatCredits(def.min)}–${formatCredits(def.max)} SH in this pot.`, "warning");
       return;
     }
+    if (!requireAccount()) return;
     if (!spend(bet)) {
       push("Not enough Shards for that bet.", "danger");
       return;

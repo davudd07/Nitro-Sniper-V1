@@ -7,3 +7,5 @@ export * from "./moderationStore";
 export * from "./rewardsStore";
 export * from "./activityStore";
 export * from "./supportStore";
+export * from "./authStore";
+export * from "./loyaltyStore";

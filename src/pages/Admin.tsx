@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ban, Coins, Eye, Gift, Headphones, LogOut, MessageSquare, Search, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
+import { Ban, Coins, Crown, Eye, Gift, Headphones, KeyRound, LogOut, MessageSquare, Search, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import {
   clearAdminSession,
@@ -19,9 +19,14 @@ import { useEconomyStore } from "../store/economyStore";
 import { ACTIVITY_GAMES, ACTIVITY_GAME_LABELS, useActivityStore, type ActivityGame } from "../store/activityStore";
 import { useChatStore } from "../store/chatStore";
 import { useSupportStore, type SupportTicket } from "../store/supportStore";
-import { formatCredits, formatFunCoins, formatRakeback } from "../lib/format";
+import { formatCredits, formatFunCoins, formatRakeback, formatXp } from "../lib/format";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
+import { useAuthStore } from "../store/authStore";
+import { useLoyaltyStore } from "../store/loyaltyStore";
+import { VipDesk } from "../components/admin/VipDesk";
+import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
+import { normalizeUsername } from "../lib/playerAuth";
 
 export function Admin() {
   const [authed, setAuthed] = useState(() => hasAdminSession());
@@ -103,7 +108,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const [lookup, setLookup] = useState("");
   const [amount, setAmount] = useState(1000);
   const [confirmView, setConfirmView] = useState(false);
-  const [deskTab, setDeskTab] = useState<"players" | "support">("players");
+  const [deskTab, setDeskTab] = useState<"players" | "support" | "vip">("players");
   const [gameFilter, setGameFilter] = useState<ActivityGame | "all">("all");
   const [chatWord, setChatWord] = useState("");
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -133,6 +138,11 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const replyTicket = useSupportStore((s) => s.reply);
   const closeTicket = useSupportStore((s) => s.closeTicket);
   const reopenTicket = useSupportStore((s) => s.reopenTicket);
+  const accounts = useAuthStore((s) => s.accounts);
+  const session = useAuthStore((s) => s.session);
+  const grantXp = useLoyaltyStore((s) => s.grantXp);
+  const xpByUser = useLoyaltyStore((s) => s.xpByUser);
+  const loyaltyConfig = useLoyaltyStore((s) => s.config);
 
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
@@ -147,9 +157,10 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
     extra.add(lookup.trim());
     for (const p of plays) extra.add(p.name);
     for (const m of chatMessages) extra.add(m.name);
+    for (const a of accounts) extra.add(a.username);
     const list = [...extra].filter(Boolean);
     return list.filter((n) => !q || n.toLowerCase().includes(q));
-  }, [q, plays, chatMessages, lookup]);
+  }, [q, plays, chatMessages, lookup, accounts]);
 
   const snap = snapshot(selected);
   const youBanned = banned.includes(LOCAL_PLAYER);
@@ -165,8 +176,17 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
     if (!word) return true;
     return m.text.toLowerCase().includes(word);
   });
+  const loginName =
+    selected === LOCAL_PLAYER
+      ? session
+      : accounts.some((a) => a.username.toLowerCase() === selected.toLowerCase())
+        ? selected
+        : null;
   const openTickets = tickets.filter((t) => t.status === "open").length;
   const activeTicket = tickets.find((t) => t.id === ticketId) ?? null;
+  const xpUser = selected === LOCAL_PLAYER ? LOCAL_XP_USER : selected;
+  const lifetimeXp = xpByUser[xpUser] ?? 0;
+  const vip = resolveVip(lifetimeXp, loyaltyConfig.tiers);
 
   function lookUpTyped() {
     const name = lookup.trim();
@@ -214,6 +234,16 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
               {openTickets > 0 && (
                 <span className="rounded-full bg-amber-400 px-1.5 text-[10px] font-black text-bg-950">{openTickets}</span>
               )}
+            </button>
+            <button
+              type="button"
+              onClick={() => setDeskTab("vip")}
+              className={clsx(
+                "inline-flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
+                deskTab === "vip" ? "bg-cyan-400/20 text-white" : "text-slate-400 hover:text-white",
+              )}
+            >
+              <Crown className="h-3 w-3" /> VIP
             </button>
           </div>
         </div>
@@ -275,6 +305,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 const isYou = name === LOCAL_PLAYER;
                 const isBan = banned.includes(name);
                 const isMute = muted.includes(name);
+                const hasLogin = accounts.some((a) => a.username.toLowerCase() === name.toLowerCase());
                 return (
                   <li key={name}>
                     <button
@@ -287,6 +318,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                     >
                       <span className="font-semibold">{isYou ? "You (local)" : name}</span>
                       <span className="flex gap-1 text-[10px] font-bold uppercase">
+                        {hasLogin && <span className="text-emerald-300">login</span>}
                         {isBan && <span className="text-rose-300">ban</span>}
                         {isMute && <span className="text-amber-300">mute</span>}
                       </span>
@@ -299,7 +331,9 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
           )}
 
           <div className="space-y-4">
-            {deskTab === "support" ? (
+            {deskTab === "vip" ? (
+              <VipDesk />
+            ) : deskTab === "support" ? (
               <SupportDesk
                 tickets={tickets}
                 active={activeTicket}
@@ -365,6 +399,8 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                   label="Profit / loss"
                   value={`${profit >= 0 ? "+" : ""}${formatCredits(profit)}`}
                 />
+                <Mini label="Lifetime XP" value={formatXp(lifetimeXp)} />
+                <Mini label="VIP" value={vip.current.name} />
               </div>
               <p className="mb-4 text-xs text-slate-500">
                 Won {formatCredits(ecoWon)} SH across {selected === LOCAL_PLAYER ? roundsPlayed : activityTotals.rounds} recorded
@@ -412,6 +448,13 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 </button>
                 <button
                   type="button"
+                  className="inline-flex items-center gap-1.5 rounded-md border-2 border-violet-400/40 bg-violet-400/10 px-3 py-2 text-xs font-bold uppercase text-violet-100"
+                  onClick={() => act(`+${amount} XP → ${selected}`, () => grantXp(xpUser, amount, "Warden grant"))}
+                >
+                  <Crown className="h-3.5 w-3.5" /> Grant XP
+                </button>
+                <button
+                  type="button"
                   className="inline-flex items-center gap-1.5 rounded-md border-2 border-white/15 px-3 py-2 text-xs font-bold uppercase text-slate-300"
                   onClick={() => {
                     if (!window.confirm(`Reset ${selected}? This clears demo balances for that player.`)) return;
@@ -427,6 +470,14 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 </p>
               )}
             </div>
+
+            <AccountLoginCard
+              username={loginName}
+              onRenamed={(next) => {
+                setSelected(next);
+                setFilter(next);
+              }}
+            />
 
             <div className="surface p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -657,6 +708,150 @@ function Stat({ label, value }: { label: string; value: string }) {
     <div className="surface p-3">
       <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
       <p className="mt-1 font-mono text-lg font-black text-white">{value}</p>
+    </div>
+  );
+}
+
+function AccountLoginCard({
+  username,
+  onRenamed,
+}: {
+  username: string | null;
+  onRenamed: (next: string) => void;
+}) {
+  const accounts = useAuthStore((s) => s.accounts);
+  const renameAccount = useAuthStore((s) => s.renameAccount);
+  const setAccountPassword = useAuthStore((s) => s.setAccountPassword);
+  const setAccountEmail = useAuthStore((s) => s.setAccountEmail);
+  const push = useToastStore((s) => s.push);
+  const acc = username
+    ? accounts.find((a) => a.username.toLowerCase() === username.toLowerCase())
+    : undefined;
+  const [nextName, setNextName] = useState(acc?.username ?? "");
+  const [nextEmail, setNextEmail] = useState(acc?.email ?? "");
+  const [nextPassword, setNextPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  const accKey = acc?.username ?? "";
+  const [seen, setSeen] = useState(accKey);
+  if (accKey !== seen) {
+    setSeen(accKey);
+    setNextName(acc?.username ?? "");
+    setNextEmail(acc?.email ?? "");
+    setNextPassword("");
+  }
+
+  if (!username || !acc) {
+    return (
+      <div className="surface p-5">
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+          <KeyRound className="h-3.5 w-3.5" /> Login
+        </p>
+        <p className="mt-2 text-sm text-slate-500">
+          No username/password for this player yet. Registered accounts appear in the list with a login badge.
+        </p>
+      </div>
+    );
+  }
+
+  const account = acc;
+
+  function saveUsername() {
+    const err = renameAccount(account.username, nextName);
+    if (err) {
+      push(err, "danger");
+      return;
+    }
+    sound.click();
+    const saved = normalizeUsername(nextName);
+    onRenamed(saved);
+    push(`Username set to ${saved}.`, "success");
+  }
+
+  async function savePassword() {
+    setBusy(true);
+    try {
+      const err = await setAccountPassword(account.username, nextPassword);
+      if (err) {
+        push(err, "danger");
+        return;
+      }
+      setNextPassword("");
+      sound.click();
+      push("Password updated.", "success");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  function saveEmail() {
+    const err = setAccountEmail(account.username, nextEmail);
+    if (err) {
+      push(err, "danger");
+      return;
+    }
+    sound.click();
+    push("Email updated.", "success");
+  }
+
+  return (
+    <div className="surface p-5">
+      <p className="mb-3 flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+        <KeyRound className="h-3.5 w-3.5" /> Login
+      </p>
+      <p className="mb-3 text-xs text-slate-500">
+        Change this player’s username or password. Password needs 8+ characters, one uppercase letter, and one number.
+      </p>
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Username</label>
+      <div className="mb-3 flex max-w-md gap-2">
+        <input
+          value={nextName}
+          onChange={(e) => setNextName(e.target.value)}
+          className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-cyan-400/40"
+        />
+        <button
+          type="button"
+          onClick={saveUsername}
+          className="rounded-md border-2 border-cyan-400/40 px-3 py-2 text-xs font-bold uppercase text-cyan-100"
+        >
+          Save
+        </button>
+      </div>
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+        Email <span className="font-medium normal-case tracking-normal text-slate-600">(optional)</span>
+      </label>
+      <div className="mb-3 flex max-w-md gap-2">
+        <input
+          type="email"
+          value={nextEmail}
+          onChange={(e) => setNextEmail(e.target.value)}
+          className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-cyan-400/40"
+        />
+        <button
+          type="button"
+          onClick={saveEmail}
+          className="rounded-md border-2 border-cyan-400/40 px-3 py-2 text-xs font-bold uppercase text-cyan-100"
+        >
+          Save
+        </button>
+      </div>
+      <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">New password</label>
+      <div className="flex max-w-md gap-2">
+        <input
+          type="password"
+          value={nextPassword}
+          onChange={(e) => setNextPassword(e.target.value)}
+          placeholder="Leave blank to keep"
+          className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-white outline-none focus:border-cyan-400/40"
+        />
+        <button
+          type="button"
+          disabled={busy || !nextPassword}
+          onClick={() => void savePassword()}
+          className="rounded-md border-2 border-cyan-400/40 px-3 py-2 text-xs font-bold uppercase text-cyan-100 disabled:opacity-40"
+        >
+          Save
+        </button>
+      </div>
     </div>
   );
 }

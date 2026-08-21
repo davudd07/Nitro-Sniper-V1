@@ -115,6 +115,7 @@ function seedBattles(): Record<string, BattleConfig> {
       terminal: false,
       cases: [{ caseId: "starter", count: 2 }],
       prefillBots: 1,
+      botSeats: [1],
       createdAt: now - 32000,
     }),
     seedBattle({
@@ -138,6 +139,7 @@ function seedBattles(): Record<string, BattleConfig> {
       terminal: false,
       cases: [{ caseId: "prime", count: 1 }, { caseId: "starter", count: 1 }],
       prefillBots: 1,
+      botSeats: [1],
       createdAt: now - 18000,
     }),
     seedBattle({

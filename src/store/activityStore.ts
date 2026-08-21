@@ -38,7 +38,7 @@ const MAX_PLAYS = 400;
 
 interface ActivityState {
   plays: PlayRecord[];
-  logPlay: (entry: Omit<PlayRecord, "id" | "at"> & { at?: number }) => void;
+  logPlay: (entry: Omit<PlayRecord, "id" | "at"> & { id?: string; at?: number }) => void;
   playsFor: (name: string, game?: ActivityGame | "all") => PlayRecord[];
   totalsFor: (name: string) => { wagered: number; won: number; profit: number; rounds: number };
 }
@@ -94,7 +94,7 @@ export const useActivityStore = create<ActivityState>()(
       logPlay: (entry) => {
         if (entry.wagered <= 0 && entry.won <= 0) return;
         const rec: PlayRecord = {
-          id: shortId("play"),
+          id: entry.id || shortId("play"),
           at: entry.at ?? Date.now(),
           name: entry.name,
           game: entry.game,
@@ -129,6 +129,6 @@ export const useActivityStore = create<ActivityState>()(
   ),
 );
 
-export function logPlay(entry: Omit<PlayRecord, "id" | "at"> & { at?: number }) {
+export function logPlay(entry: Omit<PlayRecord, "id" | "at"> & { id?: string; at?: number }) {
   useActivityStore.getState().logPlay(entry);
 }

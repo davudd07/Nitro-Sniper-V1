@@ -38,6 +38,7 @@ import { formatCredits } from "../lib/format";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
 import { consumeBattleDraft } from "../lib/battleDraft";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { requireAccount } from "../lib/stake";
 
 function flatten(entries: BattleCaseEntry[]): string[] {
   return entries.flatMap((e) => Array.from({ length: e.count }, () => e.caseId));
@@ -182,6 +183,7 @@ export function CreateBattle() {
       push("Add at least one case to the battle.", "warning");
       return;
     }
+    if (!requireAccount()) return;
     if (!spend(youPay)) {
       push(`You need ${formatCredits(youPay)} SH to create this battle.`, "danger");
       return;

@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
 import { X } from "lucide-react";
 import { CoinStackArt, TreasureChestArt } from "../components/rewards/DropArt";
+import { PlayerVipPanel } from "../components/loyalty/PlayerVipPanel";
 import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
-import { formatDropCountdown, progressFromXp } from "../lib/xp";
-import { useDemoProfileStore } from "../store/demoProfileStore";
-import { useEconomyStore } from "../store/economyStore";
+import { formatDropCountdown } from "../lib/xp";
+import { RAKEBACK_EARLY_PCT, useEconomyStore } from "../store/economyStore";
 import { MONTHLY_DROP_SH, useRewardsStore, WEEKLY_DROP_SH } from "../store/rewardsStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -54,6 +54,8 @@ function DropCard({
   footer,
   footerDisabled,
   onFooter,
+  secondary,
+  onSecondary,
   art,
   amount,
 }: {
@@ -63,6 +65,8 @@ function DropCard({
   footer: string;
   footerDisabled: boolean;
   onFooter?: () => void;
+  secondary?: string;
+  onSecondary?: () => void;
   art: ReactNode;
   amount?: string;
 }) {
@@ -98,27 +102,38 @@ function DropCard({
         <div className="relative -mt-5">{art}</div>
         {amount ? <p className="mt-1 font-mono text-sm font-bold text-cyan-300">{amount}</p> : null}
       </div>
-      <button
-        type="button"
-        disabled={footerDisabled}
-        onClick={onFooter}
-        className={clsx(
-          "relative mx-3 mb-3 rounded-full border-2 px-4 py-2.5 text-center text-sm font-black uppercase tracking-[0.14em]",
-          footerClass,
-        )}
-      >
-        {footer}
-      </button>
+      <div className="relative mx-3 mb-3 space-y-2">
+        <button
+          type="button"
+          disabled={footerDisabled}
+          onClick={onFooter}
+          className={clsx(
+            "w-full rounded-full border-2 px-4 py-2.5 text-center text-sm font-black uppercase tracking-[0.14em]",
+            footerClass,
+          )}
+        >
+          {footer}
+        </button>
+        {secondary ? (
+          <button
+            type="button"
+            onClick={onSecondary}
+            className="w-full rounded-full border-2 border-amber-300/40 bg-amber-400/10 px-4 py-2 text-center text-xs font-black uppercase tracking-[0.12em] text-amber-100 hover:bg-amber-400/20"
+          >
+            {secondary}
+          </button>
+        ) : null}
+      </div>
     </article>
   );
 }
 
 export function Rewards() {
-  const displayName = useDemoProfileStore((s) => s.displayName);
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
+  const rakebackMatureAt = useEconomyStore((s) => s.rakebackMatureAt);
   const claimRakeback = useEconomyStore((s) => s.claimRakeback);
+  const claimEarlyRakeback = useEconomyStore((s) => s.claimEarlyRakeback);
   const credit = useEconomyStore((s) => s.credit);
-  const xp = useRewardsStore((s) => s.xp);
   const weeklyReadyAt = useRewardsStore((s) => s.weeklyReadyAt);
   const monthlyReadyAt = useRewardsStore((s) => s.monthlyReadyAt);
   const claimWeekly = useRewardsStore((s) => s.claimWeekly);
@@ -131,22 +146,36 @@ export function Rewards() {
     return () => window.clearInterval(id);
   }, []);
 
-  const progress = useMemo(() => progressFromXp(xp), [xp]);
   const pending = pendingRakeback ?? 0;
-  const canClaimInstant = pending > 0;
+  const matureAt = rakebackMatureAt ?? 0;
+  const instantMature = pending > 0 && matureAt <= now;
+  const canClaimEarly = pending > 0 && !instantMature;
   const weeklyReady = now >= weeklyReadyAt;
   const monthlyReady = now >= monthlyReadyAt;
-  const initial = (displayName.trim()[0] || "V").toUpperCase();
-  const barPct = Math.max(0, Math.min(100, progress.ratio * 100));
 
   function handleClaimInstant() {
     const amt = claimRakeback();
     if (amt <= 0) {
-      push("Nothing to claim yet — play a real stake first.", "info");
+      push(
+        pending > 0
+          ? "Instant Drop is still maturing — wait for the timer or claim early at 70%."
+          : "Nothing to claim yet — play a real stake first.",
+        "info",
+      );
       return;
     }
     sound.win("small");
     push(`Claimed ${formatRakeback(amt)} SH rakeback.`, "success");
+  }
+
+  function handleClaimEarly() {
+    const amt = claimEarlyRakeback();
+    if (amt <= 0) {
+      push("Nothing to claim early.", "info");
+      return;
+    }
+    sound.win("small");
+    push(`Claimed ${formatRakeback(amt)} SH early (70% of Instant Drop).`, "success");
   }
 
   function handleWeekly() {
@@ -167,42 +196,39 @@ export function Rewards() {
 
   return (
     <div className="space-y-5">
-      <section className="flex flex-col gap-4 rounded-xl border-2 border-[#3d5a3a] bg-[#101810] px-4 py-3 shadow-[4px_4px_0_#050805] lg:flex-row lg:items-center">
-        <div className="flex min-w-0 items-center gap-3 lg:w-[220px]">
-          <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 border-[#019201] bg-[#152018] text-2xl font-black text-emerald-300">
-            {initial}
-          </div>
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-slate-200">{displayName}</p>
-            <p className="pixel-label text-3xl leading-none text-emerald-300 sm:text-4xl">LEVEL {progress.level}</p>
-          </div>
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-slate-400">Progress</p>
-          <div className="mt-1.5 flex items-center gap-3">
-            <div className="h-3.5 min-w-0 flex-1 overflow-hidden rounded-full border border-[#019201]/40 bg-black/50">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-[#016b01] via-[#019201] to-[#a3e635] transition-[width] duration-500"
-                style={{ width: `${barPct}%` }}
-              />
-            </div>
-            <p className="shrink-0 font-mono text-xs font-bold tabular-nums text-emerald-100 sm:text-sm">
-              {formatCredits(progress.intoLevel)} / {formatCredits(progress.required)} XP
-            </p>
-          </div>
-        </div>
-      </section>
+      <PlayerVipPanel compact />
+      <div className="flex justify-end">
+        <Link to="/vip" className="text-xs font-semibold uppercase tracking-wide text-emerald-300 hover:text-emerald-200">
+          XP history & missions →
+        </Link>
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <DropCard
           word="Instant"
           variant="green"
           art={<CoinStackArt accent="green" />}
-          amount={canClaimInstant ? `${formatRakeback(pending)} SH` : undefined}
-          footer={canClaimInstant ? "Claim" : "Not claimable"}
-          footerDisabled={!canClaimInstant}
+          amount={pending > 0 ? `${formatRakeback(pending)} SH` : undefined}
+          footer={
+            pending <= 0 ? "Not claimable" : instantMature ? "Claim" : formatDropCountdown(matureAt - now)
+          }
+          footerDisabled={pending <= 0 || !instantMature}
           onFooter={handleClaimInstant}
+          secondary={
+            canClaimEarly
+              ? `Claim early · ${formatRakeback(pending * RAKEBACK_EARLY_PCT)} SH`
+              : undefined
+          }
+          onSecondary={handleClaimEarly}
+          info={
+            <DropInfo title="Instant drop">
+              <p>
+                Rakeback from real demo stakes (bet &gt; 0). Wait 24 hours after the first pending accrual to
+                claim 100%. Claim early and you only receive {formatPercent(RAKEBACK_EARLY_PCT)} of that amount —
+                the rest is forfeited.
+              </p>
+            </DropInfo>
+          }
         />
         <DropCard
           word="Weekly"
@@ -244,7 +270,8 @@ export function Rewards() {
 
       <p className="text-xs leading-relaxed text-slate-500">
         Instant Drop is rakeback: {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real demo stakes
-        (bet &gt; 0). Chat rain still lives in the chat sidebar.
+        (bet &gt; 0), plus your VIP rakeback bonus. Full claim after 24 hours; claim early for{" "}
+        {formatPercent(RAKEBACK_EARLY_PCT)} of the pending amount. Chat rain still lives in the chat sidebar.
       </p>
 
       <Link to="/" className="text-sm text-slate-400 hover:text-white">

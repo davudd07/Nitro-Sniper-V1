@@ -22,6 +22,7 @@ import {
   paytableRows,
   quickPick,
 } from "../lib/keno";
+import { requireAccount } from "../lib/stake";
 
 const RTP = 0.94;
 const BALLS = Array.from({ length: KENO_BALLS }, (_, i) => i + 1);
@@ -93,6 +94,7 @@ export function Keno() {
       push("Select at least 1 spot.", "warning");
       return;
     }
+    if (!requireAccount()) return;
     if (!spend(stake)) {
       push("Not enough Shards for that bet.", "danger");
       return;

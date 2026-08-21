@@ -23,6 +23,7 @@ import { BattleResultOverlay, type BattlePayout } from "../components/battles/Ba
 import { formatCredits } from "../lib/format";
 import { creatorCreateCost, fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
+import { requireAccount } from "../lib/stake";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
 import { saveBattleDraft } from "../lib/battleDraft";
@@ -140,6 +141,7 @@ export function BattleRoom() {
 
   function payAndJoin(seat: number, pct: number) {
     if (!battle) return false;
+    if (!requireAccount()) return false;
     const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
     if (!spend(cost)) {
       push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");

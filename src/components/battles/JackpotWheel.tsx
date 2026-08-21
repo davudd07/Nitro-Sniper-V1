@@ -18,6 +18,9 @@ const MIN_SEGMENT_WIDTH = 52;
 const LOOPS = 5;
 const LAND_LOOP = 3;
 
+/** Battle jackpot strip (not the circle jackpot game): spin + slow brake. */
+export const BATTLE_JACKPOT_SPIN_MS = 14000;
+
 type LoopSeg = { ticket: JackpotTicket; width: number };
 
 function buildLoopSegments(tickets: JackpotTicket[]): LoopSeg[] {
@@ -39,7 +42,7 @@ export function JackpotWheel({
   tickets,
   spinToken,
   winnerId,
-  duration = 12000,
+  duration = BATTLE_JACKPOT_SPIN_MS,
   compact = false,
   onFinished,
 }: {

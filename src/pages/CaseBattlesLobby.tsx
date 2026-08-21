@@ -64,11 +64,19 @@ export function CaseBattlesLobby() {
 
   function spectateBattle(b: BattleConfig) {
     sound.click();
+    if (b.status === "finished") {
+      navigate(`/battles/${b.id}?replay=1`);
+      return;
+    }
     navigate(`/battles/${b.id}?spectate=1`);
   }
 
   function openJoin(b: BattleConfig) {
     sound.click();
+    if (b.status === "finished") {
+      navigate(`/battles/${b.id}?replay=1`);
+      return;
+    }
     if (b.source === "you") {
       navigate(`/battles/${b.id}`);
       return;
@@ -159,6 +167,11 @@ export function CaseBattlesLobby() {
                   role="button"
                   tabIndex={0}
                   onClick={() => {
+                    if (b.status === "finished") {
+                      sound.click();
+                      navigate(`/battles/${b.id}?replay=1`);
+                      return;
+                    }
                     if (b.source === "you") {
                       sound.click();
                       navigate(`/battles/${b.id}`);
@@ -169,6 +182,11 @@ export function CaseBattlesLobby() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
+                      if (b.status === "finished") {
+                        sound.click();
+                        navigate(`/battles/${b.id}?replay=1`);
+                        return;
+                      }
                       if (b.source === "you") {
                         sound.click();
                         navigate(`/battles/${b.id}`);
@@ -320,7 +338,7 @@ export function CaseBattlesLobby() {
                             : "border border-white/15 text-white hover:bg-white/5",
                       )}
                     >
-                      {b.source === "you" ? "Open" : waiting ? "Join" : filter === "finished" ? "Replay" : "Watch"}
+                      {b.status === "finished" ? "Replay" : b.source === "you" ? "Open" : waiting ? "Join" : "Watch"}
                     </button>
                   </div>
                 </div>

@@ -1,6 +1,29 @@
 import { create } from "zustand";
 import { shortId } from "../lib/format";
-import { getCase } from "../data/cases";
+import { getCase, type CaseOddsEntry } from "../data/cases";
+
+export type BattleRosterKind = "you" | "empty" | "joining" | "bot" | "player";
+
+export interface BattleRosterSeat {
+  slotIndex: number;
+  teamIndex: number;
+  kind: BattleRosterKind;
+  name: string;
+  color: string;
+}
+
+export interface BattleJackpotReplay {
+  tickets: { playerId: string; name: string; color: string; weight: number }[];
+  winnerId: string;
+  tieBreak: boolean;
+}
+
+/** Stored openings + seats so a finished room can replay instead of re-opening as a live lobby. */
+export interface BattleReplay {
+  seats: BattleRosterSeat[];
+  openings: Record<number, CaseOddsEntry | null>[];
+  jackpot: BattleJackpotReplay | null;
+}
 
 export interface BattleCaseEntry {
   caseId: string;
@@ -37,6 +60,10 @@ export interface BattleConfig {
   creatorSeat?: number;
   /** Explicit bot seat indexes. When omitted, bots fill the first `prefillBots` non-creator seats. */
   botSeats?: number[];
+  /** Frozen seated players once the room fills or a bot is called. Survives status flips. */
+  roster?: BattleRosterSeat[];
+  /** Openings and jackpot outcome for replay. */
+  replay?: BattleReplay;
   /** 0–1. Creator borrowed this fraction of their own seat. */
   creatorBorrowPct: number;
   status: BattleLobbyStatus;
@@ -59,6 +86,7 @@ interface BattleStoreState {
   listBattles: () => BattleConfig[];
   setJoinIntent: (battleId: string, intent: BattleJoinIntent) => void;
   setBattleStatus: (id: string, status: BattleLobbyStatus, payout?: number) => void;
+  patchBattle: (id: string, patch: Partial<Omit<BattleConfig, "id">>) => void;
 }
 
 function costOf(cases: BattleCaseEntry[]): number {
@@ -365,6 +393,13 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
           },
         },
       };
+    });
+  },
+  patchBattle: (id, patch) => {
+    set((s) => {
+      const cur = s.battles[id];
+      if (!cur) return s;
+      return { battles: { ...s.battles, [id]: { ...cur, ...patch } } };
     });
   },
 }));

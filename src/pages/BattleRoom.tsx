@@ -3,8 +3,8 @@ import { useParams, Navigate, Link, useNavigate, useSearchParams } from "react-r
 import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye } from "lucide-react";
 import { clsx } from "clsx";
-import { useBattleStore } from "../store/battleStore";
-import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS, totalPlayers } from "../data/battleModes";
+import { useBattleStore, type BattleReplay, type BattleRosterSeat } from "../store/battleStore";
+import { BATTLE_MODES, TEAM_COLORS, totalPlayers } from "../data/battleModes";
 import { getCase, rollCaseItem, type CaseOddsEntry } from "../data/cases";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
@@ -16,11 +16,12 @@ import { RoleBadge } from "../components/identity/RoleBadge";
 import { useIdentityStore } from "../store/identityStore";
 import { ItemCard } from "../components/ui/ItemCard";
 import { AnimatedPot } from "../components/ui/AnimatedPot";
-import { JackpotWheel, type JackpotTicket } from "../components/battles/JackpotWheel";
+import { BATTLE_JACKPOT_SPIN_MS, JackpotWheel, type JackpotTicket } from "../components/battles/JackpotWheel";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { randomBotName, BOT_NAMES } from "../data/botNames";
+import { randomBotName } from "../data/botNames";
+import { buildBattleRoster } from "../lib/battleSeats";
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { formatCredits } from "../lib/format";
@@ -31,15 +32,7 @@ import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
 import { saveBattleDraft } from "../lib/battleDraft";
 
-type SlotKind = "you" | "empty" | "joining" | "bot" | "player";
-
-interface BattlePlayer {
-  slotIndex: number;
-  teamIndex: number;
-  kind: SlotKind;
-  name: string;
-  color: string;
-}
+type BattlePlayer = BattleRosterSeat;
 
 interface PlayerRoundState {
   total: number;
@@ -56,7 +49,14 @@ export function BattleRoom() {
   const joinIntent = useBattleStore((s) => (battleId ? s.joinIntents[battleId] : undefined));
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const setBattleStatus = useBattleStore((s) => s.setBattleStatus);
-  const spectating = Boolean(battle && battle.source !== "you" && searchParams.get("spectate") === "1" && !joinIntent);
+  const patchBattle = useBattleStore((s) => s.patchBattle);
+  const wantReplay = searchParams.get("replay") === "1";
+  const spectating = Boolean(
+    battle &&
+      battle.source !== "you" &&
+      !joinIntent &&
+      (searchParams.get("spectate") === "1" || wantReplay || battle.status === "finished"),
+  );
   const play = useFairnessStore((s) => s.play);
   const spend = useEconomyStore((s) => s.spend);
   const applyTipWager = useEconomyStore((s) => s.applyTipWager);
@@ -67,51 +67,13 @@ export function BattleRoom() {
 
   const mode = useMemo(() => (battle ? BATTLE_MODES.find((m) => m.id === battle.modeId) : undefined), [battle]);
 
-  const initialPlayers = useMemo<BattlePlayer[]>(() => {
-    if (!mode || !battle) return [];
-    const players: BattlePlayer[] = [];
-    const creatorSeat = battle.source === "you" ? (battle.creatorSeat ?? 0) : 0;
-    const joinSeat = joinIntent?.seat;
-    const youSeat = battle.source === "you" ? creatorSeat : (joinSeat ?? 0);
-    const explicitBots = battle.botSeats ? new Set(battle.botSeats) : null;
-    let slot = 0;
-    mode.teamSizes.forEach((size, teamIndex) => {
-      for (let i = 0; i < size; i++) {
-        const isYou = !spectating && slot === youSeat;
-        let kind: SlotKind;
-        if (isYou) {
-          kind = "you";
-        } else if (explicitBots) {
-          kind = explicitBots.has(slot) ? "bot" : "empty";
-        } else if (battle.source === "you") {
-          const total = mode.teamSizes.reduce((s, n) => s + n, 0);
-          const bots: number[] = [];
-          for (let s = 0; bots.length < battle.prefillBots && s < total; s++) {
-            if (s === creatorSeat) continue;
-            bots.push(s);
-          }
-          kind = bots.includes(slot) ? "bot" : "empty";
-        } else {
-          kind = slot !== 0 && slot <= battle.prefillBots ? "bot" : "empty";
-        }
-        players.push({
-          slotIndex: slot,
-          teamIndex,
-          kind,
-          name: isYou
-            ? "You"
-            : kind === "bot"
-              ? BOT_NAMES[(slot + battle.id.length) % BOT_NAMES.length]
-              : "",
-          color: PLAYER_COLORS[slot % PLAYER_COLORS.length],
-        });
-        slot++;
-      }
-    });
-    return players;
-  }, [mode, battle, spectating, joinIntent?.seat]);
+  const rosterEpoch = `${battle?.id ?? ""}:${spectating ? 1 : 0}:${joinIntent?.seat ?? ""}:${wantReplay ? 1 : 0}`;
 
-  const [players, setPlayers] = useState<BattlePlayer[]>(initialPlayers);
+  const [players, setPlayers] = useState<BattlePlayer[]>(() =>
+    battle && mode
+      ? buildBattleRoster(battle, mode, { spectating, joinSeat: joinIntent?.seat, replaying: wantReplay })
+      : [],
+  );
   const teams = useMemo(() => {
     const groups: BattlePlayer[][] = [];
     players.forEach((p) => {
@@ -119,7 +81,9 @@ export function BattleRoom() {
     });
     return groups;
   }, [players]);
-  const [phase, setPhase] = useState<Phase>("filling");
+  const [phase, setPhase] = useState<Phase>(() =>
+    battle?.status === "finished" && !wantReplay ? "finished" : "filling",
+  );
   const [countdown, setCountdown] = useState(3);
   const [caseSequence, setCaseSequence] = useState<string[]>([]);
   const [caseIndex, setCaseIndex] = useState(-1);
@@ -140,7 +104,14 @@ export function BattleRoom() {
     battle?.source === "you"
       ? Math.max(joinIntent?.borrowPct ?? 0, battle.creatorBorrowPct)
       : (joinIntent?.borrowPct ?? 0);
-  const needsJoinGate = Boolean(battle && battle.source !== "you" && !joinIntent && !spectating);
+  const needsJoinGate = Boolean(
+    battle &&
+      battle.source !== "you" &&
+      !joinIntent &&
+      !spectating &&
+      battle.status !== "finished" &&
+      !wantReplay,
+  );
 
   function payAndJoin(seat: number, pct: number) {
     if (!battle) return false;
@@ -167,24 +138,76 @@ export function BattleRoom() {
 
   const landedCountRef = useRef(0);
   const startedRef = useRef(false);
+  const resolvedRef = useRef(false);
   const roundStatesRef = useRef<Record<number, PlayerRoundState>>({});
   const replayLogRef = useRef<Record<number, CaseOddsEntry | null>[]>([]);
   const replayJackpotRef = useRef<{ tickets: JackpotTicket[]; winnerId: string; tieBreak: boolean } | null>(null);
-  const isReplayRef = useRef(false);
+  const isReplayRef = useRef(Boolean(wantReplay || battle?.replay));
+  const rosterEpochRef = useRef<string>("");
+
+  function freezeRoster(list: BattlePlayer[]) {
+    if (!battleId) return;
+    const bots = list.filter((p) => p.kind === "bot").map((p) => p.slotIndex);
+    patchBattle(battleId, {
+      botSeats: bots,
+      prefillBots: bots.length,
+      roster: list.map(({ slotIndex, teamIndex, kind, name, color }) => ({
+        slotIndex,
+        teamIndex,
+        kind,
+        name,
+        color,
+      })),
+    });
+  }
+
+  function persistReplay(jackpot = replayJackpotRef.current) {
+    if (!battleId) return;
+    const snapshot: BattleReplay = {
+      seats: players
+        .filter((p) => p.kind !== "empty" && p.kind !== "joining")
+        .map(({ slotIndex, teamIndex, kind, name, color }) => ({ slotIndex, teamIndex, kind, name, color })),
+      openings: replayLogRef.current,
+      jackpot,
+    };
+    patchBattle(battleId, { replay: snapshot, roster: snapshot.seats });
+  }
 
   useEffect(() => {
-    setPlayers(initialPlayers);
+    if (!mode || !battle) return;
+    if (rosterEpochRef.current === rosterEpoch) return;
+    rosterEpochRef.current = rosterEpoch;
+    const roster = buildBattleRoster(battle, mode, {
+      spectating,
+      joinSeat: joinIntent?.seat,
+      replaying: wantReplay,
+    });
+    setPlayers(roster);
     const init: Record<number, PlayerRoundState> = {};
     const evenOdds: Record<number, number> = {};
-    initialPlayers.forEach((p) => {
+    roster.forEach((p) => {
       init[p.slotIndex] = { total: 0, history: [] };
-      evenOdds[p.slotIndex] = initialPlayers.length > 0 ? 100 / initialPlayers.length : 0;
+      evenOdds[p.slotIndex] = roster.length > 0 ? 100 / roster.length : 0;
     });
     setRoundStates(init);
     roundStatesRef.current = init;
+    setLiveOdds(battle.jackpot && !battle.terminal ? evenOdds : {});
+    setPhase(battle.status === "finished" && !wantReplay ? "finished" : "filling");
+    startedRef.current = false;
+    resolvedRef.current = false;
+    isReplayRef.current = Boolean(wantReplay || (battle.status === "finished" && battle.replay));
+    replayLogRef.current = battle.replay?.openings ?? [];
+    replayJackpotRef.current = battle.replay?.jackpot ?? null;
+    setResultOpen(false);
+    setPayout(null);
+    setPendingResults({});
+    setCaseIndex(-1);
+    setJackpotTickets(null);
+    setJackpotWinnerId(null);
+    setWinningTeam(null);
+    setTieBreak(false);
     // Terminal + jackpot: odds don't exist until the LAST case lands.
-    setLiveOdds(battle?.jackpot && !battle.terminal ? evenOdds : {});
-  }, [initialPlayers, battle?.jackpot, battle?.terminal]);
+  }, [rosterEpoch, battle, mode, spectating, joinIntent?.seat, wantReplay]);
 
   useEffect(() => {
     if (!battle) return;
@@ -198,11 +221,19 @@ export function BattleRoom() {
   const allFilled = players.length > 0 && players.every((p) => p.kind !== "empty" && p.kind !== "joining");
 
   useEffect(() => {
-    if (allFilled && phase === "filling" && !startedRef.current && !needsJoinGate) {
-      startedRef.current = true;
-      setPhase("countdown");
+    if (!allFilled || phase !== "filling" || startedRef.current || needsJoinGate) return;
+    if (battle?.status === "finished" && !wantReplay) {
+      setPhase("finished");
+      return;
     }
-  }, [allFilled, phase, needsJoinGate]);
+    startedRef.current = true;
+    if (wantReplay || battle?.status === "finished") {
+      isReplayRef.current = true;
+    } else {
+      freezeRoster(players);
+    }
+    setPhase("countdown");
+  }, [allFilled, phase, needsJoinGate, battle?.status, wantReplay, players]);
 
   useEffect(() => {
     if (phase !== "countdown") return;
@@ -215,7 +246,7 @@ export function BattleRoom() {
           sound.countdownBeep(true);
           sound.battleStart();
           setPhase("running");
-          if (battleId) setBattleStatus(battleId, "active");
+          if (battleId && !isReplayRef.current) setBattleStatus(battleId, "active");
           setCaseIndex(0);
           return 0;
         }
@@ -224,7 +255,7 @@ export function BattleRoom() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [phase]);
+  }, [phase, battleId, setBattleStatus]);
 
   const runRound = useCallback(
     async (idx: number) => {
@@ -303,8 +334,6 @@ export function BattleRoom() {
     }
   }
 
-  const resolvedRef = useRef(false);
-
   function finishBattle() {
     if (isReplayRef.current) {
       const jp = replayJackpotRef.current;
@@ -316,17 +345,18 @@ export function BattleRoom() {
         setJackpotSpinToken((t) => t + 1);
         return;
       }
-      setPhase("finished");
-      setResultOpen(true);
+      // Seeded / unfinished snapshot: resolve visually from the openings we just replayed, no payout.
+      resolveOutcome(roundStatesRef.current, { payout: false });
       return;
     }
     if (resolvedRef.current) return;
     resolvedRef.current = true;
-    resolveOutcome(roundStatesRef.current);
+    resolveOutcome(roundStatesRef.current, { payout: true });
   }
 
-  function resolveOutcome(finalStates: Record<number, PlayerRoundState>) {
+  function resolveOutcome(finalStates: Record<number, PlayerRoundState>, opts: { payout: boolean }) {
     if (!battle || !mode) return;
+    const settle = opts.payout;
     // The pot paid out is always the full cumulative total pulled — Terminal
     // Mode only changes which value decides the WINNER, not how much is won.
     const potTotals = players.map((p) => ({ p, value: finalStates[p.slotIndex]?.total ?? 0 }));
@@ -343,12 +373,12 @@ export function BattleRoom() {
       const n = Math.max(1, players.length);
       const share = pot / n;
       const youPlayed = players.some((p) => p.kind === "you");
-      const paid = youPlayed ? winPayout(share, borrowPct) : 0;
-      if (youPlayed && share > 0) {
+      const paid = settle && youPlayed ? winPayout(share, borrowPct) : 0;
+      if (settle && youPlayed && share > 0) {
         credit(paid);
         sound.win("big");
       }
-      if (youPlayed) recordRound(youStakeAmount(), paid, "battles");
+      if (settle && youPlayed) recordRound(youStakeAmount(), paid, "battles");
       setPayout({
         shared: true,
         youWon: youPlayed,
@@ -364,7 +394,8 @@ export function BattleRoom() {
       });
       setResultOpen(true);
       setPhase("finished");
-      if (battle.id) setBattleStatus(battle.id, "finished", pot);
+      persistReplay(null);
+      if (settle && battle.id) setBattleStatus(battle.id, "finished", pot);
       return;
     }
 
@@ -390,14 +421,16 @@ export function BattleRoom() {
             break;
           }
         }
-        setJackpotTickets(tickets);
-        setJackpotWinnerId(tickets[winnerIdx].playerId);
-        setWinningTeam(totals[winnerIdx].p.teamIndex);
-        replayJackpotRef.current = {
+        const jp = {
           tickets,
           winnerId: tickets[winnerIdx].playerId,
           tieBreak: false,
         };
+        setJackpotTickets(tickets);
+        setJackpotWinnerId(tickets[winnerIdx].playerId);
+        setWinningTeam(totals[winnerIdx].p.teamIndex);
+        replayJackpotRef.current = jp;
+        persistReplay(jp);
         setPhase("jackpot");
         setJackpotSpinToken((t) => t + 1);
       });
@@ -432,40 +465,43 @@ export function BattleRoom() {
               break;
             }
           }
-          setTieBreak(true);
-          setJackpotTickets(tickets);
-          setJackpotWinnerId(tickets[winnerIdx].playerId);
-          setWinningTeam(tiedTeams[winnerIdx]);
-          replayJackpotRef.current = {
+          const jp = {
             tickets,
             winnerId: tickets[winnerIdx].playerId,
             tieBreak: true,
           };
+          setTieBreak(true);
+          setJackpotTickets(tickets);
+          setJackpotWinnerId(tickets[winnerIdx].playerId);
+          setWinningTeam(tiedTeams[winnerIdx]);
+          replayJackpotRef.current = jp;
+          persistReplay(jp);
           setPhase("jackpot");
           setJackpotSpinToken((t) => t + 1);
         });
       } else {
         const winnerTeam = tiedTeams[0];
         setWinningTeam(winnerTeam);
-        settlePayout(winnerTeam, pot);
+        settlePayout(winnerTeam, pot, settle);
+        persistReplay(null);
         setPhase("finished");
-        setBattleStatus(battle.id, "finished", pot);
+        if (settle) setBattleStatus(battle.id, "finished", pot);
       }
     }
   }
 
-  function settlePayout(winnerTeam: number, pot: number) {
+  function settlePayout(winnerTeam: number, pot: number, settle = true) {
     const teamMembers = players.filter((p) => p.teamIndex === winnerTeam);
     const share = pot / Math.max(1, teamMembers.length);
     const youWon = teamMembers.some((p) => p.kind === "you");
-    const paid = youWon ? winPayout(share, borrowPct) : 0;
-    if (youWon && share > 0) {
+    const paid = settle && youWon ? winPayout(share, borrowPct) : 0;
+    if (settle && youWon && share > 0) {
       credit(paid);
       sound.win("big");
-    } else {
+    } else if (settle) {
       sound.lose();
     }
-    if (players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles");
+    if (settle && players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles");
     setPayout({
       shared: false,
       youWon,
@@ -484,13 +520,15 @@ export function BattleRoom() {
 
   function handleJackpotFinished() {
     if (isReplayRef.current) {
+      persistReplay(replayJackpotRef.current);
       setPhase("finished");
       setResultOpen(true);
       return;
     }
     if (winningTeam === null || !jackpotTickets) return;
     const pot = jackpotTickets.length ? Object.values(roundStates).reduce((s, r) => s + r.total, 0) : 0;
-    settlePayout(winningTeam, pot);
+    settlePayout(winningTeam, pot, true);
+    persistReplay(replayJackpotRef.current);
     setPhase("finished");
     if (battle?.id) setBattleStatus(battle.id, "finished", pot);
   }
@@ -524,20 +562,30 @@ export function BattleRoom() {
       evenOdds[p.slotIndex] = players.length > 0 ? 100 / players.length : 0;
     });
     isReplayRef.current = true;
+    startedRef.current = true;
+    resolvedRef.current = false;
     setResultOpen(false);
+    setPayout(null);
     setRoundStates(init);
     roundStatesRef.current = init;
     setLiveOdds(battle?.jackpot && !battle.terminal ? evenOdds : {});
     setPendingResults({});
     setCaseIndex(-1);
+    setSpinToken(0);
+    setJackpotTickets(null);
+    setJackpotWinnerId(null);
+    setWinningTeam(null);
+    setTieBreak(false);
     setPhase("countdown");
   }
 
   function callBot(slotIndex: number) {
-    setPlayers((prev) => {
-      const usedNames = new Set(prev.filter((p) => p.name).map((p) => p.name));
-      return prev.map((p) => (p.slotIndex === slotIndex ? { ...p, kind: "bot", name: randomBotName(usedNames) } : p));
-    });
+    const usedNames = new Set(players.filter((p) => p.name).map((p) => p.name));
+    const next = players.map((p) =>
+      p.slotIndex === slotIndex ? { ...p, kind: "bot" as const, name: randomBotName(usedNames) } : p,
+    );
+    setPlayers(next);
+    freezeRoster(next);
   }
 
   function simulateJoin(slotIndex: number) {
@@ -546,9 +594,13 @@ export function BattleRoom() {
     setTimeout(() => {
       setPlayers((prev) => {
         const usedNames = new Set(prev.filter((p) => p.name).map((p) => p.name));
-        return prev.map((p) =>
-          p.slotIndex === slotIndex ? { ...p, kind: "player", name: `Guest_${randomBotName(usedNames).slice(0, 5)}${Math.floor(Math.random() * 90 + 10)}` } : p,
+        const next = prev.map((p) =>
+          p.slotIndex === slotIndex
+            ? { ...p, kind: "player" as const, name: `Guest_${randomBotName(usedNames).slice(0, 5)}${Math.floor(Math.random() * 90 + 10)}` }
+            : p,
         );
+        queueMicrotask(() => freezeRoster(next));
+        return next;
       });
     }, delay);
   }
@@ -638,6 +690,18 @@ export function BattleRoom() {
               </button>
             )}
             <BattleCost costPerPlayer={battle.costPerPlayer} borrowPct={borrowPct} />
+            {phase === "finished" && (
+              <button
+                type="button"
+                onClick={() => {
+                  sound.click();
+                  replayBattle();
+                }}
+                className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-xs font-semibold text-white hover:bg-white/5"
+              >
+                Replay battle
+              </button>
+            )}
             {battle.terminal && (
               <span className="text-pink-300">
                 {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
@@ -673,7 +737,7 @@ export function BattleRoom() {
               tickets={jackpotTickets}
               spinToken={jackpotSpinToken}
               winnerId={jackpotWinnerId}
-              duration={12000}
+              duration={BATTLE_JACKPOT_SPIN_MS}
               onFinished={handleJackpotFinished}
             />
           </div>
@@ -815,8 +879,8 @@ export function BattleRoom() {
                               reelSize={reelSize}
                               fastSpin={battle.fastSpin}
                               fundedPct={battle.fundedPct}
-                              canManageSeats={!spectating && phase === "filling"}
-                              canJoinSeat={spectating && phase === "filling"}
+                              canManageSeats={!spectating && phase === "filling" && battle.status !== "finished"}
+                              canJoinSeat={spectating && phase === "filling" && battle.status !== "finished" && !wantReplay}
                               onLanded={(item) => handleLanded(p.slotIndex, item)}
                               onCallBot={() => callBot(p.slotIndex)}
                               onSimulateJoin={() => simulateJoin(p.slotIndex)}

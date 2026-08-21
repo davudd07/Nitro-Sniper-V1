@@ -144,6 +144,22 @@ export function BattleRoom() {
   const replayJackpotRef = useRef<{ tickets: JackpotTicket[]; winnerId: string; tieBreak: boolean } | null>(null);
   const isReplayRef = useRef(Boolean(wantReplay || battle?.replay));
   const rosterEpochRef = useRef<string>("");
+  const lastPayoutRef = useRef<BattlePayout | null>(null);
+
+  function teamFromJackpotWinner(winnerId: string | null | undefined): number | null {
+    if (!winnerId) return null;
+    if (winnerId.startsWith("team-")) {
+      const n = Number(winnerId.slice(5));
+      return Number.isFinite(n) ? n : null;
+    }
+    return players.find((p) => String(p.slotIndex) === winnerId)?.teamIndex ?? null;
+  }
+
+  function showResult(next: BattlePayout) {
+    lastPayoutRef.current = next;
+    setPayout(next);
+    setResultOpen(true);
+  }
 
   function freezeRoster(list: BattlePlayer[]) {
     if (!battleId) return;
@@ -177,6 +193,7 @@ export function BattleRoom() {
     if (!mode || !battle) return;
     if (rosterEpochRef.current === rosterEpoch) return;
     rosterEpochRef.current = rosterEpoch;
+    lastPayoutRef.current = null;
     const roster = buildBattleRoster(battle, mode, {
       spectating,
       joinSeat: joinIntent?.seat,
@@ -338,9 +355,11 @@ export function BattleRoom() {
     if (isReplayRef.current) {
       const jp = replayJackpotRef.current;
       if (jp) {
+        const team = teamFromJackpotWinner(jp.winnerId);
         setTieBreak(jp.tieBreak);
         setJackpotTickets(jp.tickets);
         setJackpotWinnerId(jp.winnerId);
+        if (team !== null) setWinningTeam(team);
         setPhase("jackpot");
         setJackpotSpinToken((t) => t + 1);
         return;
@@ -373,13 +392,13 @@ export function BattleRoom() {
       const n = Math.max(1, players.length);
       const share = pot / n;
       const youPlayed = players.some((p) => p.kind === "you");
-      const paid = settle && youPlayed ? winPayout(share, borrowPct) : 0;
+      const paid = youPlayed ? winPayout(share, borrowPct) : 0;
       if (settle && youPlayed && share > 0) {
         credit(paid);
         sound.win("big");
       }
       if (settle && youPlayed) recordRound(youStakeAmount(), paid, "battles");
-      setPayout({
+      showResult({
         shared: true,
         youWon: youPlayed,
         pot,
@@ -392,7 +411,6 @@ export function BattleRoom() {
           color: p.color,
         })),
       });
-      setResultOpen(true);
       setPhase("finished");
       persistReplay(null);
       if (settle && battle.id) setBattleStatus(battle.id, "finished", pot);
@@ -494,7 +512,7 @@ export function BattleRoom() {
     const teamMembers = players.filter((p) => p.teamIndex === winnerTeam);
     const share = pot / Math.max(1, teamMembers.length);
     const youWon = teamMembers.some((p) => p.kind === "you");
-    const paid = settle && youWon ? winPayout(share, borrowPct) : 0;
+    const paid = youWon ? winPayout(share, borrowPct) : 0;
     if (settle && youWon && share > 0) {
       credit(paid);
       sound.win("big");
@@ -502,7 +520,7 @@ export function BattleRoom() {
       sound.lose();
     }
     if (settle && players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles");
-    setPayout({
+    showResult({
       shared: false,
       youWon,
       pot,
@@ -515,22 +533,37 @@ export function BattleRoom() {
         color: p.color,
       })),
     });
-    setResultOpen(true);
   }
 
   function handleJackpotFinished() {
-    if (isReplayRef.current) {
-      persistReplay(replayJackpotRef.current);
-      setPhase("finished");
-      setResultOpen(true);
-      return;
-    }
-    if (winningTeam === null || !jackpotTickets) return;
-    const pot = jackpotTickets.length ? Object.values(roundStates).reduce((s, r) => s + r.total, 0) : 0;
-    settlePayout(winningTeam, pot, true);
+    const settle = !isReplayRef.current;
+    const pot = Object.values(roundStatesRef.current).reduce((s, r) => s + r.total, 0);
+    const winnerId = replayJackpotRef.current?.winnerId ?? jackpotWinnerId;
+    const team = winningTeam ?? teamFromJackpotWinner(winnerId);
     persistReplay(replayJackpotRef.current);
+    if (team !== null) {
+      settlePayout(team, pot, settle);
+    } else if (lastPayoutRef.current) {
+      showResult(lastPayoutRef.current);
+    } else {
+      showResult({
+        shared: Boolean(battle?.shared),
+        youWon: false,
+        pot,
+        share: pot,
+        youPaid: 0,
+        borrowPct: 0,
+        winningTeam: null,
+        winners: players
+          .filter((p) => p.kind !== "empty" && p.kind !== "joining")
+          .map((p) => ({
+            name: p.kind === "you" ? "You" : p.name || `Player ${p.slotIndex + 1}`,
+            color: p.color,
+          })),
+      });
+    }
     setPhase("finished");
-    if (battle?.id) setBattleStatus(battle.id, "finished", pot);
+    if (settle && battle?.id) setBattleStatus(battle.id, "finished", pot);
   }
 
   function recreateBattle() {

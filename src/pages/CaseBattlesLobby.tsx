@@ -17,7 +17,7 @@ import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
 import { requireAccount } from "../lib/stake";
-import { BattleCost, BorrowBadge } from "../components/battles/BattleCost";
+import { BattleCost, BorrowBadge, FinishedBattleCostPaid } from "../components/battles/BattleCost";
 
 const FILTERS = [
   { id: "active", label: "Active battles" },
@@ -102,6 +102,11 @@ export function CaseBattlesLobby() {
     navigate(`/battles/${b.id}`);
   }
 
+  const rowGrid =
+    filter === "finished"
+      ? "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(13rem,17rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem]"
+      : "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem]";
+
   return (
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
@@ -137,10 +142,10 @@ export function CaseBattlesLobby() {
       </div>
 
       <div className="surface overflow-hidden">
-        <div className="hidden grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem] border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid">
+        <div className={clsx("hidden border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid", rowGrid)}>
           <span>Cases</span>
           <span>Mode</span>
-          <span>Cost</span>
+          <span>{filter === "finished" ? "Cost / Paid" : "Cost"}</span>
           <span>Players</span>
           <span>Modifiers</span>
           <span className="text-right">Action</span>
@@ -191,7 +196,7 @@ export function CaseBattlesLobby() {
                       spectateBattle(b);
                     }
                   }}
-                  className="grid cursor-pointer items-center gap-3 px-4 py-3 md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem] hover:bg-white/[0.03]"
+                  className={clsx("grid cursor-pointer items-center gap-3 px-4 py-3 hover:bg-white/[0.03]", rowGrid)}
                 >
                   <div className="flex min-w-0 items-center gap-2">
                     <div className="flex -space-x-2">
@@ -224,6 +229,12 @@ export function CaseBattlesLobby() {
                       <p className="truncate text-sm font-semibold text-white">{mode?.label}</p>
                       <p className="text-[11px] text-slate-500">
                         {filled}/{seats} players
+                        {b.status === "finished" && (
+                          <>
+                            {" "}
+                            · cost {formatCredits(b.costPerPlayer * seats)} · paid {formatCredits(b.payout ?? 0)}
+                          </>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -232,10 +243,11 @@ export function CaseBattlesLobby() {
                   </p>
                   <div className="hidden min-w-0 md:block">
                     {b.status === "finished" ? (
-                      <p className="font-mono text-sm font-semibold text-emerald-300">
-                        {formatCredits(b.payout ?? 0)}
-                        <span className="ml-1 text-[10px] font-normal uppercase tracking-wide text-slate-500">pot</span>
-                      </p>
+                      <FinishedBattleCostPaid
+                        costPerPlayer={b.costPerPlayer}
+                        seats={seats}
+                        payout={b.payout ?? 0}
+                      />
                     ) : b.source === "you" ? (
                       <BattleCost costPerPlayer={b.costPerPlayer} borrowPct={b.creatorBorrowPct} align="left" compact />
                     ) : b.fundedPct > 0 ? (

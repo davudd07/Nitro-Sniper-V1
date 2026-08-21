@@ -55,6 +55,41 @@ export function BattleCost({
   );
 }
 
+/** Finished-lobby cell: entry/pot cost and payout, labeled separately. */
+export function FinishedBattleCostPaid({
+  costPerPlayer,
+  seats,
+  payout,
+}: {
+  costPerPlayer: number;
+  seats: number;
+  payout: number;
+}) {
+  const n = Math.max(1, seats);
+  const entryPot = costPerPlayer * n;
+  return (
+    <div className="flex items-start gap-4">
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cost</p>
+        <p
+          className="font-mono text-sm font-semibold tabular-nums text-amber-200"
+          title={`${formatCredits(costPerPlayer)} SH per seat`}
+        >
+          {formatCredits(entryPot)}
+        </p>
+        <p className="text-[10px] text-slate-500">
+          {formatCredits(costPerPlayer)} / seat · {n} {n === 1 ? "seat" : "seats"}
+        </p>
+      </div>
+      <div className="min-w-0">
+        <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Paid</p>
+        <p className="font-mono text-sm font-semibold tabular-nums text-emerald-300">{formatCredits(payout)}</p>
+        <p className="text-[10px] text-slate-500">payout</p>
+      </div>
+    </div>
+  );
+}
+
 export function BorrowBadge({ pct, compact = false }: { pct: number; compact?: boolean }) {
   if (pct <= 0) return null;
   return (

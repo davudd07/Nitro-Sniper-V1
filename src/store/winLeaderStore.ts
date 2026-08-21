@@ -28,7 +28,7 @@ const SEED_AT = 1_704_067_200_000;
 function seedRecords(): Partial<Record<WinLeaderGame, WinLeaderRecord>> {
   return {
     mines: { name: "PixelFox", multiplier: 12.48, at: SEED_AT },
-    blackjack: { name: "NovaByte", multiplier: 2.5, at: SEED_AT },
+    blackjack: { name: "NovaByte", multiplier: 2, at: SEED_AT },
     cases: { name: "VaultRaider", multiplier: 18.4, at: SEED_AT },
     battles: { name: "LuckyComet", multiplier: 4.82, at: SEED_AT, battleId: "hist_whale" },
     jackpot: { name: "EmberDrift", multiplier: 6.12, at: SEED_AT },

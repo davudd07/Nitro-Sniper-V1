@@ -19,6 +19,7 @@ import { AnimatedPot } from "../components/ui/AnimatedPot";
 import { BATTLE_JACKPOT_SPIN_MS, JackpotWheel, type JackpotTicket } from "../components/battles/JackpotWheel";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useEconomyStore } from "../store/economyStore";
+import { considerBattleLeaders } from "../store/winLeaderStore";
 import { useToastStore } from "../store/toastStore";
 import { randomBotName } from "../data/botNames";
 import { buildBattleRoster } from "../lib/battleSeats";
@@ -398,6 +399,17 @@ export function BattleRoom() {
         sound.win("big");
       }
       if (settle && youPlayed) recordRound(youStakeAmount(), paid, "battles");
+      if (settle && battle.id) {
+        considerBattleLeaders({
+          battleId: battle.id,
+          costPerPlayer: battle.costPerPlayer,
+          winners: players.map((p) => ({
+            name: p.kind === "you" ? "You" : p.name || `Player ${p.slotIndex + 1}`,
+            kind: p.kind,
+            share,
+          })),
+        });
+      }
       showResult({
         shared: true,
         youWon: youPlayed,
@@ -520,6 +532,17 @@ export function BattleRoom() {
       sound.lose();
     }
     if (settle && players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles");
+    if (settle && battle?.id) {
+      considerBattleLeaders({
+        battleId: battle.id,
+        costPerPlayer: battle.costPerPlayer,
+        winners: teamMembers.map((p) => ({
+          name: p.kind === "you" ? "You" : p.name || `Player ${p.slotIndex + 1}`,
+          kind: p.kind,
+          share,
+        })),
+      });
+    }
     showResult({
       shared: false,
       youWon,

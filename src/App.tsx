@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { NavBar } from "./components/layout/NavBar";
+import { WinLeaderStrip } from "./components/layout/WinLeaderStrip";
 import { DemoBanner } from "./components/layout/DemoBanner";
 import { BanNotice } from "./components/layout/BanNotice";
 import { GameSidebar } from "./components/layout/GameSidebar";
@@ -83,6 +84,7 @@ export default function App() {
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <NavBar wide={isBattleRoom} />
         <AdminViewBar />
+        <WinLeaderStrip />
         <DemoBanner />
         <BanNotice />
         <main

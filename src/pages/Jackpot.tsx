@@ -16,6 +16,7 @@ import {
   type JackpotPotId,
 } from "../store/jackpotStore";
 import { useEconomyStore } from "../store/economyStore";
+import { considerWinLeader } from "../store/winLeaderStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { formatCredits, formatPercent } from "../lib/format";
@@ -167,6 +168,13 @@ export function JackpotPage() {
     const liveTotal = potTotal(current.entries);
     const livePayout = Math.round(liveTotal * (1 - JACKPOT_HOUSE_EDGE));
     finishSpin(potId);
+    if (winner && winner.amount > 0 && livePayout > 0) {
+      considerWinLeader("jackpot", {
+        name: winner.name,
+        isYou: winner.kind === "you",
+        multiplier: livePayout / winner.amount,
+      });
+    }
     if (!winner || !me) return;
     if (winner.kind === "you") {
       credit(livePayout);

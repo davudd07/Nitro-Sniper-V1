@@ -18,6 +18,7 @@ import { HOUSE_EDGE } from "../lib/rakeback";
 import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
 import { requireAccount } from "../lib/stake";
 import { BattleCost, BorrowBadge, FinishedBattleCostPaid } from "../components/battles/BattleCost";
+import { WinLeaderBadge } from "../components/layout/WinLeaderBadge";
 
 const FILTERS = [
   { id: "active", label: "Active battles" },
@@ -142,6 +143,9 @@ export function CaseBattlesLobby() {
       </div>
 
       <div className="surface overflow-hidden">
+        <div className="flex items-end justify-end border-b border-white/8 px-4 py-1.5">
+          <WinLeaderBadge game="battles" />
+        </div>
         <div className={clsx("hidden border-b border-white/8 px-4 py-2 text-[10px] font-semibold uppercase tracking-wider text-slate-500 md:grid", rowGrid)}>
           <span>Cases</span>
           <span>Mode</span>

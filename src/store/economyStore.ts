@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { rakebackAmount } from "../lib/rakeback";
 import { logPlay, type ActivityGame } from "./activityStore";
+import { considerWinLeader, localWinName } from "./winLeaderStore";
 import { awardWagerXp, useLoyaltyStore } from "./loyaltyStore";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { shortId } from "../lib/format";
@@ -165,6 +166,9 @@ export const useEconomyStore = create<EconomyState>()(
           logPlay({ id: playId, name: "You", game, wagered, won });
           if (wagered > 0) {
             awardWagerXp({ betId: playId, wagered, gameType: game, currency: "shard" });
+          }
+          if (game !== "battles" && wagered > 0 && won > 0) {
+            considerWinLeader(game, { name: localWinName(), multiplier: won / wagered, isYou: true });
           }
         }
       },

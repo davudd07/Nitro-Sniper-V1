@@ -10,13 +10,7 @@ import { sound } from "../lib/sound";
 import { formatDropCountdown, progressFromXp } from "../lib/xp";
 import { useDemoProfileStore } from "../store/demoProfileStore";
 import { useEconomyStore } from "../store/economyStore";
-import {
-  BUY_XP_COST_SH,
-  BUY_XP_GAIN,
-  MONTHLY_DROP_SH,
-  useRewardsStore,
-  WEEKLY_DROP_SH,
-} from "../store/rewardsStore";
+import { MONTHLY_DROP_SH, useRewardsStore, WEEKLY_DROP_SH } from "../store/rewardsStore";
 import { useToastStore } from "../store/toastStore";
 
 function DropInfo({ title, children }: { title: string; children: ReactNode }) {
@@ -86,6 +80,8 @@ function DropCard({
         : "from-amber-400/15";
   const word =
     variant === "green" ? "drop-word-green" : variant === "lime" ? "drop-word-lime" : "drop-word-gold";
+  const titleTone =
+    variant === "green" ? "drop-title-green" : variant === "lime" ? "drop-title-lime" : "drop-title-gold";
   const footerClass = footerDisabled
     ? "border-white/10 bg-[#0a100c] text-slate-400"
     : "border-lime-300/50 bg-gradient-to-b from-lime-400 to-green-700 text-[#052e16] shadow-[0_3px_0_#14532d]";
@@ -98,13 +94,15 @@ function DropCard({
       )}
     >
       <div className={clsx("pointer-events-none absolute inset-0 bg-gradient-to-b to-transparent", glow)} />
-      <div className="relative flex items-start justify-between px-4 pt-4">
-        <p className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-white">{title}</p>
-        {info}
-      </div>
-      <div className="relative flex flex-1 flex-col items-center justify-center px-3 pb-2 pt-6">
+      <div className="relative flex h-10 items-start justify-end px-4 pt-4">{info}</div>
+      <div className="relative flex flex-1 flex-col items-center justify-center px-3 pb-2 pt-2">
         <p className={clsx("drop-word", word)}>DROP</p>
-        <div className="relative -mt-6">{art}</div>
+        <div className="relative -mt-6">
+          {art}
+          <p className={clsx("drop-title pointer-events-none absolute inset-x-0 top-3 z-10 text-center", titleTone)}>
+            {title}
+          </p>
+        </div>
         {amount ? <p className="mt-1 font-mono text-sm font-bold text-cyan-300">{amount}</p> : null}
       </div>
       <button
@@ -126,11 +124,8 @@ export function Rewards() {
   const displayName = useDemoProfileStore((s) => s.displayName);
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
   const claimRakeback = useEconomyStore((s) => s.claimRakeback);
-  const spend = useEconomyStore((s) => s.spend);
   const credit = useEconomyStore((s) => s.credit);
-  const balance = useEconomyStore((s) => s.balance);
   const xp = useRewardsStore((s) => s.xp);
-  const addXp = useRewardsStore((s) => s.addXp);
   const weeklyReadyAt = useRewardsStore((s) => s.weeklyReadyAt);
   const monthlyReadyAt = useRewardsStore((s) => s.monthlyReadyAt);
   const claimWeekly = useRewardsStore((s) => s.claimWeekly);
@@ -148,7 +143,6 @@ export function Rewards() {
   const canClaimInstant = pending > 0;
   const weeklyReady = now >= weeklyReadyAt;
   const monthlyReady = now >= monthlyReadyAt;
-  const canBuyXp = balance >= BUY_XP_COST_SH;
   const initial = (displayName.trim()[0] || "V").toUpperCase();
   const barPct = Math.max(0, Math.min(100, progress.ratio * 100));
 
@@ -160,16 +154,6 @@ export function Rewards() {
     }
     sound.win("small");
     push(`Claimed ${formatRakeback(amt)} SH rakeback.`, "success");
-  }
-
-  function handleBuyXp() {
-    if (!spend(BUY_XP_COST_SH)) {
-      push("Not enough Shards for demo XP.", "warning");
-      return;
-    }
-    addXp(BUY_XP_GAIN);
-    sound.click();
-    push(`Spent ${formatCredits(BUY_XP_COST_SH)} SH for ${formatCredits(BUY_XP_GAIN)} demo XP.`, "success");
   }
 
   function handleWeekly() {
@@ -215,16 +199,6 @@ export function Rewards() {
             </p>
           </div>
         </div>
-
-        <button
-          type="button"
-          disabled={!canBuyXp}
-          onClick={handleBuyXp}
-          title={`${formatCredits(BUY_XP_COST_SH)} SH → ${formatCredits(BUY_XP_GAIN)} demo XP`}
-          className="rounded-full border-2 border-lime-300/50 bg-gradient-to-b from-lime-400 to-green-700 px-6 py-2.5 text-sm font-extrabold uppercase tracking-[0.16em] text-[#052e16] shadow-[0_4px_0_#14532d] disabled:opacity-45"
-        >
-          Buy XP
-        </button>
       </section>
 
       <div className="grid gap-4 lg:grid-cols-3">
@@ -277,7 +251,7 @@ export function Rewards() {
 
       <p className="text-xs leading-relaxed text-slate-500">
         Instant Drop is rakeback: {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real demo stakes
-        (bet &gt; 0). Buy XP spends Shards for demo experience only. Chat rain still lives in the chat sidebar.
+        (bet &gt; 0). Chat rain still lives in the chat sidebar.
       </p>
 
       <Link to="/" className="text-sm text-slate-400 hover:text-white">

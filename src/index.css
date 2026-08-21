@@ -233,6 +233,30 @@ body {
   color: var(--drop-face);
 }
 
+.drop-title {
+  font-family: var(--font-brand);
+  font-weight: 700;
+  font-size: clamp(1.05rem, 2.2vw, 1.4rem);
+  line-height: 1.1;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  paint-order: stroke fill;
+  -webkit-text-stroke: 3px #031403;
+  text-shadow: 0 2px 0 #000, 0 4px 10px rgba(0, 0, 0, 0.55);
+}
+
+.drop-title-green {
+  color: #bbf7d0;
+}
+
+.drop-title-lime {
+  color: #ecfccb;
+}
+
+.drop-title-gold {
+  color: #fde68a;
+}
+
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
   height: 6px;

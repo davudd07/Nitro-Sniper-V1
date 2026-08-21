@@ -19,19 +19,12 @@ function Coin({
 export function CoinStackArt({ accent }: { accent: "green" | "lime" }) {
   const fill = accent === "green" ? "#86efac" : "#bef264";
   const stroke = accent === "green" ? "#016b01" : "#3f6212";
-  const item = accent === "green" ? "/images/items/gem.webp" : "/images/items/star.webp";
   return (
     <div className="relative h-40 w-44">
       <Coin className="absolute bottom-2 left-8 h-16 w-24 rotate-[-8deg] drop-shadow-md" fill={fill} stroke={stroke} />
       <Coin className="absolute bottom-7 left-2 h-16 w-24 rotate-[10deg] drop-shadow-md" fill="#fde68a" stroke="#854d0e" />
       <Coin className="absolute bottom-12 left-10 h-16 w-24 rotate-[-4deg] drop-shadow-md" fill={fill} stroke={stroke} />
       <Coin className="absolute bottom-[4.25rem] left-5 h-16 w-24 rotate-[6deg] drop-shadow-md" fill="#facc15" stroke="#a16207" />
-      <img
-        src={item}
-        alt=""
-        draggable={false}
-        className="pixelated absolute -top-1 left-1/2 h-16 w-16 -translate-x-1/2 object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]"
-      />
     </div>
   );
 }
@@ -51,24 +44,6 @@ export function TreasureChestArt() {
         <rect x="58" y="84" width="8" height="40" rx="2" fill="#a3e635" opacity="0.85" />
         <rect x="134" y="84" width="8" height="40" rx="2" fill="#a3e635" opacity="0.85" />
       </svg>
-      <img
-        src="/images/items/diamond.webp"
-        alt=""
-        draggable={false}
-        className="pixelated absolute left-8 top-1 h-12 w-12 rotate-[-12deg] object-contain"
-      />
-      <img
-        src="/images/items/crown.webp"
-        alt=""
-        draggable={false}
-        className="pixelated absolute right-6 top-0 h-14 w-14 rotate-[14deg] object-contain"
-      />
-      <img
-        src="/images/items/sparkles.webp"
-        alt=""
-        draggable={false}
-        className="pixelated absolute left-1/2 top-6 h-10 w-10 -translate-x-1/2 object-contain"
-      />
     </div>
   );
 }

@@ -8,8 +8,6 @@ const DAY = 86_400_000;
 const WEEKLY_FIRST_DELAY = 3 * DAY + 20 * MINUTE + 40_000;
 const MONTHLY_FIRST_DELAY = 11 * DAY + 20 * MINUTE + 40_000;
 
-export const BUY_XP_COST_SH = 50;
-export const BUY_XP_GAIN = 15_000;
 export const WEEKLY_DROP_SH = 250;
 export const MONTHLY_DROP_SH = 1_000;
 export const WEEKLY_PERIOD_MS = 7 * DAY;

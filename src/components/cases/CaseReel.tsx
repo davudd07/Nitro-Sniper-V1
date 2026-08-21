@@ -1,11 +1,10 @@
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import type { CaseOddsEntry } from "../../data/cases";
 import type { CaseItem } from "../../data/items";
 import { GOLD_INDICATOR } from "../../data/goldItem";
-import { ItemIcon } from "../ui/ItemIcon";
 import { RARITIES } from "../../data/rarities";
-import { easeOutQuart } from "../../lib/easing";
+import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
 import { formatCredits } from "../../lib/format";
 import { sound } from "../../lib/sound";
 
@@ -13,6 +12,8 @@ import { sound } from "../../lib/sound";
 // full column of items. Trim only the unused tail below the landing window.
 const REEL_LENGTH = 64;
 const LAND_INDEX = 58;
+
+const ICON_PX = { md: 56, lg: 80 } as const;
 
 // Shared tick clock so 2–6 battle lanes don't each spawn Web Audio nodes
 // on every item crossing (that stacks into audible + main-thread jank).
@@ -24,7 +25,24 @@ function playSpinTick(speed: number) {
   sound.tick(speed);
 }
 
+function preloadIcons(items: CaseItem[]) {
+  const seen = new Set<string>();
+  for (const item of items) {
+    if (seen.has(item.icon)) continue;
+    seen.add(item.icon);
+    const img = new Image();
+    img.decoding = "async";
+    img.src = `/images/items/${item.icon}.webp`;
+  }
+}
+
 type Orientation = "horizontal" | "vertical";
+
+type PendingSpin = {
+  seed: number;
+  duration: number;
+  onDone: () => void;
+};
 
 // Horizontal (solo case opens): items scroll left-to-right past a vertical
 // pointer. Vertical (battles): items stack and scroll top-to-bottom past a
@@ -108,7 +126,9 @@ export function CaseReel({
   const containerRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
-  const rafRef = useRef<number | null>(null);
+  const animRef = useRef<Animation | null>(null);
+  const tickRafRef = useRef<number | null>(null);
+  const pendingSpinRef = useRef<PendingSpin | null>(null);
   const lastTickIndexRef = useRef(-1);
   const cfg = SIZE_CONFIG[size][orientation];
   const isHorizontal = orientation === "horizontal";
@@ -124,6 +144,100 @@ export function CaseReel({
     if (el) el.style.transform = stripTransform(isHorizontal, px);
   }
 
+  function cancelMotion() {
+    if (tickRafRef.current) cancelAnimationFrame(tickRafRef.current);
+    tickRafRef.current = null;
+    if (animRef.current) {
+      try {
+        animRef.current.cancel();
+      } catch {
+        /* ignore */
+      }
+      animRef.current = null;
+    }
+  }
+
+  function startWaapi(seed: number, dur: number, done: () => void) {
+    cancelMotion();
+    const el = stripRef.current;
+    const containerDim = isHorizontal
+      ? (containerRef.current?.clientWidth || cfg.boxSize)
+      : (containerRef.current?.clientHeight || cfg.boxSize);
+    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
+    const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
+    lastTickIndexRef.current = -1;
+    applyOffset(0);
+    if (!el) {
+      applyOffset(targetOffset);
+      done();
+      return;
+    }
+    el.style.willChange = "transform";
+
+    const finish = () => {
+      try {
+        animRef.current?.commitStyles();
+      } catch {
+        /* ignore */
+      }
+      try {
+        animRef.current?.cancel();
+      } catch {
+        /* ignore */
+      }
+      animRef.current = null;
+      if (tickRafRef.current) cancelAnimationFrame(tickRafRef.current);
+      tickRafRef.current = null;
+      applyOffset(targetOffset);
+      el.style.willChange = "auto";
+      done();
+    };
+
+    if (typeof el.animate !== "function") {
+      const start = performance.now();
+      const tick = (now: number) => {
+        const t = Math.min(1, (now - start) / dur);
+        applyOffset(targetOffset * easeOutQuart(t));
+        const currentIndex = Math.floor((targetOffset * easeOutQuart(t) + containerDim / 2) / cfg.itemSize);
+        if (currentIndex !== lastTickIndexRef.current && t < 1) {
+          lastTickIndexRef.current = currentIndex;
+          playSpinTick(1 - t);
+        }
+        if (t < 1) tickRafRef.current = requestAnimationFrame(tick);
+        else finish();
+      };
+      tickRafRef.current = requestAnimationFrame(tick);
+      return;
+    }
+
+    // Compositor-thread interpolation — visual motion stays at 60fps even if
+    // React / image decode / audio hitch the main thread.
+    const anim = el.animate(
+      [{ transform: stripTransform(isHorizontal, 0) }, { transform: stripTransform(isHorizontal, targetOffset) }],
+      { duration: dur, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
+    );
+    animRef.current = anim;
+
+    const start = performance.now();
+    const sampleTicks = () => {
+      if (animRef.current !== anim) return;
+      const t = Math.min(1, (performance.now() - start) / dur);
+      const pos = targetOffset * easeOutQuart(t);
+      const currentIndex = Math.floor((pos + containerDim / 2) / cfg.itemSize);
+      if (currentIndex !== lastTickIndexRef.current && t < 1) {
+        lastTickIndexRef.current = currentIndex;
+        playSpinTick(1 - t);
+      }
+      if (t < 1) tickRafRef.current = requestAnimationFrame(sampleTicks);
+    };
+    tickRafRef.current = requestAnimationFrame(sampleTicks);
+
+    anim.onfinish = () => {
+      if (animRef.current !== anim) return;
+      finish();
+    };
+  }
+
   function runGoldSpin(seedBase: number, landed: CaseOddsEntry) {
     setPhase("charge");
     sound.goldCharge();
@@ -131,15 +245,17 @@ export function CaseReel({
     timeoutRef.current = setTimeout(() => {
       const goldRand = mulberry32(seedBase * 104729 + 3);
       const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand);
+      pendingSpinRef.current = {
+        seed: seedBase + 1,
+        duration: goldDuration,
+        onDone: () => {
+          setPhase("done");
+          sound.goldLand();
+          onLanded?.(landed.item, true);
+        },
+      };
       setStrip(goldStrip);
-      applyOffset(0);
       setPhase("gold");
-      lastTickIndexRef.current = -1;
-      animateTo(seedBase + 1, goldDuration, () => {
-        setPhase("done");
-        sound.goldLand();
-        onLanded?.(landed.item, true);
-      });
     }, 900);
   }
 
@@ -149,12 +265,17 @@ export function CaseReel({
     runGoldSpin(goldSeedRef.current, landed);
   }
 
-  // Fill the track with a preview strip so the reel always spans the container.
+  useEffect(() => {
+    preloadIcons(pool);
+    preloadIcons(goldPool);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spinToken]);
+
+  // Full-length idle strip so unique icons decode during countdown / before Open.
   useEffect(() => {
     if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
     const rand = mulberry32(laneSeed + 17);
-    const previewLen = isHorizontal ? 16 : 10;
-    setStrip(Array.from({ length: previewLen }, () => pool[Math.floor(rand() * pool.length)]));
+    setStrip(Array.from({ length: REEL_LENGTH }, () => pool[Math.floor(rand() * pool.length)]));
     applyOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pool, spinToken, laneSeed]);
@@ -166,77 +287,56 @@ export function CaseReel({
     const goesGold = goldSpinEnabled && result.goldTier;
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
     const mainStrip = buildStrip(pool, targetForMain, rand);
+    pendingSpinRef.current = {
+      seed: seedBase,
+      duration,
+      onDone: () => {
+        if (goesGold) {
+          goldSeedRef.current = seedBase;
+          if (requireGoldConfirm) {
+            setPhase("awaitingGold");
+            sound.land();
+          } else {
+            runGoldSpin(seedBase, result);
+          }
+        } else {
+          setPhase("done");
+          sound.land();
+          onLanded?.(result.item, false);
+        }
+      },
+    };
     setStrip(mainStrip);
-    applyOffset(0);
     setPhase("main");
     lastTickIndexRef.current = -1;
-    animateTo(seedBase, duration, () => {
-      if (goesGold) {
-        goldSeedRef.current = seedBase;
-        if (requireGoldConfirm) {
-          setPhase("awaitingGold");
-          sound.land();
-        } else {
-          runGoldSpin(seedBase, result);
-        }
-      } else {
-        setPhase("done");
-        sound.land();
-        onLanded?.(result.item, false);
-      }
-    });
     return () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      cancelMotion();
+      pendingSpinRef.current = null;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
-  function animateTo(seed: number, dur: number, done: () => void) {
-    if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    const start = performance.now();
-    const stripEl = stripRef.current;
-    // Measure once — reading clientWidth/Height every frame forces layout.
-    const containerDim = isHorizontal
-      ? (containerRef.current?.clientWidth || cfg.boxSize)
-      : (containerRef.current?.clientHeight || cfg.boxSize);
-    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
-    const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
-    if (stripEl) stripEl.style.willChange = "transform";
-    applyOffset(0);
-
-    function tick(now: number) {
-      const t = Math.min(1, (now - start) / dur);
-      const eased = easeOutQuart(t);
-      const pos = targetOffset * eased;
-      applyOffset(pos);
-
-      const currentIndex = Math.floor((pos + containerDim / 2) / cfg.itemSize);
-      if (currentIndex !== lastTickIndexRef.current && t < 1) {
-        lastTickIndexRef.current = currentIndex;
-        playSpinTick(1 - t);
-      }
-
-      if (t < 1) {
-        rafRef.current = requestAnimationFrame(tick);
-      } else {
-        applyOffset(targetOffset);
-        if (stripEl) stripEl.style.willChange = "auto";
-        done();
-      }
-    }
-    rafRef.current = requestAnimationFrame(tick);
-  }
+  // Start the compositor animation only after the new strip is in the DOM so
+  // the first painted frame is at rest (no hitch-then-jump at t=0).
+  useLayoutEffect(() => {
+    const pending = pendingSpinRef.current;
+    if (!pending) return;
+    pendingSpinRef.current = null;
+    startWaapi(pending.seed, pending.duration, pending.onDone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [strip, phase]);
 
   useEffect(
     () => () => {
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      cancelMotion();
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     },
     [],
   );
 
   const isGoldPhase = phase === "gold" || phase === "charge" || phase === "awaitingGold";
+  const stripLen = Math.max(strip.length, 1);
 
   return (
     <div className="min-w-0 w-full max-w-full">
@@ -282,9 +382,10 @@ export function CaseReel({
         )}
         <div
           ref={stripRef}
-          className={clsx("pointer-events-none absolute flex", isHorizontal ? "inset-y-0 left-0 flex-row" : "inset-x-0 top-0 w-full flex-col")}
+          className="pointer-events-none absolute left-0 top-0"
           style={{
-            transform: stripTransform(isHorizontal, offsetRef.current),
+            height: isHorizontal ? "100%" : cfg.itemSize * stripLen,
+            width: isHorizontal ? cfg.itemSize * stripLen : "100%",
             backfaceVisibility: "hidden",
             willChange: spinning ? "transform" : "auto",
           }}
@@ -293,9 +394,11 @@ export function CaseReel({
             <ReelSlot
               key={i}
               item={item}
+              index={i}
               itemSize={cfg.itemSize}
               iconSize={SIZE_CONFIG[size].icon}
               orientation={orientation}
+              pulse={item.id === GOLD_INDICATOR.id && !spinning}
             />
           ))}
         </div>
@@ -306,68 +409,61 @@ export function CaseReel({
 
 const ReelSlot = memo(function ReelSlot({
   item,
+  index,
   itemSize,
   iconSize,
   orientation,
+  pulse,
 }: {
   item: CaseItem;
+  index: number;
   itemSize: number;
   iconSize: "md" | "lg";
   orientation: Orientation;
+  pulse: boolean;
 }) {
   const r = RARITIES[item.rarity];
   const isIndicator = item.id === GOLD_INDICATOR.id;
-
-  if (orientation === "horizontal") {
-    return (
-      <div
-        className="relative h-full shrink-0"
-        style={{
-          width: itemSize,
-          contain: "layout paint",
-        }}
-      >
-        <div
-          className={clsx("absolute inset-0 flex flex-col items-center justify-center gap-0.5", isIndicator && "gold-pulse")}
-          style={{
-            background: `linear-gradient(165deg, ${r.from}66, ${r.to})`,
-            boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
-            borderRight: `2px solid ${r.ring}`,
-          }}
-        >
-          <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none" lite />
-          <span className="max-w-[92%] truncate px-0.5 text-[10px] font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
-            {item.name}
-          </span>
-        </div>
-      </div>
-    );
-  }
+  const iconPx = ICON_PX[iconSize];
+  const isHorizontal = orientation === "horizontal";
 
   return (
     <div
-      className="relative w-full shrink-0"
+      className={clsx("absolute flex", pulse && "gold-pulse", isHorizontal ? "h-full flex-col items-center justify-center gap-0.5" : "w-full items-center gap-2.5 px-2")}
       style={{
-        height: itemSize,
         contain: "layout paint",
+        width: isHorizontal ? itemSize : "100%",
+        height: isHorizontal ? "100%" : itemSize,
+        top: isHorizontal ? 0 : index * itemSize,
+        left: isHorizontal ? index * itemSize : 0,
+        background: isHorizontal ? `linear-gradient(165deg, ${r.from}66, ${r.to})` : `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
+        boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
+        borderRight: isHorizontal ? `2px solid ${r.ring}` : undefined,
+        borderBottom: isHorizontal ? undefined : `2px solid ${r.ring}`,
       }}
     >
-      <div
-        className={clsx("absolute inset-0 flex items-center gap-2.5 px-2", isIndicator && "gold-pulse")}
-        style={{
-          background: `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
-          boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
-          borderBottom: `2px solid ${r.ring}`,
-        }}
-      >
-        <ItemIcon icon={item.icon} rarity={item.rarity} size={iconSize} className="!rounded-none shrink-0" lite />
+      <img
+        src={`/images/items/${item.icon}.webp`}
+        alt=""
+        width={iconPx}
+        height={iconPx}
+        decoding="async"
+        draggable={false}
+        className="shrink-0 rounded object-cover"
+        style={{ width: iconPx, height: iconPx }}
+      />
+      {isHorizontal ? (
+        <span className="max-w-[92%] truncate px-0.5 text-[10px] font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
+          {item.name}
+        </span>
+      ) : (
         <div className="min-w-0 flex-1">
           <p className="truncate text-xs font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
             {item.name}
           </p>
           {!isIndicator && <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>}
         </div>
-      </div>
+      )}
     </div>
   );
 });

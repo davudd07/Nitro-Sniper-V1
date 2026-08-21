@@ -2,6 +2,13 @@ export function easeOutQuart(t: number): number {
   return 1 - Math.pow(1 - t, 4);
 }
 
+/**
+ * CSS cubic-bezier matching easeOutQuart (easings.net).
+ * Use with Web Animations / CSS so the compositor interpolates the spin
+ * instead of JS sampling the curve once per rAF.
+ */
+export const EASE_OUT_QUART_CSS = "cubic-bezier(0.165, 0.84, 0.44, 1)";
+
 export function easeOutQuint(t: number): number {
   return 1 - Math.pow(1 - t, 5);
 }

@@ -4,7 +4,10 @@ import { HOUSE_EDGE } from "./rakeback";
 /** 5% Upgrader edge unless VIP admin overrides `upgrader`. */
 export const UPGRADER_HOUSE_EDGE = HOUSE_EDGE.upgrader;
 
-export const UPGRADER_MIN_MULTIPLIER = 1.01;
+/** Playable floor: 1% green. Tiny enough to feel spicy, still a sane stake. */
+export const UPGRADER_MIN_CHANCE = 0.01;
+/** 1.00× at 5% edge is a 95% slice — never a free 100% green. */
+export const UPGRADER_MIN_MULTIPLIER = 1;
 export const UPGRADER_MAX_MULTIPLIER = 10_000;
 /** Normal spin: ~1.75× the previous 2400ms roll, with more loops so it still feels like a spin. */
 export const UPGRADER_SPIN_MS = 4200;
@@ -57,22 +60,70 @@ export function catalogItems(): CaseItem[] {
 }
 
 /**
- * Win chance = (source / target) × (1 − house edge), clamped to (0, 1).
- * Default edge is 5%. Source must be below target so the round cannot be +EV.
+ * Round **up** to 2 decimal places so float dust cannot short the house.
+ * 13.988 → 13.99, 13.981 → 13.99, 13.99 stays 13.99.
+ */
+export function ceilToCents(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.ceil(value * 100 - 1e-9) / 100;
+}
+
+export function formatUpgraderStake(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(ceilToCents(value));
+}
+
+function normalizedEdge(houseEdge: number): number {
+  return Math.min(0.99, Math.max(0, houseEdge));
+}
+
+/** Max green = 1 − edge (95% at the default 5%). Never 100% (that would be +EV). */
+export function upgraderMaxChance(houseEdge: number): number {
+  const edge = normalizedEdge(houseEdge);
+  const rtp = 1 - edge;
+  if (!(rtp > 0)) return 0;
+  return Math.min(rtp, 1 - Number.EPSILON);
+}
+
+export function clampUpgraderChance(chance: number, houseEdge: number): number {
+  if (!(chance > 0)) return 0;
+  const maxC = upgraderMaxChance(houseEdge);
+  if (!(maxC > 0)) return 0;
+  return Math.min(maxC, Math.max(UPGRADER_MIN_CHANCE, chance));
+}
+
+/**
+ * Stake that keeps EV = chance × target = stake × (1 − edge).
+ * Default 5% edge: `sourceStake = chance × target / 0.95`, then ceil-to-cents.
+ */
+export function stakeFromChance(chance: number, targetValue: number, houseEdge: number): number {
+  if (!(targetValue > 0) || !(chance > 0)) return 0;
+  const rtp = 1 - normalizedEdge(houseEdge);
+  if (!(rtp > 0)) return 0;
+  const clamped = clampUpgraderChance(chance, houseEdge);
+  return ceilToCents((clamped * targetValue) / rtp);
+}
+
+/**
+ * Win chance = (source / target) × (1 − house edge).
+ * Default edge is 5%. Source may equal target at 95% (1×, still −EV). Never 100%.
+ * Drag-resize and bet buttons use `clampUpgraderChance` (1% floor).
  */
 export function upgraderChance(inputValue: number, targetValue: number, houseEdge: number): number {
   if (!(inputValue > 0) || !(targetValue > 0)) return 0;
-  const edge = Math.min(0.99, Math.max(0, houseEdge));
-  if (inputValue >= targetValue) return 0;
-  const chance = (inputValue / targetValue) * (1 - edge);
+  if (inputValue > targetValue) return 0;
+  const rtp = 1 - normalizedEdge(houseEdge);
+  const chance = (inputValue / targetValue) * rtp;
   if (!(chance > 0)) return 0;
-  return Math.min(chance, 1 - Number.EPSILON);
+  return Math.min(chance, upgraderMaxChance(houseEdge));
 }
 
 export function targetFromMultiplier(inputValue: number, multiplier: number): number {
-  if (!(inputValue > 0) || !(multiplier > 1)) return 0;
-  const raw = Math.round(inputValue * multiplier);
-  return Math.max(raw, Math.floor(inputValue) + 1);
+  if (!(inputValue > 0) || !(multiplier >= UPGRADER_MIN_MULTIPLIER)) return 0;
+  const raw = Math.round(inputValue * multiplier * 100) / 100;
+  return Math.max(raw, ceilToCents(inputValue));
 }
 
 export function multiplierFromValues(inputValue: number, targetValue: number): number {

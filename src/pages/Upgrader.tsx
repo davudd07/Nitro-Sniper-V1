@@ -20,19 +20,24 @@ import {
   UPGRADER_FAST_SPIN_MS,
   UPGRADER_HOUSE_EDGE,
   UPGRADER_MAX_MULTIPLIER,
+  UPGRADER_MIN_CHANCE,
   UPGRADER_MIN_MULTIPLIER,
   UPGRADER_SPIN_MS,
+  ceilToCents,
   clampMultiplier,
   closestItemNear,
   filterCatalog,
   formatChancePct,
   formatRollBand,
+  formatUpgraderStake,
   landDegForRoll,
   multiplierFromValues,
   resolveUpgraderHouseEdge,
   settleUpgrade,
+  stakeFromChance,
   targetFromMultiplier,
   upgraderChance,
+  upgraderMaxChance,
   type UpgradeSort,
 } from "../lib/upgrader";
 
@@ -72,7 +77,7 @@ function SlotCard({
             {item.name}
           </p>
           <p className="font-mono text-sm font-bold" style={{ color: rarity?.text }}>
-            {formatCredits(item.value)} <span className="font-normal text-slate-500">SH</span>
+            {formatUpgraderStake(item.value)} <span className="font-normal text-slate-500">SH</span>
           </p>
         </>
       ) : (
@@ -82,7 +87,7 @@ function SlotCard({
           </div>
           <p className="text-sm font-semibold text-slate-200">{value > 0 ? "Shard wager" : "Select an item"}</p>
           <p className="font-mono text-sm font-bold text-lime-300">
-            {formatCredits(value)} <span className="font-normal text-slate-500">SH</span>
+            {formatUpgraderStake(value)} <span className="font-normal text-slate-500">SH</span>
           </p>
         </>
       )}
@@ -108,6 +113,7 @@ export function Upgrader() {
   const [spinToken, setSpinToken] = useState(0);
   const settleLock = useRef(false);
   const pendingRef = useRef<{ input: number; target: number; name: string; hit: boolean } | null>(null);
+  const arcTargetRef = useRef(0);
 
   const balance = useEconomyStore((s) => s.balance);
   const credit = useEconomyStore((s) => s.credit);
@@ -116,19 +122,22 @@ export function Upgrader() {
   const play = useFairnessStore((s) => s.play);
   const houseEdges = useLoyaltyStore((s) => s.config.houseEdges);
   const houseEdge = resolveUpgraderHouseEdge(houseEdges);
+  const maxChance = upgraderMaxChance(houseEdge);
 
-  const inputValue = Math.max(0, Math.round(stake));
+  const inputValue = ceilToCents(stake);
   const targetValue = targetItem
     ? targetItem.value
     : targetFromMultiplier(inputValue, clampMultiplier(Number(multiplierText) || 0));
+  if (targetItem) arcTargetRef.current = targetItem.value;
   const chance = upgraderChance(inputValue, targetValue, houseEdge);
   const displayedMulti = inputValue > 0 && targetValue > 0 ? targetValue / inputValue : clampMultiplier(Number(multiplierText) || 2);
   const tooLow = inputValue > 0 && inputValue > balance;
-  const needHigherTarget = inputValue > 0 && targetValue > 0 && inputValue >= targetValue;
+  const needHigherTarget = inputValue > 0 && targetValue > 0 && inputValue > targetValue;
   const spinning = phase === "spinning";
   const canSpin = !spinning && chance > 0 && inputValue > 0 && !tooLow && !needHigherTarget;
   const spinMs = fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS;
   const extraSpins = fast ? UPGRADER_FAST_EXTRA_SPINS : UPGRADER_EXTRA_SPINS;
+  const maxStakeForTarget = targetValue > 0 ? stakeFromChance(maxChance, targetValue, houseEdge) : 0;
 
   const catalog = useMemo(
     () =>
@@ -147,7 +156,19 @@ export function Upgrader() {
   }
 
   function applyStake(next: number) {
-    const value = Math.max(0, Math.round(next));
+    if (!(next > 0)) {
+      setStake(0);
+      if (inputItem) setInputItem(null);
+      if (targetItem) setMultiplierText("2.00");
+      return;
+    }
+    let value = ceilToCents(next);
+    if (targetValue > 0) {
+      const maxS = stakeFromChance(maxChance, targetValue, houseEdge);
+      const minS = stakeFromChance(UPGRADER_MIN_CHANCE, targetValue, houseEdge);
+      if (maxS > 0) value = Math.min(maxS, value);
+      if (minS > 0) value = Math.max(minS, value);
+    }
     setStake(value);
     if (inputItem && inputItem.value !== value) setInputItem(null);
     if (targetItem) {
@@ -158,6 +179,25 @@ export function Upgrader() {
     const desired = targetFromMultiplier(value, multi);
     const match = desired > 0 ? closestItemNear(desired, value) : undefined;
     setTargetItem(match ?? null);
+  }
+
+  function applyChanceFromArc(nextChance: number) {
+    if (spinning) return;
+    const target = targetItem ? targetItem.value : arcTargetRef.current || targetValue;
+    if (!(target > 0)) return;
+    arcTargetRef.current = target;
+    const value = stakeFromChance(nextChance, target, houseEdge);
+    setStake(value);
+    if (inputItem && inputItem.value !== value) setInputItem(null);
+    setMultiplierText(value > 0 ? multiplierFromValues(value, target).toFixed(2) : "2.00");
+  }
+
+  function maxAffordableStake(): number {
+    const cap = maxStakeForTarget > 0 ? maxStakeForTarget : balance;
+    const raw = Math.min(balance, cap);
+    const ceiled = ceilToCents(raw);
+    if (ceiled > 0 && ceiled <= balance && (cap <= 0 || ceiled <= cap)) return ceiled;
+    return Math.floor(raw * 100 + 1e-9) / 100;
   }
 
   function pickItem(item: CaseItem) {
@@ -190,7 +230,7 @@ export function Upgrader() {
     if (spinning) return "Spinning…";
     if (tooLow) return "Not enough Shards";
     if (inputValue <= 0) return "Enter a stake";
-    if (needHigherTarget || chance <= 0) return "Pick a higher target";
+    if (needHigherTarget || chance <= 0) return "Pick a cheaper source or richer target";
     return "Upgrade";
   }
 
@@ -203,7 +243,7 @@ export function Upgrader() {
       return;
     }
     if (chance <= 0 || needHigherTarget) {
-      push("Pick a higher-value target so the house still has an edge.", "warning");
+      push("Pick a target at least as high as the source so the house still has an edge.", "warning");
       return;
     }
     if (!takeStake(inputValue, houseEdge)) {
@@ -220,7 +260,7 @@ export function Upgrader() {
     pendingRef.current = {
       input: inputValue,
       target: targetValue,
-      name: targetItem?.name ?? `${formatCredits(targetValue)} SH`,
+      name: targetItem?.name ?? `${formatUpgraderStake(targetValue)} SH`,
       hit,
     };
     setWon(hit);
@@ -237,12 +277,12 @@ export function Upgrader() {
       recordRound(pending.input, pending.target, "upgrader");
       setPhase("win");
       sound.win(pending.target > pending.input * 4 ? "big" : "small");
-      push(`Upgraded to ${pending.name} · +${formatCredits(pending.target)} SH.`, "success");
+      push(`Upgraded to ${pending.name} · +${formatUpgraderStake(pending.target)} SH.`, "success");
     } else {
       recordRound(pending.input, 0, "upgrader");
       setPhase("lose");
       sound.lose();
-      push(`Missed the upgrade. Lost ${formatCredits(pending.input)} SH.`, "danger");
+      push(`Missed the upgrade. Lost ${formatUpgraderStake(pending.input)} SH.`, "danger");
     }
     settleLock.current = false;
   }
@@ -264,10 +304,12 @@ export function Upgrader() {
           <StatRow label="RTP" value={formatPercent(1 - houseEdge)} />
           <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
           <p>
-            Win chance is <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>, clamped to (0, 1).
-            Default house edge is 5% (no +EV). Drag either thick end-cap to rotate the green slice — length stays locked to
-            that math, so you cannot change the odds. The arrow spins and lands; a hit inside your placed slice credits
-            the target SH value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
+            Win chance is the green slice over 360°, equal to{" "}
+            <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>. Default house edge is 5% (never
+            +EV). Drag a thick end-cap to resize that slice — longer green is a higher chance and a higher source stake
+            (<span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents). Drag the
+            green stroke to rotate the slice without changing odds. The arrow spins and lands; a hit inside your placed
+            slice credits the target SH value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
           </p>
         </InfoButton>
       </div>
@@ -292,6 +334,7 @@ export function Upgrader() {
                 <input
                   type="number"
                   min={0}
+                  step={0.01}
                   disabled={spinning}
                   value={stake}
                   onChange={(e) => applyStake(Number(e.target.value) || 0)}
@@ -302,9 +345,9 @@ export function Upgrader() {
               <div className="grid grid-cols-4 gap-1.5">
                 {[
                   { id: "clear", label: "CLEAR", run: () => applyStake(0) },
-                  { id: "half", label: "1/2", run: () => applyStake(Math.floor(inputValue / 2)) },
+                  { id: "half", label: "1/2", run: () => applyStake(inputValue / 2) },
                   { id: "dbl", label: "2X", run: () => applyStake(inputValue * 2) },
-                  { id: "max", label: "MAX", run: () => applyStake(Math.floor(balance)) },
+                  { id: "max", label: "MAX", run: () => applyStake(maxAffordableStake()) },
                 ].map((btn) => (
                   <button
                     key={btn.id}
@@ -333,7 +376,10 @@ export function Upgrader() {
               durationMs={spinMs}
               extraSpins={extraSpins}
               arcStartDeg={arcStartDeg}
+              minChance={UPGRADER_MIN_CHANCE}
+              maxChance={maxChance}
               onArcStartChange={setArcStartDeg}
+              onWinChanceChange={applyChanceFromArc}
               onSettled={handleSettled}
             />
           </div>
@@ -388,7 +434,7 @@ export function Upgrader() {
                 </button>
               </div>
               <p className="px-0.5 font-mono text-[11px] tabular-nums text-slate-500">
-                {formatCredits(inputValue)} → {formatCredits(targetValue)} SH · {displayedMulti.toFixed(2)}× ·{" "}
+                {formatUpgraderStake(inputValue)} → {formatUpgraderStake(targetValue)} SH · {displayedMulti.toFixed(2)}× ·{" "}
                 {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
               </p>
             </div>

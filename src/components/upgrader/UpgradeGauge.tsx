@@ -44,12 +44,24 @@ function arcCap(deg: number) {
   return { x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y };
 }
 
+type ArcGrab = "start" | "end" | "rotate";
+
 /** Invisible grab target over a radial tick at the green arc’s endpoint. */
-function ArcHandle({ deg, spinning, grabbing }: { deg: number; spinning: boolean; grabbing: boolean }) {
+function ArcHandle({
+  deg,
+  which,
+  spinning,
+  grabbing,
+}: {
+  deg: number;
+  which: "start" | "end";
+  spinning: boolean;
+  grabbing: boolean;
+}) {
   const p = polar(deg, RING_R);
   return (
     <div
-      data-arc-grab=""
+      data-arc-grab={which}
       className={clsx(
         "absolute z-30 h-10 w-10 -translate-x-1/2 -translate-y-1/2",
         spinning ? "pointer-events-none cursor-default" : grabbing ? "cursor-grabbing" : "cursor-grab",
@@ -70,7 +82,10 @@ export function UpgradeGauge({
   durationMs,
   extraSpins = EXTRA_SPINS,
   arcStartDeg,
+  minChance,
+  maxChance,
   onArcStartChange,
+  onWinChanceChange,
   onSettled,
 }: {
   chance: number;
@@ -82,7 +97,10 @@ export function UpgradeGauge({
   durationMs: number;
   extraSpins?: number;
   arcStartDeg: number;
+  minChance: number;
+  maxChance: number;
   onArcStartChange: (deg: number) => void;
+  onWinChanceChange: (chance: number) => void;
   onSettled: () => void;
 }) {
   const dialRef = useRef<HTMLDivElement>(null);
@@ -92,18 +110,23 @@ export function UpgradeGauge({
   const lastTickRef = useRef(0);
   const settledRef = useRef(onSettled);
   settledRef.current = onSettled;
-  const arcRef = useRef(arcStartDeg);
-  arcRef.current = arcStartDeg;
   const onArcRef = useRef(onArcStartChange);
   onArcRef.current = onArcStartChange;
-  const dragRef = useRef<{ lastDeg: number } | null>(null);
+  const onChanceRef = useRef(onWinChanceChange);
+  onChanceRef.current = onWinChanceChange;
+  const dragRef = useRef<{ lastDeg: number; mode: ArcGrab; start: number; sweep: number } | null>(null);
   const [hub, setHub] = useState<"idle" | "spin" | "win" | "lose">("idle");
   const [dragging, setDragging] = useState(false);
+  const [dragArc, setDragArc] = useState<{ start: number; sweep: number } | null>(null);
 
-  const winSweep = Math.max(0, Math.min(360, chance * 360));
-  const startDeg = wrapDeg(arcStartDeg);
-  const endDeg = wrapDeg(arcStartDeg + winSweep);
-  const arcPath = describeArc(arcStartDeg, winSweep, RING_R);
+  const propSweep = Math.max(0, Math.min(360, chance * 360));
+  const startDeg = wrapDeg(dragArc?.start ?? arcStartDeg);
+  const winSweep = dragArc?.sweep ?? propSweep;
+  const endDeg = wrapDeg(startDeg + winSweep);
+  const arcPath = describeArc(startDeg, winSweep, RING_R);
+  const hubChance = winSweep / 360;
+  const minSweep = Math.max(0.001, minChance * 360);
+  const maxSweep = Math.max(minSweep, Math.min(360 * (1 - Number.EPSILON), maxChance * 360));
 
   useEffect(() => {
     if (spinToken === 0) {
@@ -167,12 +190,16 @@ export function UpgradeGauge({
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (spinning) return;
     const grab = (e.target as Element | null)?.closest?.("[data-arc-grab]");
-    if (!grab) return;
+    const mode = grab?.getAttribute?.("data-arc-grab") as ArcGrab | null;
+    if (mode !== "start" && mode !== "end" && mode !== "rotate") return;
     const now = pointerDeg(e);
     if (now == null) return;
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    dragRef.current = { lastDeg: now };
+    const start = wrapDeg(arcStartDeg);
+    const sweep = Math.max(0, Math.min(360, chance * 360));
+    dragRef.current = { lastDeg: now, mode, start, sweep };
+    setDragArc({ start, sweep });
     setDragging(true);
   }
 
@@ -181,15 +208,32 @@ export function UpgradeGauge({
     if (!drag) return;
     const now = pointerDeg(e);
     if (now == null) return;
-    const next = wrapDeg(arcRef.current + shortestDegDelta(drag.lastDeg, now));
+    const delta = shortestDegDelta(drag.lastDeg, now);
     drag.lastDeg = now;
-    arcRef.current = next;
-    onArcRef.current(next);
+
+    if (drag.mode === "rotate") {
+      drag.start = wrapDeg(drag.start + delta);
+      setDragArc({ start: drag.start, sweep: drag.sweep });
+      onArcRef.current(drag.start);
+      return;
+    }
+
+    const prevSweep = drag.sweep;
+    if (drag.mode === "end") {
+      drag.sweep = Math.min(maxSweep, Math.max(minSweep, drag.sweep + delta));
+    } else {
+      drag.sweep = Math.min(maxSweep, Math.max(minSweep, drag.sweep - delta));
+      drag.start = wrapDeg(drag.start + (prevSweep - drag.sweep));
+      onArcRef.current(drag.start);
+    }
+    setDragArc({ start: drag.start, sweep: drag.sweep });
+    onChanceRef.current(drag.sweep / 360);
   }
 
   function endDrag(e: PointerEvent<HTMLDivElement>) {
     if (!dragRef.current) return;
     dragRef.current = null;
+    setDragArc(null);
     setDragging(false);
     if (e.currentTarget.hasPointerCapture(e.pointerId)) {
       e.currentTarget.releasePointerCapture(e.pointerId);
@@ -207,22 +251,22 @@ export function UpgradeGauge({
         onPointerUp={endDrag}
         onPointerCancel={endDrag}
         role="slider"
-        aria-label="Win zone position"
-        aria-valuemin={0}
-        aria-valuemax={359}
-        aria-valuenow={Math.round(wrapDeg(arcStartDeg))}
+        aria-label="Win zone size and position"
+        aria-valuemin={Math.round(minChance * 100)}
+        aria-valuemax={Math.round(maxChance * 100)}
+        aria-valuenow={Math.round(hubChance * 100)}
         aria-disabled={spinning}
       >
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden>
           <circle cx="50" cy="50" r={RING_R} fill="none" stroke="#243830" strokeWidth={RING_STROKE} pointerEvents="none" />
-          {chance > 0 && arcPath && (
+          {winSweep > 0 && arcPath && (
             <path
               d={arcPath}
               fill="none"
               stroke="#a3e635"
               strokeWidth={RING_STROKE}
               strokeLinecap="butt"
-              data-arc-grab=""
+              data-arc-grab="rotate"
               className={spinning ? undefined : dragging ? "cursor-grabbing" : "cursor-grab"}
               style={{
                 pointerEvents: spinning ? "none" : "stroke",
@@ -230,7 +274,7 @@ export function UpgradeGauge({
               }}
             />
           )}
-          {chance > 0 && (
+          {winSweep > 0 && (
             <>
               {[startDeg, endDeg].map((deg, i) => {
                 const cap = arcCap(deg);
@@ -253,10 +297,10 @@ export function UpgradeGauge({
           )}
         </svg>
 
-        {chance > 0 && (
+        {winSweep > 0 && (
           <>
-            <ArcHandle deg={startDeg} spinning={spinning} grabbing={dragging} />
-            <ArcHandle deg={endDeg} spinning={spinning} grabbing={dragging} />
+            <ArcHandle deg={startDeg} which="start" spinning={spinning} grabbing={dragging} />
+            <ArcHandle deg={endDeg} which="end" spinning={spinning} grabbing={dragging} />
           </>
         )}
 
@@ -287,7 +331,7 @@ export function UpgradeGauge({
           <div
             className="px-1.5 text-center"
             aria-live="polite"
-            aria-label={`${formatChancePct(chance)} for ${formatAttemptMultiplier(multiplier)}`}
+            aria-label={`${formatChancePct(hubChance)} for ${formatAttemptMultiplier(multiplier)}`}
           >
             <p
               className={clsx(
@@ -310,12 +354,12 @@ export function UpgradeGauge({
                   ? "text-lime-200"
                   : hub === "lose"
                     ? "text-slate-300"
-                    : chance > 0
+                    : hubChance > 0
                       ? "text-lime-300"
                       : "text-slate-500",
               )}
             >
-              {formatChancePct(chance)}
+              {formatChancePct(hubChance)}
             </p>
             <p
               className={clsx(

@@ -12,7 +12,6 @@ import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { ItemIcon } from "../components/ui/ItemIcon";
 import { UpgradeGauge } from "../components/upgrader/UpgradeGauge";
-import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { RARITIES } from "../data/rarities";
 import type { CaseItem } from "../data/items";
 import {
@@ -395,17 +394,14 @@ export function Upgrader() {
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button
-            type="button"
-            disabled={!canSpin}
-            onClick={() => void spin()}
-            className="btn-primary min-w-0 flex-1 px-8 py-3.5 text-base disabled:opacity-50"
-          >
-            {spinLabel()}
-          </button>
-          <WinLeaderStageMark game="upgrader" inline />
-        </div>
+        <button
+          type="button"
+          disabled={!canSpin}
+          onClick={() => void spin()}
+          className="btn-primary w-full px-8 py-3.5 text-base disabled:opacity-50"
+        >
+          {spinLabel()}
+        </button>
       </div>
 
       <div className="surface space-y-3 p-4">

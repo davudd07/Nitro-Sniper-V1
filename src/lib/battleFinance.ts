@@ -58,7 +58,6 @@ export function humanSeatPaidFraction(
     creatorBorrowPct: number;
     /** Local player's borrow. Same as creatorBorrowPct when they hosted. */
     joinerBorrowPct: number;
-    youAreCreator: boolean;
   },
 ): number {
   if (seat.kind === "bot" || seat.kind === "empty" || seat.kind === "joining") return 0;

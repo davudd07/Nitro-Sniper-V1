@@ -304,7 +304,6 @@ export function BattleRoom() {
                 creatorSeat: battle?.creatorSeat ?? 0,
                 creatorBorrowPct: battle?.creatorBorrowPct ?? 0,
                 joinerBorrowPct: borrowPct,
-                youAreCreator: battle?.source === "you",
               },
             ),
           );

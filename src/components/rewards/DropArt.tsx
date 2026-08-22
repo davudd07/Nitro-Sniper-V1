@@ -16,15 +16,21 @@ function Coin({
   );
 }
 
-export function CoinStackArt({ accent }: { accent: "green" | "lime" }) {
+export function CoinStackArt({ accent, extra = false }: { accent: "green" | "lime"; extra?: boolean }) {
   const fill = accent === "green" ? "#86efac" : "#bef264";
   const stroke = accent === "green" ? "#016b01" : "#3f6212";
   return (
-    <div className="relative h-40 w-44">
+    <div className={extra ? "relative h-44 w-44" : "relative h-40 w-44"}>
       <Coin className="absolute bottom-2 left-8 h-16 w-24 rotate-[-8deg] drop-shadow-md" fill={fill} stroke={stroke} />
       <Coin className="absolute bottom-7 left-2 h-16 w-24 rotate-[10deg] drop-shadow-md" fill="#fde68a" stroke="#854d0e" />
       <Coin className="absolute bottom-12 left-10 h-16 w-24 rotate-[-4deg] drop-shadow-md" fill={fill} stroke={stroke} />
       <Coin className="absolute bottom-[4.25rem] left-5 h-16 w-24 rotate-[6deg] drop-shadow-md" fill="#facc15" stroke="#a16207" />
+      {extra ? (
+        <>
+          <Coin className="absolute bottom-0 left-[3.25rem] h-14 w-20 rotate-[16deg] drop-shadow-md" fill={fill} stroke={stroke} />
+          <Coin className="absolute bottom-[5.6rem] left-11 h-14 w-20 rotate-[-14deg] drop-shadow-md" fill="#fde68a" stroke="#854d0e" />
+        </>
+      ) : null}
     </div>
   );
 }

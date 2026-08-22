@@ -12,6 +12,8 @@ export const LOW_BALANCE_THRESHOLD = 100;
 export const TOP_UP_AMOUNT = 10000;
 export const RAKEBACK_EARLY_PCT = 0.7;
 export const RAKEBACK_MATURE_MS = 24 * 60 * 60 * 1000;
+/** Daily rakeback uses the same 24h mature window as Instant Drop. */
+export const DAILY_RAKEBACK_MS = RAKEBACK_MATURE_MS;
 
 interface EconomyState {
   balance: number;
@@ -21,6 +23,8 @@ interface EconomyState {
   totalRakeback: number;
   pendingRakeback: number;
   rakebackMatureAt: number;
+  pendingDailyRakeback: number;
+  dailyMatureAt: number;
   lockedTips: number;
   tipWagerLeft: number;
   roundsPlayed: number;
@@ -31,6 +35,7 @@ interface EconomyState {
   grantPendingRakeback: (amount: number) => void;
   claimRakeback: () => number;
   claimEarlyRakeback: () => number;
+  claimDailyRakeback: () => number;
   receiveTip: (amount: number) => void;
   applyTipWager: (wagered: number) => void;
   recordRound: (wagered: number, won: number, game?: ActivityGame) => void;
@@ -48,6 +53,8 @@ export const useEconomyStore = create<EconomyState>()(
       totalRakeback: 0,
       pendingRakeback: 0,
       rakebackMatureAt: 0,
+      pendingDailyRakeback: 0,
+      dailyMatureAt: 0,
       lockedTips: 0,
       tipWagerLeft: 0,
       roundsPlayed: 0,
@@ -69,13 +76,19 @@ export const useEconomyStore = create<EconomyState>()(
         const loyalty = useLoyaltyStore.getState();
         const vip = resolveVip(loyalty.xpByUser[LOCAL_XP_USER] ?? 0, loyalty.config.tiers);
         const amt = base * (1 + (vip.current.rakebackBonusPct || 0));
-        set((s) => ({
-          pendingRakeback: (s.pendingRakeback ?? 0) + amt,
-          rakebackMatureAt:
-            (s.pendingRakeback ?? 0) <= 0 && !(s.rakebackMatureAt ?? 0)
-              ? Date.now() + RAKEBACK_MATURE_MS
-              : s.rakebackMatureAt ?? 0,
-        }));
+        const now = Date.now();
+        set((s) => {
+          const instantPending = s.pendingRakeback ?? 0;
+          const dailyPending = s.pendingDailyRakeback ?? 0;
+          return {
+            pendingRakeback: instantPending + amt,
+            rakebackMatureAt:
+              instantPending <= 0 && !(s.rakebackMatureAt ?? 0) ? now + RAKEBACK_MATURE_MS : s.rakebackMatureAt ?? 0,
+            pendingDailyRakeback: dailyPending + amt,
+            dailyMatureAt:
+              dailyPending <= 0 && !(s.dailyMatureAt ?? 0) ? now + DAILY_RAKEBACK_MS : s.dailyMatureAt ?? 0,
+          };
+        });
         return amt;
       },
       grantPendingRakeback: (amount) => {
@@ -114,6 +127,19 @@ export const useEconomyStore = create<EconomyState>()(
           totalRakeback: s.totalRakeback + paid,
         }));
         return paid;
+      },
+      claimDailyRakeback: () => {
+        const amt = get().pendingDailyRakeback ?? 0;
+        if (amt <= 0) return 0;
+        const matureAt = get().dailyMatureAt ?? 0;
+        if (matureAt > Date.now()) return 0;
+        set((s) => ({
+          pendingDailyRakeback: 0,
+          dailyMatureAt: 0,
+          balance: s.balance + amt,
+          totalRakeback: s.totalRakeback + amt,
+        }));
+        return amt;
       },
       receiveTip: (amount) => {
         if (amount <= 0) return;
@@ -181,6 +207,8 @@ export const useEconomyStore = create<EconomyState>()(
           totalRakeback: 0,
           pendingRakeback: 0,
           rakebackMatureAt: 0,
+          pendingDailyRakeback: 0,
+          dailyMatureAt: 0,
           lockedTips: 0,
           tipWagerLeft: 0,
           roundsPlayed: 0,

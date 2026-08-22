@@ -1,26 +1,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { shortId } from "../lib/format";
-import {
-  LOCAL_XP_USER,
-  MAX_XP_LEDGER,
-  activeBoosts,
-  calculateWagerXp,
-  combineBoosts,
-  mergeLoyaltyConfig,
-  resolveVip,
-  roundXp,
-  utcDayKey,
-  type LoyaltyConfig,
-  type LoyaltyMission,
-  type VipTier,
-  type WagerCurrency,
-  type XpBoost,
-  type XpCategory,
-  type XpMode,
-  type XpSource,
-  type XpTransaction,
-} from "../lib/loyalty";
+import { LOCAL_XP_USER, MAX_XP_LEDGER, activeBoosts, calculateWagerXp, combineBoosts, mergeLoyaltyConfig, rankDropsBetween, resolveVip, roundXp, utcDayKey, type LoyaltyConfig, type LoyaltyMission, type VipTier, type WagerCurrency, type XpBoost, type XpCategory, type XpMode, type XpSource, type XpTransaction } from "../lib/loyalty";
 import { useAuthStore } from "./authStore";
 import { useToastStore } from "./toastStore";
 
@@ -108,7 +89,7 @@ export const useLoyaltyStore = create<LoyaltyState>()(
         })),
       setTiers: (tiers) =>
         set((s) => ({
-          config: { ...s.config, tiers: [...tiers].sort((a, b) => a.minXp - b.minXp) },
+          config: { ...s.config, tiers: [...tiers.map((t) => ({ ...t }))].sort((a, b) => a.minXp - b.minXp) },
         })),
       setMissions: (missions) => set((s) => ({ config: { ...s.config, missions } })),
       addBoost: (boost) => {
@@ -295,7 +276,14 @@ function maybeRankUp(before: number, after: number, tiers: VipTier[], userId: st
   const prev = resolveVip(before, tiers).current;
   const next = resolveVip(after, tiers).current;
   if (prev.id === next.id) return;
-  useToastStore.getState().push(`VIP ${next.name} reached.`, "success");
+  const drops = rankDropsBetween(before, after, tiers);
+  if (drops.amount > 0) {
+    void import("./economyStore").then(({ useEconomyStore }) => {
+      useEconomyStore.getState().credit(drops.amount);
+    });
+  }
+  const extra = drops.amount > 0 ? ` · +${drops.amount} SH rank drop` : "";
+  useToastStore.getState().push(`VIP ${next.name} reached.${extra}`, "success");
 }
 
 export function awardWagerXp(input: {

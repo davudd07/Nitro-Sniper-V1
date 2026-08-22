@@ -152,6 +152,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
+  const pendingDailyRakeback = useEconomyStore((s) => s.pendingDailyRakeback);
   const totalWagered = useEconomyStore((s) => s.totalWagered);
   const totalWon = useEconomyStore((s) => s.totalWon);
   const roundsPlayed = useEconomyStore((s) => s.roundsPlayed);
@@ -373,10 +374,11 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
               </p>
             )}
 
-            <div className="grid gap-3 sm:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Stat label="Your Shards" value={formatCredits(balance)} />
               <Stat label="Fun Coins" value={formatFunCoins(funCoins)} />
-              <Stat label="Pending rakeback" value={formatRakeback(pendingRakeback ?? 0)} />
+              <Stat label="Pending Instant" value={formatRakeback(pendingRakeback ?? 0)} />
+              <Stat label="Pending Daily" value={formatRakeback(pendingDailyRakeback ?? 0)} />
               <Stat label="Wagered / rounds" value={`${formatCredits(totalWagered)} · ${roundsPlayed}`} />
             </div>
             <p className="text-xs text-slate-500">

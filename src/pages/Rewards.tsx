@@ -5,11 +5,14 @@ import { clsx } from "clsx";
 import { X } from "lucide-react";
 import { CoinStackArt, TreasureChestArt } from "../components/rewards/DropArt";
 import { PlayerVipPanel } from "../components/loyalty/PlayerVipPanel";
+import { RankRewardsGrid } from "../components/loyalty/RankRewardsGrid";
 import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
+import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
 import { formatDropCountdown } from "../lib/xp";
 import { RAKEBACK_EARLY_PCT, useEconomyStore } from "../store/economyStore";
+import { useLoyaltyStore } from "../store/loyaltyStore";
 import { MONTHLY_DROP_SH, useRewardsStore, WEEKLY_DROP_SH } from "../store/rewardsStore";
 import { useToastStore } from "../store/toastStore";
 
@@ -131,13 +134,19 @@ function DropCard({
 export function Rewards() {
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
   const rakebackMatureAt = useEconomyStore((s) => s.rakebackMatureAt);
+  const pendingDailyRakeback = useEconomyStore((s) => s.pendingDailyRakeback);
+  const dailyMatureAt = useEconomyStore((s) => s.dailyMatureAt);
   const claimRakeback = useEconomyStore((s) => s.claimRakeback);
   const claimEarlyRakeback = useEconomyStore((s) => s.claimEarlyRakeback);
+  const claimDailyRakeback = useEconomyStore((s) => s.claimDailyRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const weeklyReadyAt = useRewardsStore((s) => s.weeklyReadyAt);
   const monthlyReadyAt = useRewardsStore((s) => s.monthlyReadyAt);
   const claimWeekly = useRewardsStore((s) => s.claimWeekly);
   const claimMonthly = useRewardsStore((s) => s.claimMonthly);
+  const lifetimeXp = useLoyaltyStore((s) => s.xpByUser[LOCAL_XP_USER] ?? 0);
+  const tiers = useLoyaltyStore((s) => s.config.tiers);
+  const vip = resolveVip(lifetimeXp, tiers);
   const push = useToastStore((s) => s.push);
   const [now, setNow] = useState(() => Date.now());
 
@@ -150,6 +159,9 @@ export function Rewards() {
   const matureAt = rakebackMatureAt ?? 0;
   const instantMature = pending > 0 && matureAt <= now;
   const canClaimEarly = pending > 0 && !instantMature;
+  const dailyPending = pendingDailyRakeback ?? 0;
+  const dailyAt = dailyMatureAt ?? 0;
+  const dailyMature = dailyPending > 0 && dailyAt <= now;
   const weeklyReady = now >= weeklyReadyAt;
   const monthlyReady = now >= monthlyReadyAt;
 
@@ -194,6 +206,21 @@ export function Rewards() {
     push(`Claimed monthly drop: ${formatCredits(amt)} SH.`, "success");
   }
 
+  function handleDaily() {
+    const amt = claimDailyRakeback();
+    if (amt <= 0) {
+      push(
+        dailyPending > 0
+          ? "Daily rakeback is still maturing — wait for the 24h timer."
+          : "Nothing to claim yet — play a real stake first.",
+        "info",
+      );
+      return;
+    }
+    sound.win("small");
+    push(`Claimed ${formatRakeback(amt)} SH daily rakeback.`, "success");
+  }
+
   return (
     <div className="space-y-5">
       <PlayerVipPanel compact />
@@ -203,7 +230,7 @@ export function Rewards() {
         </Link>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <DropCard
           word="Instant"
           variant="green"
@@ -231,9 +258,29 @@ export function Rewards() {
           }
         />
         <DropCard
+          word="Daily"
+          variant="green"
+          art={<CoinStackArt accent="green" />}
+          amount={dailyPending > 0 ? `${formatRakeback(dailyPending)} SH` : undefined}
+          footer={
+            dailyPending <= 0 ? "Not claimable" : dailyMature ? "Claim" : formatDropCountdown(dailyAt - now)
+          }
+          footerDisabled={dailyPending <= 0 || !dailyMature}
+          onFooter={handleDaily}
+          info={
+            <DropInfo title="Daily drop">
+              <p>
+                A separate rakeback bucket from real demo stakes (bet &gt; 0). It accrues with Instant Drop from the
+                same house-edge slice, plus your VIP rakeback bonus. Claim 100% after 24 hours from the first pending
+                accrual of the cycle. After a claim, new stakes start a fresh daily timer. No early claim.
+              </p>
+            </DropInfo>
+          }
+        />
+        <DropCard
           word="Weekly"
           variant="lime"
-          art={<CoinStackArt accent="lime" />}
+          art={<CoinStackArt accent="lime" extra />}
           amount={weeklyReady ? `${formatCredits(WEEKLY_DROP_SH)} SH` : undefined}
           footer={weeklyReady ? "Claim" : formatDropCountdown(weeklyReadyAt - now)}
           footerDisabled={!weeklyReady}
@@ -269,10 +316,13 @@ export function Rewards() {
       </div>
 
       <p className="text-xs leading-relaxed text-slate-500">
-        Instant Drop is rakeback: {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real demo stakes
-        (bet &gt; 0), plus your VIP rakeback bonus. Full claim after 24 hours; claim early for{" "}
-        {formatPercent(RAKEBACK_EARLY_PCT)} of the pending amount. Chat rain still lives in the chat sidebar.
+        Instant Drop and Daily Drop each accrue {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real
+        demo stakes (bet &gt; 0), plus your VIP rakeback bonus. Instant: full claim after 24 hours, or claim early for{" "}
+        {formatPercent(RAKEBACK_EARLY_PCT)} of the pending amount. Daily: 24h mature, 100% claim only. Game RTP is
+        unchanged. Chat rain still lives in the chat sidebar.
       </p>
+
+      <RankRewardsGrid tiers={tiers} currentId={vip.current.id} lifetimeXp={lifetimeXp} />
 
       <Link to="/" className="text-sm text-slate-400 hover:text-white">
         ← Back to lobby

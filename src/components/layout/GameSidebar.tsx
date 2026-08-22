@@ -24,7 +24,8 @@ export function GameSidebar() {
   const open = useSettingsStore((s) => s.leftNavOpen);
   const toggle = useSettingsStore((s) => s.toggleLeftNav);
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
-  const hasClaim = (pendingRakeback ?? 0) > 0;
+  const pendingDailyRakeback = useEconomyStore((s) => s.pendingDailyRakeback);
+  const hasClaim = (pendingRakeback ?? 0) > 0 || (pendingDailyRakeback ?? 0) > 0;
   const navigate = useNavigate();
 
   return (

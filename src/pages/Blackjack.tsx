@@ -236,6 +236,7 @@ export function Blackjack() {
     if (rb <= 0) return;
     useEconomyStore.setState((s) => ({
       pendingRakeback: Math.max(0, (s.pendingRakeback ?? 0) - rb),
+      pendingDailyRakeback: Math.max(0, (s.pendingDailyRakeback ?? 0) - rb),
     }));
   }
 

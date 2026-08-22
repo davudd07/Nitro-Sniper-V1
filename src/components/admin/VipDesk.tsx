@@ -7,6 +7,7 @@ import {
   LOYALTY_GAMES,
   XP_CATEGORIES,
   XP_CATEGORY_LABELS,
+  normalizeVipTier,
   type VipTier,
 } from "../../lib/loyalty";
 import { useLoyaltyStore } from "../../store/loyaltyStore";
@@ -30,7 +31,7 @@ export function VipDesk() {
   const houseEdgeMode = config.mode === "house_edge";
 
   function saveTiers(next: VipTier[]) {
-    setTiers(next);
+    setTiers(next.map((t) => normalizeVipTier(t)));
     sound.click();
     push("VIP tiers saved.", "success");
   }
@@ -228,7 +229,13 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
   return (
     <div className="surface p-5">
       <div className="mb-3 flex items-center justify-between gap-2">
-        <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">VIP tiers & benefits</p>
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">VIP tiers & benefits</p>
+          <p className="mt-1 text-[11px] text-slate-500">
+            Default ladder: Unranked (0 XP) through Emperor. Min XP, rakeback bonus, and one-time rank drops are
+            editable. Cosmetic titles are play-money only.
+          </p>
+        </div>
         <div className="flex gap-2">
           <button
             type="button"
@@ -243,6 +250,8 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
                   color: "#67e8f9",
                   benefits: "Describe the benefit.",
                   rakebackBonusPct: 0,
+                  rankDropSh: 0,
+                  cosmetic: "",
                 },
               ])
             }
@@ -257,11 +266,11 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
       <div className="space-y-3">
         {draft.map((t, i) => (
           <div key={t.id} className="rounded-md border border-white/8 bg-black/20 p-3">
-            <div className="grid gap-2 sm:grid-cols-4">
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
               <input
                 value={t.name}
                 onChange={(e) => update(i, { name: e.target.value })}
-                className="rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white outline-none"
+                className="rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white outline-none sm:col-span-2 xl:col-span-1"
               />
               <label className="text-[10px] uppercase tracking-wide text-slate-500">
                 Min XP
@@ -285,6 +294,16 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
                 />
               </label>
               <label className="text-[10px] uppercase tracking-wide text-slate-500">
+                Rank drop SH
+                <input
+                  type="number"
+                  min={0}
+                  value={t.rankDropSh ?? 0}
+                  onChange={(e) => update(i, { rankDropSh: Math.max(0, Number(e.target.value) || 0) })}
+                  className="mt-0.5 block w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 font-mono text-sm text-white outline-none"
+                />
+              </label>
+              <label className="text-[10px] uppercase tracking-wide text-slate-500">
                 Color
                 <input
                   value={t.color}
@@ -293,6 +312,12 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
                 />
               </label>
             </div>
+            <input
+              value={t.cosmetic ?? ""}
+              onChange={(e) => update(i, { cosmetic: e.target.value })}
+              placeholder="Cosmetic title"
+              className="mt-2 w-full rounded-md border border-white/10 bg-black/40 px-2 py-1.5 text-sm text-white outline-none"
+            />
             <div className="mt-2 flex gap-2">
               <input
                 value={t.benefits}
@@ -309,7 +334,8 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
               </button>
             </div>
             <p className="mt-1 text-[10px] text-slate-600">
-              {formatXp(t.minXp)} XP · Instant Drop +{formatPercent(t.rakebackBonusPct)}
+              {formatXp(t.minXp)} XP · Instant/Daily +{formatPercent(t.rakebackBonusPct)}
+              {t.rankDropSh > 0 ? ` · ${t.rankDropSh} SH drop` : ""}
             </p>
           </div>
         ))}

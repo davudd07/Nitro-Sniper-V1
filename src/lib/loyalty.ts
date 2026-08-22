@@ -29,8 +29,12 @@ export interface VipTier {
   minXp: number;
   color: string;
   benefits: string;
-  /** Extra Instant Drop rakeback, e.g. 0.1 = +10%. */
+  /** Extra Instant (and Daily) Drop rakeback, e.g. 0.1 = +10%. */
   rakebackBonusPct: number;
+  /** One-time play-money Shard drop the first time this rank is reached. */
+  rankDropSh: number;
+  /** Cosmetic / title copy shown on Rewards and VIP. Play-money only. */
+  cosmetic: string;
 }
 
 export interface LoyaltyMission {
@@ -124,54 +128,184 @@ export const DEFAULT_HOUSE_EDGES: Record<string, number> = Object.fromEntries(
   LOYALTY_GAMES.map((g) => [g.id, g.houseEdge]),
 );
 
+/** Old Bronze → Obsidian six-rank ladder. Replaced on rehydrate. */
+export const LEGACY_DEFAULT_TIER_IDS = ["bronze", "silver", "gold", "platinum", "diamond", "obsidian"] as const;
+
+/**
+ * Lifetime XP thresholds (flat mode ≈ 0.2 XP per 1 SH wagered).
+ * Unranked is 0. The rest is an increasing curve through mid (Diamond ~55k–130k)
+ * into prestige (Emperor 2.6M ≈ 13M SH wagered).
+ */
 export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
-    id: "bronze",
-    name: "Bronze",
+    id: "unranked",
+    name: "Unranked",
     minXp: 0,
-    color: "#cd7f32",
-    benefits: "Standard Instant Drop rakeback.",
+    color: "#64748b",
+    benefits: "Standard Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0,
+    rankDropSh: 0,
+    cosmetic: "Starter vault badge",
   },
   {
-    id: "silver",
-    name: "Silver",
+    id: "silver_1",
+    name: "Silver 1",
+    minXp: 1_000,
+    color: "#94a3b8",
+    benefits: "+2% Instant Drop and Daily rakeback.",
+    rakebackBonusPct: 0.02,
+    rankDropSh: 0,
+    cosmetic: "Silver I badge",
+  },
+  {
+    id: "silver_2",
+    name: "Silver 2",
     minXp: 2_500,
-    color: "#c0c0c0",
-    benefits: "+5% Instant Drop rakeback.",
-    rakebackBonusPct: 0.05,
+    color: "#cbd5e1",
+    benefits: "+4% Instant Drop and Daily rakeback.",
+    rakebackBonusPct: 0.04,
+    rankDropSh: 0,
+    cosmetic: "Silver II badge",
   },
   {
-    id: "gold",
-    name: "Gold",
+    id: "silver_3",
+    name: "Silver 3",
+    minXp: 5_000,
+    color: "#e2e8f0",
+    benefits: "+6% Instant Drop and Daily rakeback. One-time 25 SH rank drop.",
+    rakebackBonusPct: 0.06,
+    rankDropSh: 25,
+    cosmetic: "Silver III badge",
+  },
+  {
+    id: "gold_1",
+    name: "Gold 1",
     minXp: 10_000,
+    color: "#ca8a04",
+    benefits: "+8% Instant Drop and Daily rakeback.",
+    rakebackBonusPct: 0.08,
+    rankDropSh: 0,
+    cosmetic: "Gold I badge",
+  },
+  {
+    id: "gold_2",
+    name: "Gold 2",
+    minXp: 20_000,
     color: "#eab308",
-    benefits: "+10% Instant Drop rakeback.",
+    benefits: "+10% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.1,
+    rankDropSh: 0,
+    cosmetic: "Gold II badge",
   },
   {
-    id: "platinum",
-    name: "Platinum",
-    minXp: 40_000,
+    id: "gold_3",
+    name: "Gold 3",
+    minXp: 35_000,
+    color: "#facc15",
+    benefits: "+12% Instant Drop and Daily rakeback. One-time 75 SH rank drop.",
+    rakebackBonusPct: 0.12,
+    rankDropSh: 75,
+    cosmetic: "Gold III badge",
+  },
+  {
+    id: "diamond_1",
+    name: "Diamond 1",
+    minXp: 55_000,
     color: "#67e8f9",
-    benefits: "+15% Instant Drop rakeback.",
-    rakebackBonusPct: 0.15,
+    benefits: "+14% Instant Drop and Daily rakeback.",
+    rakebackBonusPct: 0.14,
+    rankDropSh: 0,
+    cosmetic: "Diamond I chrome",
   },
   {
-    id: "diamond",
-    name: "Diamond",
-    minXp: 120_000,
-    color: "#a78bfa",
-    benefits: "+20% Instant Drop rakeback. Warden queue priority (demo copy).",
+    id: "diamond_2",
+    name: "Diamond 2",
+    minXp: 85_000,
+    color: "#22d3ee",
+    benefits: "+16% Instant Drop and Daily rakeback.",
+    rakebackBonusPct: 0.16,
+    rankDropSh: 0,
+    cosmetic: "Diamond II chrome",
+  },
+  {
+    id: "diamond_3",
+    name: "Diamond 3",
+    minXp: 130_000,
+    color: "#a5f3fc",
+    benefits: "+18% Instant Drop and Daily rakeback. One-time 150 SH rank drop.",
+    rakebackBonusPct: 0.18,
+    rankDropSh: 150,
+    cosmetic: "Diamond III chrome",
+  },
+  {
+    id: "emerald",
+    name: "Emerald",
+    minXp: 200_000,
+    color: "#34d399",
+    benefits: "+20% Instant Drop and Daily rakeback. One-time 200 SH rank drop.",
     rakebackBonusPct: 0.2,
+    rankDropSh: 200,
+    cosmetic: "Emerald vault title",
+  },
+  {
+    id: "sapphire",
+    name: "Sapphire",
+    minXp: 300_000,
+    color: "#3b82f6",
+    benefits: "+22% Instant Drop and Daily rakeback. Warden queue priority (demo copy).",
+    rakebackBonusPct: 0.22,
+    rankDropSh: 0,
+    cosmetic: "Sapphire vault title",
+  },
+  {
+    id: "ruby",
+    name: "Ruby",
+    minXp: 450_000,
+    color: "#f43f5e",
+    benefits: "+24% Instant Drop and Daily rakeback. One-time 300 SH rank drop.",
+    rakebackBonusPct: 0.24,
+    rankDropSh: 300,
+    cosmetic: "Ruby vault title",
+  },
+  {
+    id: "elite",
+    name: "Elite",
+    minXp: 700_000,
+    color: "#a78bfa",
+    benefits: "+26% Instant Drop and Daily rakeback. One-time 400 SH rank drop.",
+    rakebackBonusPct: 0.26,
+    rankDropSh: 400,
+    cosmetic: "Elite banner",
+  },
+  {
+    id: "grandmaster",
+    name: "Grandmaster",
+    minXp: 1_100_000,
+    color: "#f97316",
+    benefits: "+28% Instant Drop and Daily rakeback. One-time 500 SH rank drop.",
+    rakebackBonusPct: 0.28,
+    rankDropSh: 500,
+    cosmetic: "Grandmaster title",
   },
   {
     id: "obsidian",
     name: "Obsidian",
-    minXp: 400_000,
-    color: "#34d399",
-    benefits: "+25% Instant Drop rakeback. Highest vault status.",
-    rakebackBonusPct: 0.25,
+    minXp: 1_700_000,
+    color: "#2dd4bf",
+    benefits: "+30% Instant Drop and Daily rakeback. One-time 750 SH rank drop.",
+    rakebackBonusPct: 0.3,
+    rankDropSh: 750,
+    cosmetic: "Obsidian vault chrome",
+  },
+  {
+    id: "emperor",
+    name: "Emperor",
+    minXp: 2_600_000,
+    color: "#fbbf24",
+    benefits: "+35% Instant Drop and Daily rakeback. Emperor vault status. One-time 1,000 SH rank drop.",
+    rakebackBonusPct: 0.35,
+    rankDropSh: 1_000,
+    cosmetic: "Emperor crown (cosmetic)",
   },
 ];
 
@@ -262,8 +396,57 @@ export function calculateWagerXp(input: {
   };
 }
 
+export function normalizeVipTier(t: Partial<VipTier> & Pick<VipTier, "id" | "name">): VipTier {
+  return {
+    id: t.id,
+    name: t.name,
+    minXp: Math.max(0, Number(t.minXp) || 0),
+    color: t.color && t.color.trim() ? t.color : "#67e8f9",
+    benefits: t.benefits ?? "",
+    rakebackBonusPct: Math.max(0, Number(t.rakebackBonusPct) || 0),
+    rankDropSh: Math.max(0, Number(t.rankDropSh) || 0),
+    cosmetic: t.cosmetic ?? "",
+  };
+}
+
+export function isLegacyDefaultVipTiers(tiers: VipTier[]): boolean {
+  if (tiers.length !== LEGACY_DEFAULT_TIER_IDS.length) return false;
+  return tiers.every((t, i) => t.id === LEGACY_DEFAULT_TIER_IDS[i]);
+}
+
+export function migrateVipTiers(tiers?: VipTier[] | null): VipTier[] {
+  if (!Array.isArray(tiers) || tiers.length === 0 || isLegacyDefaultVipTiers(tiers)) {
+    return DEFAULT_VIP_TIERS.map((t) => ({ ...t }));
+  }
+  return tiers.map((t) => normalizeVipTier(t));
+}
+
 export function sortedTiers(tiers: VipTier[]): VipTier[] {
   return [...tiers].sort((a, b) => a.minXp - b.minXp);
+}
+
+/** Play-money SH granted when lifetime XP crosses one or more ranks. */
+export function rankDropsBetween(
+  before: number,
+  after: number,
+  tiers: VipTier[],
+): { amount: number; names: string[] } {
+  const list = sortedTiers(tiers.length ? tiers : DEFAULT_VIP_TIERS);
+  const prev = resolveVip(before, list);
+  const next = resolveVip(after, list);
+  if (prev.current.id === next.current.id) return { amount: 0, names: [] };
+  const prevIdx = list.findIndex((t) => t.id === prev.current.id);
+  const nextIdx = list.findIndex((t) => t.id === next.current.id);
+  if (prevIdx < 0 || nextIdx < 0 || nextIdx <= prevIdx) return { amount: 0, names: [] };
+  let amount = 0;
+  const names: string[] = [];
+  for (let i = prevIdx + 1; i <= nextIdx; i++) {
+    const t = list[i];
+    if (!t) continue;
+    names.push(t.name);
+    amount += Math.max(0, t.rankDropSh || 0);
+  }
+  return { amount, names };
 }
 
 export function resolveVip(
@@ -317,13 +500,12 @@ export function combineBoosts(boosts: XpBoost[]): { multiplier: number; extraXpP
 
 export function mergeLoyaltyConfig(partial?: Partial<LoyaltyConfig> | null): LoyaltyConfig {
   const src = partial ?? {};
-  const tiers = Array.isArray(src.tiers) && src.tiers.length > 0 ? src.tiers.map((t) => ({ ...t })) : DEFAULT_VIP_TIERS.map((t) => ({ ...t }));
   return {
     mode: src.mode === "house_edge" ? "house_edge" : "flat",
     flatRates: { ...DEFAULT_FLAT_RATES, ...src.flatRates },
     categoryMultipliers: { ...DEFAULT_CATEGORY_MULTIPLIERS, ...src.categoryMultipliers },
     houseEdges: { ...DEFAULT_HOUSE_EDGES, ...src.houseEdges },
-    tiers,
+    tiers: migrateVipTiers(src.tiers),
     missions: Array.isArray(src.missions) && src.missions.length > 0 ? src.missions.map((m) => ({ ...m })) : DEFAULT_MISSIONS.map((m) => ({ ...m })),
   };
 }

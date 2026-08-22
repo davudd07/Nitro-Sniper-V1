@@ -24,18 +24,29 @@ export function WinLeaderBadge({
   return <WinLeaderMark game={game} record={record} className={className} compact={compact} />;
 }
 
-/** Compact trophy + name, inset in the bottom-right of the green game `surface`. */
+/** Compact trophy + name. Overlay sits in the bottom-right of a `relative` green `surface`; `inline` docks it in-flow so it cannot cover action buttons. */
 export function WinLeaderStageMark({
   game,
   className,
+  inline = false,
 }: {
   game: WinLeaderGame;
   className?: string;
+  /** Place the mark in document flow (e.g. beside a full-width Upgrade button). */
+  inline?: boolean;
 }) {
   const record = useWinLeaderStore((s) => s.records[game]);
   if (!record) return null;
   return (
-    <div className={clsx("pointer-events-auto absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3", className)}>
+    <div
+      className={clsx(
+        "pointer-events-auto",
+        inline
+          ? "relative shrink-0"
+          : "absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3",
+        className,
+      )}
+    >
       <WinLeaderMark
         game={game}
         record={record}

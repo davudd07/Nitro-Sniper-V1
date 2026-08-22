@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { rakebackAmount } from "../lib/rakeback";
 import { logPlay, type ActivityGame } from "./activityStore";
+import { maybeShoutBigWin } from "../lib/bigWinChat";
 import { considerWinLeader, localWinName } from "./winLeaderStore";
 import { awardWagerXp, useLoyaltyStore } from "./loyaltyStore";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
@@ -196,6 +197,7 @@ export const useEconomyStore = create<EconomyState>()(
           if (game !== "battles" && wagered > 0 && won > 0) {
             considerWinLeader(game, { name: localWinName(), multiplier: won / wagered, isYou: true });
           }
+          maybeShoutBigWin(localWinName(), wagered, won, game);
         }
       },
       reset: () =>

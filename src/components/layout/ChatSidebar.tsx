@@ -85,9 +85,11 @@ export function ChatSidebar() {
                   "rounded-md border px-2.5 py-1.5",
                   m.rain
                     ? "border-amber-400/40 bg-amber-400/10"
-                    : m.you
-                      ? "border-fuchsia-400/30 bg-black/25"
-                      : "border-white/8 bg-black/25",
+                    : m.shout
+                      ? "border-lime-400/40 bg-lime-400/10"
+                      : m.you
+                        ? "border-fuchsia-400/30 bg-black/25"
+                        : "border-white/8 bg-black/25",
                 )}
               >
                 <div className="flex items-start justify-between gap-2">
@@ -102,8 +104,8 @@ export function ChatSidebar() {
                     nameClassName="text-[11px] font-bold"
                   />
                   <span className="flex items-center gap-0.5">
-                    {!m.rain && !m.you && !m.tip && <PlayerTipButton name={m.name} />}
-                    {adminView && !m.rain && <ChatModMenu name={m.name} />}
+                    {!m.rain && !m.shout && !m.you && !m.tip && <PlayerTipButton name={m.name} />}
+                    {adminView && !m.rain && !m.shout && <ChatModMenu name={m.name} />}
                   </span>
                 </div>
                 <p className="text-[12px] leading-snug text-slate-200">{m.text}</p>

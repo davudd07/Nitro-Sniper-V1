@@ -17,6 +17,7 @@ export interface ChatMessage {
   you?: boolean;
   rain?: boolean;
   tip?: boolean;
+  shout?: boolean;
   at: number;
 }
 

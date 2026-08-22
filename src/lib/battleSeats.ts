@@ -1,6 +1,34 @@
 import { BATTLE_MODES, PLAYER_COLORS, totalPlayers, type BattleMode } from "../data/battleModes";
 import { BOT_NAMES } from "../data/botNames";
-import type { BattleConfig, BattleJoinIntent, BattleRosterSeat } from "../store/battleStore";
+import type { BattleConfig, BattleJoinIntent, BattleRosterKind, BattleRosterSeat } from "../store/battleStore";
+
+/** Bot columns from `botSeats` / `prefillBots` (and filled empties). They unroll cases but never pay commission. */
+export function isBotSeatKind(kind: BattleRosterKind): boolean {
+  return kind === "bot";
+}
+
+/**
+ * Actual people who generate community-case commission: the local player (`you`)
+ * and other human seats (`player`). Empty / joining / bot columns do not accrue.
+ */
+export function isHumanBattleOpener(kind: BattleRosterKind): boolean {
+  return kind === "you" || kind === "player";
+}
+
+/**
+ * Paid-open credits toward creator earnings. Defaults to 1 per human seat.
+ * Pass `creditForHuman` so borrow-mode can scale a human seat (bots stay 0).
+ */
+export function communityPaidOpenCredits(
+  seats: { kind: BattleRosterKind }[],
+  creditForHuman: (seat: { kind: BattleRosterKind }, index: number) => number = () => 1,
+): number {
+  return seats.reduce((sum, seat, index) => {
+    if (!isHumanBattleOpener(seat.kind) || isBotSeatKind(seat.kind)) return sum;
+    const w = creditForHuman(seat, index);
+    return sum + (Number.isFinite(w) && w > 0 ? w : 0);
+  }, 0);
+}
 
 function botNameFor(battleId: string, slot: number): string {
   return BOT_NAMES[(slot + battleId.length) % BOT_NAMES.length];

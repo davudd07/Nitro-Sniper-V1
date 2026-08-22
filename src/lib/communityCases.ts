@@ -18,6 +18,12 @@ import { HOUSE_EDGE } from "./rakeback";
  * Example at 4% house edge, EV 96 → price 100. House take 4 SH. Creator 0.20 SH.
  * Player RTP is unchanged vs official (~96%). Commission does NOT raise price.
  * +EV community cases are rejected (EV must be < price).
+ *
+ * Who pays: only actual people. Solo opens by the logged-in user accrue.
+ * In battles, each human opener (`you` / `player`) accrues; bot columns
+ * (`kind === "bot"`, from `botSeats` / `prefillBots`) that unroll the same
+ * case do not. Demo 0-stakes and battle replays do not pay. Borrow-mode
+ * credits, when applied, scale human seats only.
  */
 export const COMMUNITY_COMMISSION_OF_EDGE = 0.05;
 /** @deprecated Use COMMUNITY_COMMISSION_OF_EDGE — this is 5% of the house-edge take, not of price. */

@@ -54,12 +54,12 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
           </button>
         </div>
         <p className="text-sm leading-relaxed text-slate-400">
-          Every time someone opens your community case you get{" "}
+          Every time a person opens your community case you get{" "}
           <span className="font-semibold text-emerald-200">
             {formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of the house edge
           </span>{" "}
           as commission — not {formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of the whole pot, and not a cut of the case
-          price. Demo 0-stakes and battle replays do not pay.
+          price. Demo 0-stakes, battle replays, and bot seats do not pay.
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">

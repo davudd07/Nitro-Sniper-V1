@@ -43,6 +43,12 @@ interface CommunityCasePersisted {
 
 interface CommunityCaseState extends CommunityCasePersisted {
   createCase: (input: CreateCommunityCaseInput) => { ok: true; id: string } | { ok: false; error: string };
+  /**
+   * Credit creator earnings for paid human opens. `paidOpens` may be fractional
+   * (borrow-mode credits on a human seat). Bot opens must not be included.
+   */
+  accrue: (caseId: string, paidOpens: number) => number;
+  /** @deprecated Use `accrue` — same behavior, human paid-opens only. */
   payOpens: (caseId: string, opens: number) => number;
   claimEarnings: (creatorId: string) => number;
   earningsFor: (creatorId: string) => { total: number; claimable: number; opens: number };
@@ -104,11 +110,11 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
         useEconomyStore.getState().credit(amount);
         return amount;
       },
-      payOpens: (caseId, opens) => {
-        if (opens <= 0) return 0;
+      accrue: (caseId, paidOpens) => {
+        if (!(paidOpens > 0)) return 0;
         const rec = get().cases.find((c) => c.id === caseId);
         if (!rec) return 0;
-        const amount = communityCommissionPerOpen(rec.price, rec.houseEdge) * opens;
+        const amount = communityCommissionPerOpen(rec.price, rec.houseEdge) * paidOpens;
         if (!(amount > 0)) return 0;
         set((s) => ({
           claimableByCreator: {
@@ -121,11 +127,12 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
           },
           opensByCreator: {
             ...s.opensByCreator,
-            [rec.creatorId]: (s.opensByCreator[rec.creatorId] ?? 0) + opens,
+            [rec.creatorId]: (s.opensByCreator[rec.creatorId] ?? 0) + paidOpens,
           },
         }));
         return amount;
       },
+      payOpens: (caseId, opens) => get().accrue(caseId, opens),
       createCase: (input) => {
         const session = useAuthStore.getState().session;
         if (!session) return { ok: false, error: "Create a username before publishing a community case." };

@@ -63,7 +63,7 @@ export function CaseOpenPage() {
       return;
     }
     if (!demo && c.community) {
-      useCommunityCaseStore.getState().payOpens(c.id, n);
+      useCommunityCaseStore.getState().accrue(c.id, n);
     }
     demoRoundRef.current = demo;
     setSpinning(true);

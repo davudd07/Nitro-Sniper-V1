@@ -22,7 +22,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { considerBattleLeaders } from "../store/winLeaderStore";
 import { useToastStore } from "../store/toastStore";
 import { randomBotName } from "../data/botNames";
-import { buildBattleRoster } from "../lib/battleSeats";
+import { buildBattleRoster, communityPaidOpenCredits } from "../lib/battleSeats";
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { formatCredits } from "../lib/format";
@@ -296,7 +296,8 @@ export function BattleRoom() {
           results[p.slotIndex] = rollCaseItem(c, rolls[i]);
         });
         if (!isReplayRef.current && (battle?.costPerPlayer ?? 0) > 0) {
-          useCommunityCaseStore.getState().payOpens(caseId, players.length);
+          const paidOpens = communityPaidOpenCredits(players);
+          if (paidOpens > 0) useCommunityCaseStore.getState().accrue(caseId, paidOpens);
         }
         const log = replayLogRef.current.slice();
         log[idx] = results;

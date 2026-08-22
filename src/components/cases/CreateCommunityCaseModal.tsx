@@ -437,7 +437,7 @@ export function CreateCommunityCaseModal({
               </div>
               <p className="text-xs text-slate-500">
                 Price is solved from EV the same way official cases are: EV stays below price by ~{formatPercent(houseEdge)}.
-                Demo 0-stakes and battle replays do not pay commission.
+                Demo 0-stakes, battle replays, and bot battle seats do not pay commission.
               </p>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-lg font-bold text-white">

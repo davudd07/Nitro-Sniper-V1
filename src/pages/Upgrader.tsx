@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { ArrowUpCircle, Search, Zap } from "lucide-react";
+import { ArrowUpCircle, Coins, Package, Search, Zap } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
@@ -15,6 +15,11 @@ import { UpgradeGauge } from "../components/upgrader/UpgradeGauge";
 import { RARITIES } from "../data/rarities";
 import type { CaseItem } from "../data/items";
 import {
+  UPGRADER_COIN_DEFAULT_SOURCE,
+  UPGRADER_COIN_DEFAULT_TARGET,
+  UPGRADER_COIN_PAIR_PRESETS,
+  UPGRADER_COIN_SOURCE_PRESETS,
+  UPGRADER_COIN_TARGET_PRESETS,
   UPGRADER_EXTRA_SPINS,
   UPGRADER_FAST_EXTRA_SPINS,
   UPGRADER_FAST_SPIN_MS,
@@ -31,7 +36,9 @@ import {
   formatRollBand,
   formatUpgraderStake,
   landDegForRoll,
+  maxStakeBelowTarget,
   multiplierFromValues,
+  parseUpgraderAmount,
   resolveUpgraderHouseEdge,
   settleUpgrade,
   stakeFromChance,
@@ -43,6 +50,46 @@ import {
 
 type Slot = "input" | "target";
 type Phase = "idle" | "spinning" | "win" | "lose";
+type WagerKind = "items" | "coins";
+
+function WagerKindSwitch({
+  value,
+  disabled,
+  onChange,
+}: {
+  value: WagerKind;
+  disabled: boolean;
+  onChange: (next: WagerKind) => void;
+}) {
+  return (
+    <div className="inline-flex rounded-lg border-2 border-[#3d5a3a] bg-black/40 p-0.5">
+      {(
+        [
+          ["items", "Items", Package],
+          ["coins", "Coins", Coins],
+        ] as const
+      ).map(([id, label, Icon]) => (
+        <button
+          key={id}
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            if (id === value) return;
+            sound.click();
+            onChange(id);
+          }}
+          className={clsx(
+            "inline-flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide transition-colors disabled:opacity-40",
+            value === id ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white",
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" />
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function SlotCard({
   label,
@@ -95,8 +142,85 @@ function SlotCard({
   );
 }
 
+function CoinAmountCard({
+  label,
+  hint,
+  text,
+  disabled,
+  onText,
+  onCommit,
+}: {
+  label: string;
+  hint: string;
+  text: string;
+  disabled: boolean;
+  onText: (raw: string) => void;
+  onCommit: (raw: string) => void;
+}) {
+  return (
+    <div className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 px-3 py-4 text-center">
+      <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
+        <span className="pixel-label text-2xl text-lime-200">SH</span>
+      </div>
+      <label className="flex w-full items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-2">
+        <input
+          type="number"
+          min={0}
+          step={0.01}
+          disabled={disabled}
+          value={text}
+          onChange={(e) => onText(e.target.value)}
+          onBlur={(e) => onCommit(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") onCommit(text);
+          }}
+          className="min-w-0 flex-1 bg-transparent text-center font-mono text-lg font-bold text-lime-300 outline-none disabled:opacity-50"
+        />
+        <span className="text-[10px] font-bold text-slate-500">SH</span>
+      </label>
+      <p className="text-xs text-slate-400">{hint}</p>
+    </div>
+  );
+}
+
+function PresetChip({
+  label,
+  active,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  active?: boolean;
+  disabled: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => {
+        sound.click();
+        onClick();
+      }}
+      className={clsx(
+        "rounded-md border-2 px-2.5 py-1.5 font-mono text-[11px] font-extrabold tabular-nums disabled:opacity-40",
+        active
+          ? "border-lime-300/70 bg-lime-400/15 text-lime-100"
+          : "border-[#3d5a3a]/70 bg-black/30 text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10",
+      )}
+    >
+      {label}
+    </button>
+  );
+}
+
 export function Upgrader() {
+  const [wagerKind, setWagerKind] = useState<WagerKind>("items");
   const [stake, setStake] = useState(100);
+  const [coinTarget, setCoinTarget] = useState(UPGRADER_COIN_DEFAULT_TARGET);
+  const [coinSourceText, setCoinSourceText] = useState(String(UPGRADER_COIN_DEFAULT_SOURCE));
+  const [coinTargetText, setCoinTargetText] = useState(String(UPGRADER_COIN_DEFAULT_TARGET));
   const [inputItem, setInputItem] = useState<CaseItem | null>(null);
   const [targetItem, setTargetItem] = useState<CaseItem | null>(() => closestItemNear(200, 100) ?? null);
   const [multiplierText, setMultiplierText] = useState("2.00");
@@ -123,16 +247,21 @@ export function Upgrader() {
   const houseEdges = useLoyaltyStore((s) => s.config.houseEdges);
   const houseEdge = resolveUpgraderHouseEdge(houseEdges);
   const maxChance = upgraderMaxChance(houseEdge);
+  const coins = wagerKind === "coins";
 
   const inputValue = ceilToCents(stake);
-  const targetValue = targetItem
-    ? targetItem.value
-    : targetFromMultiplier(inputValue, clampMultiplier(Number(multiplierText) || 0));
-  if (targetItem) arcTargetRef.current = targetItem.value;
+  const targetValue = coins
+    ? ceilToCents(coinTarget)
+    : targetItem
+      ? targetItem.value
+      : targetFromMultiplier(inputValue, clampMultiplier(Number(multiplierText) || 0));
+  if (targetValue > 0) arcTargetRef.current = targetValue;
   const chance = upgraderChance(inputValue, targetValue, houseEdge);
   const displayedMulti = inputValue > 0 && targetValue > 0 ? targetValue / inputValue : clampMultiplier(Number(multiplierText) || 2);
   const tooLow = inputValue > 0 && inputValue > balance;
-  const needHigherTarget = inputValue > 0 && targetValue > 0 && inputValue > targetValue;
+  const needHigherTarget = coins
+    ? inputValue > 0 && targetValue > 0 && inputValue >= targetValue
+    : inputValue > 0 && targetValue > 0 && inputValue > targetValue;
   const spinning = phase === "spinning";
   const canSpin = !spinning && chance > 0 && inputValue > 0 && !tooLow && !needHigherTarget;
   const spinMs = fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS;
@@ -181,23 +310,87 @@ export function Upgrader() {
     setTargetItem(match ?? null);
   }
 
+  function applyCoinSource(next: number) {
+    if (!(next > 0)) {
+      setStake(0);
+      setCoinSourceText("");
+      return;
+    }
+    let value = ceilToCents(next);
+    const cap = maxStakeBelowTarget(targetValue);
+    if (cap > 0) value = Math.min(cap, value);
+    setStake(value);
+    setCoinSourceText(String(value));
+    if (targetValue > value) {
+      setMultiplierText(multiplierFromValues(value, targetValue).toFixed(2));
+    }
+  }
+
+  function applyCoinTarget(next: number) {
+    const value = ceilToCents(next);
+    setCoinTarget(value);
+    setCoinTargetText(value > 0 ? String(value) : "");
+    if (value > 0) arcTargetRef.current = value;
+    if (inputValue > 0 && value > inputValue) {
+      setMultiplierText(multiplierFromValues(inputValue, value).toFixed(2));
+    }
+  }
+
   function applyChanceFromArc(nextChance: number) {
     if (spinning) return;
-    const target = targetItem ? targetItem.value : arcTargetRef.current || targetValue;
+    const target = coins ? targetValue || arcTargetRef.current : targetItem ? targetItem.value : arcTargetRef.current || targetValue;
     if (!(target > 0)) return;
     arcTargetRef.current = target;
     const value = stakeFromChance(nextChance, target, houseEdge);
     setStake(value);
+    if (coins) setCoinSourceText(value > 0 ? String(value) : "");
     if (inputItem && inputItem.value !== value) setInputItem(null);
     setMultiplierText(value > 0 ? multiplierFromValues(value, target).toFixed(2) : "2.00");
   }
 
   function maxAffordableStake(): number {
+    if (coins) {
+      const cap = maxStakeBelowTarget(targetValue);
+      const raw = cap > 0 ? Math.min(balance, cap) : Math.min(balance, targetValue > 0 ? targetValue : balance);
+      const ceiled = ceilToCents(raw);
+      if (ceiled > 0 && ceiled <= balance && (cap <= 0 || ceiled <= cap)) return ceiled;
+      return Math.floor(raw * 100 + 1e-9) / 100;
+    }
     const cap = maxStakeForTarget > 0 ? maxStakeForTarget : balance;
     const raw = Math.min(balance, cap);
     const ceiled = ceilToCents(raw);
     if (ceiled > 0 && ceiled <= balance && (cap <= 0 || ceiled <= cap)) return ceiled;
     return Math.floor(raw * 100 + 1e-9) / 100;
+  }
+
+  function applyCoinPair(source: number, target: number) {
+    const tgt = ceilToCents(target);
+    let value = ceilToCents(source);
+    const cap = maxStakeBelowTarget(tgt);
+    if (cap > 0) value = Math.min(cap, value);
+    setCoinTarget(tgt);
+    setCoinTargetText(tgt > 0 ? String(tgt) : "");
+    arcTargetRef.current = tgt;
+    setStake(value);
+    setCoinSourceText(value > 0 ? String(value) : "");
+    if (tgt > value && value > 0) {
+      setMultiplierText(multiplierFromValues(value, tgt).toFixed(2));
+    }
+  }
+
+  function switchWagerKind(next: WagerKind) {
+    if (spinning || next === wagerKind) return;
+    setWagerKind(next);
+    if (next === "coins") {
+      setInputItem(null);
+      setTargetItem(null);
+      applyCoinPair(UPGRADER_COIN_DEFAULT_SOURCE, UPGRADER_COIN_DEFAULT_TARGET);
+      return;
+    }
+    const src = inputValue > 0 ? inputValue : 100;
+    setStake(src);
+    const desired = targetFromMultiplier(src, clampMultiplier(Number(multiplierText) || 2));
+    setTargetItem(closestItemNear(desired, src) ?? closestItemNear(200, src) ?? null);
   }
 
   function pickItem(item: CaseItem) {
@@ -223,6 +416,10 @@ export function Upgrader() {
     setMultiplierText(parsed.toFixed(2));
     if (inputValue <= 0) return;
     const desired = targetFromMultiplier(inputValue, parsed);
+    if (coins) {
+      applyCoinTarget(desired);
+      return;
+    }
     setTargetItem(closestItemNear(desired, inputValue) ?? null);
   }
 
@@ -230,7 +427,9 @@ export function Upgrader() {
     if (spinning) return "Spinning…";
     if (tooLow) return "Not enough Shards";
     if (inputValue <= 0) return "Enter a stake";
-    if (needHigherTarget || chance <= 0) return "Pick a cheaper source or richer target";
+    if (needHigherTarget || chance <= 0) {
+      return coins ? "Source must be below target" : "Pick a cheaper source or richer target";
+    }
     return "Upgrade";
   }
 
@@ -243,7 +442,12 @@ export function Upgrader() {
       return;
     }
     if (chance <= 0 || needHigherTarget) {
-      push("Pick a target at least as high as the source so the house still has an edge.", "warning");
+      push(
+        coins
+          ? "Type a source below the target so the house still has an edge."
+          : "Pick a target at least as high as the source so the house still has an edge.",
+        "warning",
+      );
       return;
     }
     if (!takeStake(inputValue, houseEdge)) {
@@ -260,7 +464,7 @@ export function Upgrader() {
     pendingRef.current = {
       input: inputValue,
       target: targetValue,
-      name: targetItem?.name ?? `${formatUpgraderStake(targetValue)} SH`,
+      name: coins ? `${formatUpgraderStake(targetValue)} SH` : (targetItem?.name ?? `${formatUpgraderStake(targetValue)} SH`),
       hit,
     };
     setWon(hit);
@@ -287,6 +491,20 @@ export function Upgrader() {
     settleLock.current = false;
   }
 
+  const betRunners = coins
+    ? [
+        { id: "clear", label: "CLEAR", run: () => applyCoinSource(0) },
+        { id: "half", label: "1/2", run: () => applyCoinSource(inputValue / 2) },
+        { id: "dbl", label: "2X", run: () => applyCoinSource(inputValue * 2) },
+        { id: "max", label: "MAX", run: () => applyCoinSource(maxAffordableStake()) },
+      ]
+    : [
+        { id: "clear", label: "CLEAR", run: () => applyStake(0) },
+        { id: "half", label: "1/2", run: () => applyStake(inputValue / 2) },
+        { id: "dbl", label: "2X", run: () => applyStake(inputValue * 2) },
+        { id: "max", label: "MAX", run: () => applyStake(maxAffordableStake()) },
+      ];
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -296,38 +514,56 @@ export function Upgrader() {
             Upgrader
           </h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Stake a catalog item (or its Shard value), pick a richer target, and spin the dial. Play-money only.
+            {coins
+              ? "Wager Shards to a higher Shard payout — type amounts or pick a preset, then spin. Play-money only."
+              : "Stake a catalog item (or its Shard value), pick a richer target, and spin the dial. Play-money only."}
           </p>
         </div>
-        <InfoButton title="Upgrader — RTP & House Edge">
-          <StatRow label="House edge" value={formatPercent(houseEdge)} />
-          <StatRow label="RTP" value={formatPercent(1 - houseEdge)} />
-          <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
-          <p>
-            Win chance is the green slice over 360°, equal to{" "}
-            <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>. Default house edge is 5% (never
-            +EV). Drag a thick end-cap to resize that slice — longer green is a higher chance and a higher source stake
-            (<span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents). Drag the
-            green stroke to rotate the slice without changing odds. The arrow spins and lands; a hit inside your placed
-            slice credits the target SH value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
-          </p>
-        </InfoButton>
+        <div className="flex flex-wrap items-center gap-2">
+          <WagerKindSwitch value={wagerKind} disabled={spinning} onChange={switchWagerKind} />
+          <InfoButton title="Upgrader — RTP & House Edge">
+            <StatRow label="House edge" value={formatPercent(houseEdge)} />
+            <StatRow label="RTP" value={formatPercent(1 - houseEdge)} />
+            <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
+            <p>
+              Win chance is the green slice over 360°, equal to{" "}
+              <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>. Default house edge is 5% (never
+              +EV). Items mode uses the catalog; Coins mode types a source SH and a higher target SH (e.g. 5 → 485 ≈
+              0.98%). Drag a thick end-cap to resize that slice — longer green is a higher chance and a higher source
+              stake (<span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents).
+              Drag the green stroke to rotate the slice without changing odds. The arrow spins and lands; a hit inside
+              your placed slice credits the target SH value. A miss consumes the source stake. Fair rolls use{" "}
+              {formatRollBand(chance)}.
+            </p>
+          </InfoButton>
+        </div>
       </div>
 
       <div className="surface space-y-5 p-4 sm:p-5">
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3">
-            <SlotCard
-              label="Source"
-              item={inputItem}
-              value={inputValue}
-              active={slot === "input"}
-              onClick={() => {
-                if (spinning) return;
-                sound.click();
-                setSlot("input");
-              }}
-            />
+            {coins ? (
+              <CoinAmountCard
+                label="Wager"
+                hint="Source SH"
+                text={coinSourceText}
+                disabled={spinning}
+                onText={setCoinSourceText}
+                onCommit={(raw) => applyCoinSource(parseUpgraderAmount(raw))}
+              />
+            ) : (
+              <SlotCard
+                label="Source"
+                item={inputItem}
+                value={inputValue}
+                active={slot === "input"}
+                onClick={() => {
+                  if (spinning) return;
+                  sound.click();
+                  setSlot("input");
+                }}
+              />
+            )}
             <div className="space-y-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 p-2.5">
               <label className="flex items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Bet</span>
@@ -336,19 +572,23 @@ export function Upgrader() {
                   min={0}
                   step={0.01}
                   disabled={spinning}
-                  value={stake}
-                  onChange={(e) => applyStake(Number(e.target.value) || 0)}
+                  value={coins ? coinSourceText : stake}
+                  onChange={(e) => {
+                    if (coins) {
+                      setCoinSourceText(e.target.value);
+                      return;
+                    }
+                    applyStake(Number(e.target.value) || 0);
+                  }}
+                  onBlur={(e) => {
+                    if (coins) applyCoinSource(parseUpgraderAmount(e.target.value));
+                  }}
                   className="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
                 />
                 <span className="text-[10px] font-bold text-slate-500">SH</span>
               </label>
               <div className="grid grid-cols-4 gap-1.5">
-                {[
-                  { id: "clear", label: "CLEAR", run: () => applyStake(0) },
-                  { id: "half", label: "1/2", run: () => applyStake(inputValue / 2) },
-                  { id: "dbl", label: "2X", run: () => applyStake(inputValue * 2) },
-                  { id: "max", label: "MAX", run: () => applyStake(maxAffordableStake()) },
-                ].map((btn) => (
+                {betRunners.map((btn) => (
                   <button
                     key={btn.id}
                     type="button"
@@ -384,17 +624,28 @@ export function Upgrader() {
             />
           </div>
           <div className="flex flex-col gap-3">
-            <SlotCard
-              label="Target"
-              item={targetItem}
-              value={targetValue}
-              active={slot === "target"}
-              onClick={() => {
-                if (spinning) return;
-                sound.click();
-                setSlot("target");
-              }}
-            />
+            {coins ? (
+              <CoinAmountCard
+                label="Payout"
+                hint="Target SH"
+                text={coinTargetText}
+                disabled={spinning}
+                onText={setCoinTargetText}
+                onCommit={(raw) => applyCoinTarget(parseUpgraderAmount(raw))}
+              />
+            ) : (
+              <SlotCard
+                label="Target"
+                item={targetItem}
+                value={targetValue}
+                active={slot === "target"}
+                onClick={() => {
+                  if (spinning) return;
+                  sound.click();
+                  setSlot("target");
+                }}
+              />
+            )}
             <div className="space-y-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 p-2.5">
               <div className="flex flex-wrap items-center gap-2">
                 <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
@@ -451,82 +702,135 @@ export function Upgrader() {
         </button>
       </div>
 
-      <div className="surface space-y-3 p-4">
-        <div className="flex flex-wrap items-end gap-2">
-          <label className="relative min-w-[12rem] flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search items…"
-              className="w-full rounded-lg border-2 border-[#3d5a3a]/50 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-lime-400/40"
-            />
-          </label>
-          <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-            Min
-            <input
-              type="number"
-              min={0}
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              className="mt-1 block w-24 rounded-lg border border-white/10 bg-black/30 px-2 py-2 font-mono text-sm text-white outline-none focus:border-lime-400/40"
-            />
-          </label>
-          <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-            Max
-            <input
-              type="number"
-              min={0}
-              value={maxPrice}
-              onChange={(e) => setMaxPrice(e.target.value)}
-              className="mt-1 block w-24 rounded-lg border border-white/10 bg-black/30 px-2 py-2 font-mono text-sm text-white outline-none focus:border-lime-400/40"
-            />
-          </label>
-          <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
-            Sort
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as UpgradeSort)}
-              className="mt-1 block rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-sm text-white outline-none focus:border-lime-400/40"
-            >
-              <option value="price_desc">Price high → low</option>
-              <option value="price_asc">Price low → high</option>
-            </select>
-          </label>
+      {coins ? (
+        <div className="surface space-y-4 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Coin presets</p>
+          <div>
+            <p className="mb-2 text-[11px] text-slate-500">Wager</p>
+            <div className="flex flex-wrap gap-1.5">
+              {UPGRADER_COIN_SOURCE_PRESETS.map((n) => (
+                <PresetChip
+                  key={`src-${n}`}
+                  label={`${n}`}
+                  active={inputValue === n}
+                  disabled={spinning}
+                  onClick={() => applyCoinSource(n)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-[11px] text-slate-500">Payout target</p>
+            <div className="flex flex-wrap gap-1.5">
+              {UPGRADER_COIN_TARGET_PRESETS.map((n) => (
+                <PresetChip
+                  key={`tgt-${n}`}
+                  label={`${n}`}
+                  active={targetValue === n}
+                  disabled={spinning}
+                  onClick={() => applyCoinTarget(n)}
+                />
+              ))}
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-[11px] text-slate-500">Pairs</p>
+            <div className="flex flex-wrap gap-1.5">
+              {UPGRADER_COIN_PAIR_PRESETS.map((pair) => (
+                <PresetChip
+                  key={`pair-${pair.source}-${pair.target}`}
+                  label={`${pair.source} → ${pair.target}`}
+                  active={inputValue === pair.source && targetValue === pair.target}
+                  disabled={spinning}
+                  onClick={() => applyCoinPair(pair.source, pair.target)}
+                />
+              ))}
+            </div>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Source must stay below target. Typed 5 → 485 is about 0.98% at a 5% house edge. Dragging an arc end-cap
+            updates the stake to <span className="font-mono text-slate-400">chance × target / 0.95</span> (ceil to
+            cents).
+          </p>
         </div>
-        <p className="text-[11px] text-slate-500">
-          Click an item to fill the {slot === "input" ? "source" : "target"} slot.
-          {slot === "input" ? " Stake becomes that item’s SH value." : " Chance uses its catalog price."}
-        </p>
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
-          {catalog.map((item) => {
-            const selected = (slot === "target" ? targetItem?.id : inputItem?.id) === item.id;
-            const r = RARITIES[item.rarity];
-            return (
-              <button
-                key={item.id}
-                type="button"
-                disabled={spinning}
-                onClick={() => pickItem(item)}
-                className={clsx(
-                  "flex flex-col items-center gap-1 rounded-xl border bg-white/[0.03] p-2 text-center transition-transform hover:-translate-y-0.5 disabled:opacity-40",
-                  selected && "bg-lime-400/10 ring-2 ring-lime-300",
-                )}
-                style={{ borderColor: selected ? "rgba(190,242,100,0.7)" : `${r.ring}3a` }}
+      ) : (
+        <div className="surface space-y-3 p-4">
+          <div className="flex flex-wrap items-end gap-2">
+            <label className="relative min-w-[12rem] flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search items…"
+                className="w-full rounded-lg border-2 border-[#3d5a3a]/50 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-lime-400/40"
+              />
+            </label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Min
+              <input
+                type="number"
+                min={0}
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                className="mt-1 block w-24 rounded-lg border border-white/10 bg-black/30 px-2 py-2 font-mono text-sm text-white outline-none focus:border-lime-400/40"
+              />
+            </label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Max
+              <input
+                type="number"
+                min={0}
+                value={maxPrice}
+                onChange={(e) => setMaxPrice(e.target.value)}
+                className="mt-1 block w-24 rounded-lg border border-white/10 bg-black/30 px-2 py-2 font-mono text-sm text-white outline-none focus:border-lime-400/40"
+              />
+            </label>
+            <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+              Sort
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as UpgradeSort)}
+                className="mt-1 block rounded-lg border border-white/10 bg-black/30 px-2 py-2 text-sm text-white outline-none focus:border-lime-400/40"
               >
-                <ItemIcon icon={item.icon} rarity={item.rarity} size="sm" />
-                <p className="w-full truncate text-[11px] font-medium text-slate-200" title={item.name}>
-                  {item.name}
-                </p>
-                <p className="text-[11px] font-semibold" style={{ color: r.text }}>
-                  {formatCredits(item.value)} <span className="font-normal text-slate-500">SH</span>
-                </p>
-              </button>
-            );
-          })}
+                <option value="price_desc">Price high → low</option>
+                <option value="price_asc">Price low → high</option>
+              </select>
+            </label>
+          </div>
+          <p className="text-[11px] text-slate-500">
+            Click an item to fill the {slot === "input" ? "source" : "target"} slot.
+            {slot === "input" ? " Stake becomes that item’s SH value." : " Chance uses its catalog price."}
+          </p>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
+            {catalog.map((item) => {
+              const selected = (slot === "target" ? targetItem?.id : inputItem?.id) === item.id;
+              const r = RARITIES[item.rarity];
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  disabled={spinning}
+                  onClick={() => pickItem(item)}
+                  className={clsx(
+                    "flex flex-col items-center gap-1 rounded-xl border bg-white/[0.03] p-2 text-center transition-transform hover:-translate-y-0.5 disabled:opacity-40",
+                    selected && "bg-lime-400/10 ring-2 ring-lime-300",
+                  )}
+                  style={{ borderColor: selected ? "rgba(190,242,100,0.7)" : `${r.ring}3a` }}
+                >
+                  <ItemIcon icon={item.icon} rarity={item.rarity} size="sm" />
+                  <p className="w-full truncate text-[11px] font-medium text-slate-200" title={item.name}>
+                    {item.name}
+                  </p>
+                  <p className="text-[11px] font-semibold" style={{ color: r.text }}>
+                    {formatCredits(item.value)} <span className="font-normal text-slate-500">SH</span>
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+          {catalog.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No items match those filters.</p>}
         </div>
-        {catalog.length === 0 && <p className="py-6 text-center text-sm text-slate-500">No items match those filters.</p>}
-      </div>
+      )}
 
       <ProvablyFairPanel />
     </div>

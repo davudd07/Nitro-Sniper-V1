@@ -16,6 +16,18 @@ export const UPGRADER_EXTRA_SPINS = 12;
 export const UPGRADER_FAST_SPIN_MS = 2400;
 export const UPGRADER_FAST_EXTRA_SPINS = 7;
 
+/** Default coins-to-coins example: 5 SH → 485 SH ≈ 0.98% at 5% edge. */
+export const UPGRADER_COIN_DEFAULT_SOURCE = 5;
+export const UPGRADER_COIN_DEFAULT_TARGET = 485;
+export const UPGRADER_COIN_SOURCE_PRESETS = [5, 10, 25, 50, 100] as const;
+export const UPGRADER_COIN_TARGET_PRESETS = [485, 1_000, 2_500, 5_000, 10_000] as const;
+export const UPGRADER_COIN_PAIR_PRESETS = [
+  { source: 5, target: 485 },
+  { source: 10, target: 100 },
+  { source: 25, target: 500 },
+  { source: 50, target: 1_000 },
+] as const;
+
 /** Prefer the Upgrader VIP override, else the 5% Upgrader default. */
 export function resolveUpgraderHouseEdge(overrides: Record<string, number> = {}): number {
   const pick = (key: string) => {
@@ -75,6 +87,20 @@ export function formatUpgraderStake(value: number): string {
   }).format(ceilToCents(value));
 }
 
+/** Parse a typed SH amount; empty/invalid → 0. Always ceil-to-cents. */
+export function parseUpgraderAmount(raw: string): number {
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n <= 0) return 0;
+  return ceilToCents(n);
+}
+
+/** Largest source that stays strictly below target (coins mode). */
+export function maxStakeBelowTarget(targetValue: number): number {
+  if (!(targetValue > 0)) return 0;
+  const cap = ceilToCents(targetValue - 0.01);
+  return cap > 0 && cap < targetValue ? cap : 0;
+}
+
 function normalizedEdge(houseEdge: number): number {
   return Math.min(0.99, Math.max(0, houseEdge));
 }
@@ -109,7 +135,8 @@ export function stakeFromChance(chance: number, targetValue: number, houseEdge: 
 /**
  * Win chance = (source / target) × (1 − house edge).
  * Default edge is 5%. Source may equal target at 95% (1×, still −EV). Never 100%.
- * Drag-resize and bet buttons use `clampUpgraderChance` (1% floor).
+ * Drag-resize and bet buttons in Items mode use `clampUpgraderChance` (1% floor).
+ * Coins mode typed amounts may be smaller (e.g. 5 → 485 ≈ 0.98% at 5% edge).
  */
 export function upgraderChance(inputValue: number, targetValue: number, houseEdge: number): number {
   if (!(inputValue > 0) || !(targetValue > 0)) return 0;

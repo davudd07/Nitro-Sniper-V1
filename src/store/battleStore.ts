@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { shortId } from "../lib/format";
 import { getCase, type CaseOddsEntry } from "../data/cases";
+import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
 
 export type BattleRosterKind = "you" | "empty" | "joining" | "bot" | "player";
 
@@ -113,14 +114,21 @@ function seedBattle(
     finishedAt?: number;
   },
 ): BattleConfig {
+  const mods = sanitizeBattleModifiers({
+    coinflip: partial.coinflip,
+    crazy: partial.crazy,
+    jackpot: partial.jackpot,
+    terminal: partial.terminal,
+    goldSpin: partial.goldSpin,
+    shared: partial.shared,
+  });
   return {
     ...partial,
+    ...mods,
     source: "lobby",
     fundedPct: partial.fundedPct ?? 0,
     isPrivate: partial.isPrivate ?? false,
-    shared: partial.shared ?? false,
     fastSpin: partial.fastSpin ?? false,
-    coinflip: partial.coinflip ?? false,
     creatorBorrowPct: partial.creatorBorrowPct ?? 0,
     status: partial.status ?? "open",
     costPerPlayer: costOf(partial.cases),
@@ -482,12 +490,13 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   joinIntents: {},
   createBattle: (cfg) => {
     const id = shortId("battle");
+    const mods = sanitizeBattleModifiers(cfg);
     const battle: BattleConfig = {
       ...cfg,
+      ...mods,
       id,
       createdAt: Date.now(),
       status: cfg.status ?? "open",
-      coinflip: cfg.coinflip ?? false,
     };
     set((s) => ({ battles: { ...s.battles, [id]: battle } }));
     return id;

@@ -8,6 +8,32 @@ export interface CoinflipSeat {
   color: string;
 }
 
+export interface BattleModifierFlags {
+  coinflip: boolean;
+  crazy: boolean;
+  jackpot: boolean;
+  terminal: boolean;
+  goldSpin: boolean;
+  shared: boolean;
+}
+
+/**
+ * Coinflip is exclusive with Shared and every other gameplay modifier
+ * (Crazy, Jackpot, Terminal, Gold Spin). Borrow / sponsor are not flags here.
+ */
+export function sanitizeBattleModifiers(flags: Partial<BattleModifierFlags>): BattleModifierFlags {
+  const shared = Boolean(flags.shared);
+  const coinflip = Boolean(flags.coinflip) && !shared;
+  return {
+    shared,
+    coinflip,
+    crazy: Boolean(flags.crazy) && !shared && !coinflip,
+    jackpot: Boolean(flags.jackpot) && !shared && !coinflip,
+    terminal: Boolean(flags.terminal) && !shared && !coinflip,
+    goldSpin: Boolean(flags.goldSpin) && !coinflip,
+  };
+}
+
 /** Buy-in pot for a coinflip battle — cases set the seat cost, pulls are not used. */
 export function coinflipPot(costPerPlayer: number, seats: number): number {
   return Math.max(0, costPerPlayer) * Math.max(0, seats);

@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye } from "lucide-react";
+import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye, Circle } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore, type BattleReplay, type BattleRosterSeat } from "../store/battleStore";
 import { BATTLE_MODES, TEAM_COLORS, totalPlayers } from "../data/battleModes";
@@ -148,6 +148,7 @@ export function BattleRoom() {
   const isReplayRef = useRef(Boolean(wantReplay || battle?.replay));
   const rosterEpochRef = useRef<string>("");
   const lastPayoutRef = useRef<BattlePayout | null>(null);
+  const paidOutRef = useRef(false);
 
   function teamFromJackpotWinner(winnerId: string | null | undefined): number | null {
     if (!winnerId) return null;
@@ -211,10 +212,19 @@ export function BattleRoom() {
     });
     setRoundStates(init);
     roundStatesRef.current = init;
-    setLiveOdds(battle.jackpot && !battle.terminal ? evenOdds : {});
+    const teamIds = new Set(roster.map((p) => p.teamIndex));
+    const teamPct = teamIds.size > 0 ? 100 / teamIds.size : 0;
+    const teamOdds: Record<number, number> = {};
+    roster.forEach((p) => {
+      teamOdds[p.slotIndex] = teamPct;
+    });
+    setLiveOdds(
+      battle.coinflip ? teamOdds : battle.jackpot && !battle.terminal ? evenOdds : {},
+    );
     setPhase(battle.status === "finished" && !wantReplay ? "finished" : "filling");
     startedRef.current = false;
     resolvedRef.current = false;
+    paidOutRef.current = false;
     isReplayRef.current = Boolean(wantReplay || (battle.status === "finished" && battle.replay));
     replayLogRef.current = battle.replay?.openings ?? [];
     replayJackpotRef.current = battle.replay?.jackpot ?? null;
@@ -410,6 +420,21 @@ export function BattleRoom() {
 
   function resolveCoinflip() {
     if (!battle || !mode) return;
+    const stored = replayJackpotRef.current;
+    if (stored?.tickets.length && stored.winnerId) {
+      const team =
+        teamFromJackpotWinner(stored.winnerId) ??
+        players.find((p) => String(p.slotIndex) === stored.winnerId)?.teamIndex ??
+        0;
+      setTieBreak(false);
+      setJackpotTickets(stored.tickets);
+      setJackpotWinnerId(stored.winnerId);
+      setWinningTeam(team);
+      persistReplay(stored);
+      setPhase("jackpot");
+      setJackpotSpinToken((t) => t + 1);
+      return;
+    }
     const tickets = coinflipTicketsFor(players);
     if (tickets.length === 0) {
       setPhase("finished");
@@ -623,7 +648,8 @@ export function BattleRoom() {
   }
 
   function handleJackpotFinished() {
-    const settle = !isReplayRef.current;
+    const settle = !isReplayRef.current && !paidOutRef.current;
+    if (settle) paidOutRef.current = true;
     const pot = battlePayoutPot();
     const winnerId = replayJackpotRef.current?.winnerId ?? jackpotWinnerId;
     const team = winningTeam ?? teamFromJackpotWinner(winnerId);
@@ -689,7 +715,15 @@ export function BattleRoom() {
     setPayout(null);
     setRoundStates(init);
     roundStatesRef.current = init;
-    setLiveOdds(battle?.jackpot && !battle.terminal ? evenOdds : {});
+    const teamIds = new Set(players.map((p) => p.teamIndex));
+    const teamPct = teamIds.size > 0 ? 100 / teamIds.size : 0;
+    const teamOdds: Record<number, number> = {};
+    players.forEach((p) => {
+      teamOdds[p.slotIndex] = teamPct;
+    });
+    setLiveOdds(
+      battle?.coinflip ? teamOdds : battle?.jackpot && !battle.terminal ? evenOdds : {},
+    );
     setPendingResults({});
     setCaseIndex(-1);
     setSpinToken(0);
@@ -749,6 +783,11 @@ export function BattleRoom() {
           <div className="flex flex-wrap items-center gap-2">
             <Swords className="h-5 w-5 text-amber-300" />
             <span className="text-lg font-bold text-white">{mode.label} Battle</span>
+            {battle.coinflip && (
+              <span className="flex items-center gap-1 rounded-full bg-indigo-400/15 px-2 py-0.5 text-xs font-medium text-indigo-200">
+                <Circle className="h-3 w-3" /> Coinflip
+              </span>
+            )}
             {battle.crazy && (
               <span className="flex items-center gap-1 rounded-full bg-orange-500/15 px-2 py-0.5 text-xs font-medium text-orange-300">
                 <Shuffle className="h-3 w-3" /> Crazy
@@ -828,6 +867,9 @@ export function BattleRoom() {
                 Replay battle
               </button>
             )}
+            {battle.coinflip && (
+              <span className="text-indigo-200">Equal-odds spin · pulls do not score</span>
+            )}
             {battle.terminal && (
               <span className="text-pink-300">
                 {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
@@ -846,7 +888,13 @@ export function BattleRoom() {
           <div className="flex justify-center border-b border-amber-400/20 bg-amber-400/[0.05] px-4 py-3">
             <AnimatedPot
               value={pot}
-              label={tieBreak && phase === "jackpot" ? "Tie-breaker pot" : "Jackpot pot"}
+              label={
+                tieBreak && phase === "jackpot"
+                  ? "Tie-breaker pot"
+                  : battle.coinflip
+                    ? "Coinflip pot"
+                    : "Jackpot pot"
+              }
             />
           </div>
         )}
@@ -859,12 +907,20 @@ export function BattleRoom() {
                 the winner.
               </p>
             )}
+            {battle.coinflip && (
+              <p className="mb-2 text-center text-xs text-slate-400">
+                {teams.every((t) => t.length <= 1)
+                  ? "Equal-odds spin — winner keeps the pot."
+                  : "Equal-odds spin — one player from each team. Landed team splits the pot."}
+              </p>
+            )}
             <JackpotWheel
               tickets={jackpotTickets}
               spinToken={jackpotSpinToken}
               winnerId={jackpotWinnerId}
               duration={BATTLE_JACKPOT_SPIN_MS}
               compact={jackpotTickets.length >= 6}
+              finishVerb={battle.coinflip ? "wins the flip" : "takes the jackpot"}
               onFinished={handleJackpotFinished}
             />
           </div>
@@ -940,11 +996,14 @@ export function BattleRoom() {
                             player={p}
                             state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
                             jackpotOdds={
-                              battle.jackpot && (!battle.terminal || liveOdds[p.slotIndex] !== undefined)
+                              battle.coinflip
                                 ? liveOdds[p.slotIndex]
-                                : undefined
+                                : battle.jackpot && (!battle.terminal || liveOdds[p.slotIndex] !== undefined)
+                                  ? liveOdds[p.slotIndex]
+                                  : undefined
                             }
                             terminal={battle.terminal}
+                            hidePullTotal={battle.coinflip}
                             grouped={isTeam}
                             borrowPct={p.kind === "you" ? borrowPct : 0}
                             compact={crowded}
@@ -1002,6 +1061,7 @@ export function BattleRoom() {
                               result={pendingResults[p.slotIndex] ?? null}
                               spinToken={spinToken}
                               goldSpinEnabled={battle.goldSpin}
+                              skipReels={battle.coinflip}
                               state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
                               battleActive={phase === "running"}
                               activeCase={currentCase ?? CASES[0]}
@@ -1118,6 +1178,7 @@ function PlayerHeader({
   grouped = false,
   borrowPct = 0,
   compact = false,
+  hidePullTotal = false,
 }: {
   player: BattlePlayer;
   state: PlayerRoundState;
@@ -1126,6 +1187,7 @@ function PlayerHeader({
   grouped?: boolean;
   borrowPct?: number;
   compact?: boolean;
+  hidePullTotal?: boolean;
 }) {
   const label = player.kind === "you" ? "You" : player.name || `Player ${player.slotIndex + 1}`;
   const avatar = useIdentityStore((s) => s.avatarFor(player.kind === "you" ? "You" : label));
@@ -1162,6 +1224,7 @@ function PlayerHeader({
             Player {player.slotIndex + 1} · Team {player.teamIndex + 1}
           </p>
         </div>
+        {!hidePullTotal && (
         <span className="ml-auto shrink-0 text-right">
           <span
             className={clsx(
@@ -1178,6 +1241,7 @@ function PlayerHeader({
             </span>
           )}
         </span>
+        )}
       </div>
     </div>
   );
@@ -1188,6 +1252,7 @@ function PlayerStage({
   result,
   spinToken,
   goldSpinEnabled,
+  skipReels = false,
   state,
   battleActive,
   activeCase,
@@ -1209,6 +1274,7 @@ function PlayerStage({
   result: CaseOddsEntry | null;
   spinToken: number;
   goldSpinEnabled: boolean;
+  skipReels?: boolean;
   state: PlayerRoundState;
   battleActive: boolean;
   activeCase: (typeof CASES)[number];
@@ -1289,6 +1355,13 @@ function PlayerStage({
             </>
           )}
         </div>
+      ) : skipReels ? (
+        <div
+          className="grid h-full place-items-center rounded-lg bg-black/25 p-3 text-center"
+          style={{ minHeight: BATTLE_REEL_HEIGHT[reelSize] }}
+        >
+          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Flip decides</p>
+        </div>
       ) : (
         <CaseReel
           pool={pool}
@@ -1305,6 +1378,7 @@ function PlayerStage({
         />
       )}
 
+      {!skipReels && (
       <div className={clsx("mt-2 overflow-y-auto rounded-lg bg-black/20 p-1.5 scrollbar-thin", compact ? "max-h-48 min-h-[72px]" : "max-h-64 min-h-[92px]")}>
         {state.history.length === 0 ? (
           <p className={clsx("grid h-full place-items-center text-[11px] text-slate-600", compact ? "min-h-[64px]" : "min-h-[80px]")}>No pulls yet</p>
@@ -1316,6 +1390,7 @@ function PlayerStage({
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }

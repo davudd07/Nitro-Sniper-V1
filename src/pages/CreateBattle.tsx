@@ -17,6 +17,7 @@ import {
   User,
   Info,
   Users,
+  Circle,
   ArrowDownUp,
   Gem,
   ChevronDown,
@@ -37,6 +38,7 @@ import { useToastStore } from "../store/toastStore";
 import { formatCredits } from "../lib/format";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
 import { consumeBattleDraft } from "../lib/battleDraft";
+import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
 
@@ -61,6 +63,7 @@ export function CreateBattle() {
   const [crazy, setCrazy] = useState(false);
   const [jackpot, setJackpot] = useState(false);
   const [terminal, setTerminal] = useState(false);
+  const [coinflip, setCoinflip] = useState(false);
   const [goldSpin, setGoldSpin] = useState(true);
   const [rounds, setRounds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -82,11 +85,20 @@ export function CreateBattle() {
     const draft = consumeBattleDraft();
     if (!draft) return;
     setModeId(draft.modeId);
-    setShared(draft.shared);
-    setCrazy(draft.shared ? false : draft.crazy);
-    setJackpot(draft.shared ? false : draft.jackpot);
-    setTerminal(draft.shared ? false : draft.terminal);
-    setGoldSpin(draft.goldSpin);
+    const mods = sanitizeBattleModifiers({
+      shared: draft.shared,
+      coinflip: draft.coinflip,
+      crazy: draft.crazy,
+      jackpot: draft.jackpot,
+      terminal: draft.terminal,
+      goldSpin: draft.goldSpin,
+    });
+    setShared(mods.shared);
+    setCrazy(mods.crazy);
+    setJackpot(mods.jackpot);
+    setTerminal(mods.terminal);
+    setCoinflip(mods.coinflip);
+    setGoldSpin(mods.goldSpin);
     setFastSpin(draft.fastSpin);
     setRounds(flatten(draft.cases));
     setFundedOn(draft.fundedPct > 0);
@@ -136,6 +148,18 @@ export function CreateBattle() {
       setJackpot(false);
       setCrazy(false);
       setTerminal(false);
+      setCoinflip(false);
+    }
+  }
+
+  function toggleCoinflip(v: boolean) {
+    setCoinflip(v);
+    if (v) {
+      setShared(false);
+      setCrazy(false);
+      setJackpot(false);
+      setTerminal(false);
+      setGoldSpin(false);
     }
   }
 
@@ -190,14 +214,10 @@ export function CreateBattle() {
     }
     if (youPay > 0) applyTipWager(youPay);
     awardRakeback(youPay, HOUSE_EDGE.battles);
+    const mods = sanitizeBattleModifiers({ coinflip, crazy, jackpot, terminal, goldSpin, shared });
     const id = createBattle({
       modeId,
-      crazy: shared ? false : crazy,
-      jackpot: shared ? false : jackpot,
-      goldSpin,
-      terminal: shared ? false : terminal,
-      coinflip: false,
-      shared,
+      ...mods,
       fastSpin,
       cases,
       costPerPlayer,
@@ -504,15 +524,27 @@ export function CreateBattle() {
           <div className="surface p-4">
             <p className="mb-1 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Modifiers</p>
             <SideToggle
+              icon={Circle}
+              label="Coinflip"
+              hint="Equal-odds spin. One player per team; case pulls do not score. Incompatible with Crazy, Jackpot, Terminal, and Gold Spin."
+              color="#a5b4fc"
+              checked={coinflip}
+              disabled={shared}
+              onChange={toggleCoinflip}
+            />
+            <SideToggle
               icon={Coins}
               label="Jackpot mode"
               hint="Ticket-weighted spin decides the winner"
               color="#facc15"
               checked={jackpot}
-              disabled={shared}
+              disabled={shared || coinflip}
               onChange={(v) => {
                 setJackpot(v);
-                if (v) setShared(false);
+                if (v) {
+                  setShared(false);
+                  setCoinflip(false);
+                }
               }}
             />
             <SideToggle
@@ -521,8 +553,11 @@ export function CreateBattle() {
               hint="Lowest total wins instead of highest"
               color="#f97316"
               checked={crazy}
-              disabled={shared}
-              onChange={setCrazy}
+              disabled={shared || coinflip}
+              onChange={(v) => {
+                setCrazy(v);
+                if (v) setCoinflip(false);
+              }}
             />
             <SideToggle
               icon={Flag}
@@ -530,8 +565,11 @@ export function CreateBattle() {
               hint="Only the last case decides the winner"
               color="#f472b6"
               checked={terminal}
-              disabled={shared}
-              onChange={setTerminal}
+              disabled={shared || coinflip}
+              onChange={(v) => {
+                setTerminal(v);
+                if (v) setCoinflip(false);
+              }}
             />
             <SideToggle
               icon={Sparkles}
@@ -539,7 +577,11 @@ export function CreateBattle() {
               hint="Rare pulls trigger a bonus gold reel"
               color="#fbbf24"
               checked={goldSpin}
-              onChange={setGoldSpin}
+              disabled={coinflip}
+              onChange={(v) => {
+                setGoldSpin(v);
+                if (v) setCoinflip(false);
+              }}
             />
           </div>
 

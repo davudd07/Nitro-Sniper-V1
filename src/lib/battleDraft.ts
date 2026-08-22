@@ -29,7 +29,8 @@ export function consumeBattleDraft(): BattleDraft | null {
   if (!raw) return null;
   sessionStorage.removeItem(KEY);
   try {
-    return JSON.parse(raw) as BattleDraft;
+    const parsed = JSON.parse(raw) as BattleDraft;
+    return { ...parsed, coinflip: Boolean(parsed.coinflip) };
   } catch {
     return null;
   }

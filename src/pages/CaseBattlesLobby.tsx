@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Eye } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Eye, Circle } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
 import { useBattleStore, type BattleConfig } from "../store/battleStore";
@@ -302,6 +302,11 @@ export function CaseBattlesLobby() {
                     </span>
                   </div>
                   <div className="hidden flex-wrap gap-1 md:flex">
+                    {b.coinflip && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-indigo-400/15 px-1.5 py-0.5 text-[10px] font-medium text-indigo-200">
+                        <Circle className="h-2.5 w-2.5" /> Flip
+                      </span>
+                    )}
                     {b.crazy && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-orange-500/15 px-1.5 py-0.5 text-[10px] font-medium text-orange-300">
                         <Shuffle className="h-2.5 w-2.5" /> Crazy

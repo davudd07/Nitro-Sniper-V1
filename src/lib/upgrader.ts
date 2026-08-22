@@ -1,14 +1,24 @@
 import { ITEMS, type CaseItem } from "../data/items";
-// Catalog is the official case item table (same SH prices as Cases).
 import { HOUSE_EDGE } from "./rakeback";
 
-/** Same originals/cases edge unless loyalty/admin overrides it. */
+/** Same originals/cases edge unless VIP admin overrides `upgrader` (or `cases`). */
 export const UPGRADER_HOUSE_EDGE = HOUSE_EDGE.upgrader;
 
 export const UPGRADER_MIN_MULTIPLIER = 1.01;
 export const UPGRADER_MAX_MULTIPLIER = 10_000;
 export const UPGRADER_SPIN_MS = 2400;
 export const UPGRADER_FAST_SPIN_MS = 780;
+export const UPGRADER_INSTANT_SPIN_MS = 90;
+
+/** Prefer the Upgrader VIP override, else the cases/originals edge, else 4%. */
+export function resolveUpgraderHouseEdge(overrides: Record<string, number> = {}): number {
+  const pick = (key: string) => {
+    const v = overrides[key];
+    if (v != null && Number.isFinite(v)) return Math.min(0.99, Math.max(0, v));
+    return null;
+  };
+  return pick("upgrader") ?? pick("cases") ?? UPGRADER_HOUSE_EDGE;
+}
 
 let cachedCatalog: CaseItem[] | null = null;
 
@@ -100,6 +110,14 @@ export function formatChancePct(chance: number): string {
   if (pct < 0.01) return `${pct.toFixed(4)}%`;
   if (pct < 1) return `${pct.toFixed(2)}%`;
   return `${pct.toFixed(2)}%`;
+}
+
+/** Winning roll band shown on the dial, e.g. `0.00–47.50`. */
+export function formatRollBand(chance: number): string {
+  if (!(chance > 0)) return "0.00–0.00";
+  const hi = chance * 100;
+  const hiStr = hi < 0.01 ? hi.toFixed(4) : hi.toFixed(2);
+  return `0.00–${hiStr}`;
 }
 
 export type UpgradeSort = "price_desc" | "price_asc";

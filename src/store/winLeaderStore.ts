@@ -78,7 +78,7 @@ export function isBattlesLobbyPath(pathname: string): boolean {
 export function hidesGlobalWinLeader(pathname: string): boolean {
   if (isBattlesLobbyPath(pathname)) return true;
   const game = winLeaderGameFromPath(pathname);
-  return game === "mines" || game === "coinflip" || game === "jackpot";
+  return game === "mines" || game === "coinflip" || game === "jackpot" || game === "upgrader";
 }
 
 function isWinLeaderGame(value: string): value is WinLeaderGame {

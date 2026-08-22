@@ -5,19 +5,21 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
-import { takeStake } from "../lib/stake";
-import { houseEdgeForGame } from "../lib/loyalty";
+import { requireAccount, takeStake } from "../lib/stake";
 import { formatCredits, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { ItemIcon } from "../components/ui/ItemIcon";
+import { Switch } from "../components/ui/Switch";
 import { UpgradeGauge } from "../components/upgrader/UpgradeGauge";
+import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { RARITIES } from "../data/rarities";
 import type { CaseItem } from "../data/items";
 import {
   UPGRADER_FAST_SPIN_MS,
   UPGRADER_HOUSE_EDGE,
+  UPGRADER_INSTANT_SPIN_MS,
   UPGRADER_MAX_MULTIPLIER,
   UPGRADER_MIN_MULTIPLIER,
   UPGRADER_SPIN_MS,
@@ -25,8 +27,10 @@ import {
   closestItemNear,
   filterCatalog,
   formatChancePct,
+  formatRollBand,
   landDegForRoll,
   multiplierFromValues,
+  resolveUpgraderHouseEdge,
   settleUpgrade,
   targetFromMultiplier,
   upgraderChance,
@@ -74,10 +78,10 @@ function SlotCard({
         </>
       ) : (
         <>
-          <div className="grid h-20 w-20 place-items-center rounded-xl border border-emerald-400/30 bg-gradient-to-br from-lime-400/20 to-emerald-900/80">
+          <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
             <span className="pixel-label text-2xl text-lime-200">SH</span>
           </div>
-          <p className="text-sm font-semibold text-slate-200">{value > 0 ? "Shard stake" : "Empty"}</p>
+          <p className="text-sm font-semibold text-slate-200">{value > 0 ? "Shard wager" : "Select an item"}</p>
           <p className="font-mono text-sm font-bold text-lime-300">
             {formatCredits(value)} <span className="font-normal text-slate-500">SH</span>
           </p>
@@ -98,6 +102,7 @@ export function Upgrader() {
   const [maxPrice, setMaxPrice] = useState("");
   const [sort, setSort] = useState<UpgradeSort>("price_desc");
   const [fast, setFast] = useState(false);
+  const [instant, setInstant] = useState(false);
   const [phase, setPhase] = useState<Phase>("idle");
   const [won, setWon] = useState<boolean | null>(null);
   const [landDeg, setLandDeg] = useState(0);
@@ -111,7 +116,7 @@ export function Upgrader() {
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
   const houseEdges = useLoyaltyStore((s) => s.config.houseEdges);
-  const houseEdge = houseEdgeForGame("upgrader", houseEdges);
+  const houseEdge = resolveUpgraderHouseEdge(houseEdges);
 
   const inputValue = Math.max(0, Math.round(stake));
   const targetValue = targetItem
@@ -123,6 +128,7 @@ export function Upgrader() {
   const needHigherTarget = inputValue > 0 && targetValue > 0 && inputValue >= targetValue;
   const spinning = phase === "spinning";
   const canSpin = !spinning && chance > 0 && inputValue > 0 && !tooLow && !needHigherTarget;
+  const spinMs = instant ? UPGRADER_INSTANT_SPIN_MS : fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS;
 
   const catalog = useMemo(
     () =>
@@ -185,12 +191,13 @@ export function Upgrader() {
     if (tooLow) return "Not enough Shards";
     if (inputValue <= 0) return "Enter a stake";
     if (needHigherTarget || chance <= 0) return "Pick a higher target";
-    return `Upgrade · ${formatChancePct(chance)}`;
+    return "Upgrade";
   }
 
   async function spin() {
     if (spinning || settleLock.current) return;
     if (inputValue <= 0) return;
+    if (!requireAccount()) return;
     if (tooLow) {
       push("Not enough Shards for that bet.", "danger");
       return;
@@ -249,7 +256,7 @@ export function Upgrader() {
             Upgrader
           </h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Stake Shards (or a catalog item&apos;s SH value), pick a richer target, and spin the gauge. Play-money only.
+            Stake a catalog item (or its Shard value), pick a richer target, and spin the dial. Play-money only.
           </p>
         </div>
         <InfoButton title="Upgrader — RTP & House Edge">
@@ -257,15 +264,70 @@ export function Upgrader() {
           <StatRow label="RTP" value={formatPercent(1 - houseEdge)} />
           <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
           <p>
-            Win chance is <span className="font-mono text-white">(input ÷ target) × (1 − house edge)</span>. Chance is
-            always below 100%. If the stake is at least the target, pick a higher target so the house keeps its edge.
-            A hit credits the target&apos;s SH value, same as unboxing a case item. A miss consumes the stake.
+            Win chance is <span className="font-mono text-white">(source ÷ target) × (1 − house edge)</span>. Chance is
+            always below 100%, so the house keeps its edge. A hit credits the target&apos;s SH value. A miss consumes
+            the source stake. Fair rolls land in the green win arc ({formatRollBand(chance)}) or the miss arc.
           </p>
         </InfoButton>
       </div>
 
-      <div className="surface space-y-5 p-4 sm:p-5">
+      <div className="relative surface space-y-5 p-4 pb-11 sm:p-5 sm:pb-12">
+        <WinLeaderStageMark game="upgrader" />
+
+        <div className="grid items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)_minmax(0,1fr)]">
+          <SlotCard
+            label="Source"
+            item={inputItem}
+            value={inputValue}
+            active={slot === "input"}
+            onClick={() => {
+              if (spinning) return;
+              sound.click();
+              setSlot("input");
+            }}
+          />
+          <div className="flex flex-col items-center gap-3">
+            <UpgradeGauge
+              chance={chance}
+              spinning={spinning}
+              won={won}
+              landDeg={landDeg}
+              spinToken={spinToken}
+              durationMs={spinMs}
+              extraSpins={instant ? 0 : 7}
+              onSettled={handleSettled}
+            />
+            <p className="text-center text-xs text-slate-500">
+              {formatCredits(inputValue)} SH → {formatCredits(targetValue)} SH · {displayedMulti.toFixed(2)}× ·{" "}
+              {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
+            </p>
+          </div>
+          <SlotCard
+            label="Target"
+            item={targetItem}
+            value={targetValue}
+            active={slot === "target"}
+            onClick={() => {
+              if (spinning) return;
+              sound.click();
+              setSlot("target");
+            }}
+          />
+        </div>
+
         <div className="flex flex-wrap items-center gap-2">
+          <label className="flex items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Stake</span>
+            <input
+              type="number"
+              min={0}
+              disabled={spinning}
+              value={stake}
+              onChange={(e) => applyStake(Number(e.target.value) || 0)}
+              className="w-24 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
+            />
+            <span className="text-[10px] font-bold text-slate-500">SH</span>
+          </label>
           {[
             { id: "clear", label: "CLEAR", run: () => applyStake(0) },
             { id: "half", label: "1/2", run: () => applyStake(Math.floor(inputValue / 2)) },
@@ -285,19 +347,7 @@ export function Upgrader() {
               {btn.label}
             </button>
           ))}
-          <label className="ml-auto flex items-center gap-2 rounded-md border border-white/10 bg-black/25 px-2.5 py-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Stake</span>
-            <input
-              type="number"
-              min={0}
-              disabled={spinning}
-              value={stake}
-              onChange={(e) => applyStake(Number(e.target.value) || 0)}
-              className="w-24 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
-            />
-            <span className="text-[10px] font-bold text-slate-500">SH</span>
-          </label>
-          <label className="flex items-center gap-1.5 rounded-md border border-white/10 bg-black/25 px-2.5 py-1.5">
+          <label className="flex items-center gap-1.5 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">x</span>
             <input
               type="number"
@@ -320,11 +370,12 @@ export function Upgrader() {
             onClick={() => {
               sound.click();
               setFast((v) => !v);
+              if (!fast) setInstant(false);
             }}
             title={fast ? "Fast spin on" : "Fast spin off"}
             className={clsx(
               "inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-40",
-              fast
+              fast && !instant
                 ? "border-lime-300/70 bg-lime-400/15 text-lime-100"
                 : "border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200",
             )}
@@ -332,55 +383,27 @@ export function Upgrader() {
             <Zap className="h-3.5 w-3.5" />
             Fast
           </button>
+          <label className="ml-auto inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">
+            Instant
+            <Switch
+              checked={instant}
+              disabled={spinning}
+              onChange={(next) => {
+                setInstant(next);
+                if (next) setFast(false);
+              }}
+            />
+          </label>
         </div>
 
-        <div className="grid items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)_minmax(0,1fr)]">
-          <SlotCard
-            label="Input"
-            item={inputItem}
-            value={inputValue}
-            active={slot === "input"}
-            onClick={() => {
-              if (spinning) return;
-              sound.click();
-              setSlot("input");
-            }}
-          />
-          <div className="flex flex-col items-center gap-4">
-            <UpgradeGauge
-              chance={chance}
-              spinning={spinning}
-              won={won}
-              landDeg={landDeg}
-              spinToken={spinToken}
-              durationMs={fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS}
-              onSettled={handleSettled}
-            />
-            <p className="text-center text-xs text-slate-500">
-              {formatCredits(inputValue)} SH → {formatCredits(targetValue)} SH · {displayedMulti.toFixed(2)}× · house{" "}
-              {formatPercent(houseEdge, 0)}
-            </p>
-            <button
-              type="button"
-              disabled={!canSpin}
-              onClick={() => void spin()}
-              className="btn-primary w-full max-w-xs px-8 py-3 text-sm disabled:opacity-50"
-            >
-              {spinLabel()}
-            </button>
-          </div>
-          <SlotCard
-            label="Target"
-            item={targetItem}
-            value={targetValue}
-            active={slot === "target"}
-            onClick={() => {
-              if (spinning) return;
-              sound.click();
-              setSlot("target");
-            }}
-          />
-        </div>
+        <button
+          type="button"
+          disabled={!canSpin}
+          onClick={() => void spin()}
+          className="btn-primary w-full px-8 py-3.5 text-base disabled:opacity-50"
+        >
+          {spinLabel()}
+        </button>
       </div>
 
       <div className="surface space-y-3 p-4">
@@ -427,7 +450,7 @@ export function Upgrader() {
           </label>
         </div>
         <p className="text-[11px] text-slate-500">
-          Click an item to fill the {slot === "input" ? "input" : "target"} slot.
+          Click an item to fill the {slot === "input" ? "source" : "target"} slot.
           {slot === "input" ? " Stake becomes that item’s SH value." : " Chance uses its catalog price."}
         </p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">

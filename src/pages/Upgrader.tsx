@@ -266,16 +266,14 @@ export function Upgrader() {
           <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
           <p>
             Win chance is <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>, clamped to (0, 1).
-            Default house edge is 5% (no +EV). Drag either end-dot to rotate the green slice — length stays locked to
+            Default house edge is 5% (no +EV). Drag either thick end-cap to rotate the green slice — length stays locked to
             that math, so you cannot change the odds. The arrow spins and lands; a hit inside your placed slice credits
             the target SH value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
           </p>
         </InfoButton>
       </div>
 
-      <div className="relative surface space-y-5 p-4 pb-11 sm:p-5 sm:pb-12">
-        <WinLeaderStageMark game="upgrader" />
-
+      <div className="surface space-y-5 p-4 sm:p-5">
         <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)_minmax(0,1fr)]">
           <div className="flex flex-col gap-3">
             <SlotCard
@@ -397,14 +395,17 @@ export function Upgrader() {
           </div>
         </div>
 
-        <button
-          type="button"
-          disabled={!canSpin}
-          onClick={() => void spin()}
-          className="btn-primary w-full px-8 py-3.5 text-base disabled:opacity-50"
-        >
-          {spinLabel()}
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            disabled={!canSpin}
+            onClick={() => void spin()}
+            className="btn-primary min-w-0 flex-1 px-8 py-3.5 text-base disabled:opacity-50"
+          >
+            {spinLabel()}
+          </button>
+          <WinLeaderStageMark game="upgrader" inline />
+        </div>
       </div>
 
       <div className="surface space-y-3 p-4">

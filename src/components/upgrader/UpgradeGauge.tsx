@@ -9,6 +9,9 @@ const TICK_EVERY = 14;
 /** Stroke-center radius in a 100×100 viewBox (0 = top, clockwise). */
 const RING_R = 42;
 const RING_STROKE = 8;
+/** Radial end-caps: stick slightly past the green stroke, square ends (not dots). */
+const CAP_HALF_LEN = 6.4;
+const CAP_STROKE = 3.7;
 
 function polar(deg: number, r: number) {
   const rad = (deg * Math.PI) / 180;
@@ -29,20 +32,25 @@ function describeArc(startDeg: number, sweep: number, r: number): string {
   return `M ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
 }
 
+function arcCap(deg: number) {
+  const inner = polar(deg, RING_R - CAP_HALF_LEN);
+  const outer = polar(deg, RING_R + CAP_HALF_LEN);
+  return { x1: inner.x, y1: inner.y, x2: outer.x, y2: outer.y };
+}
+
+/** Invisible grab target over a radial tick at the green arc’s endpoint. */
 function ArcHandle({ deg, spinning, grabbing }: { deg: number; spinning: boolean; grabbing: boolean }) {
   const p = polar(deg, RING_R);
   return (
     <div
       data-arc-grab=""
       className={clsx(
-        "absolute z-30 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+        "absolute z-30 h-10 w-10 -translate-x-1/2 -translate-y-1/2",
         spinning ? "pointer-events-none cursor-default" : grabbing ? "cursor-grabbing" : "cursor-grab",
       )}
       style={{ left: `${p.x}%`, top: `${p.y}%` }}
       aria-hidden
-    >
-      <span className="pointer-events-none h-3.5 w-3.5 rounded-full border-2 border-[#0c1410] bg-lime-300 shadow-[0_0_10px_rgba(163,230,53,0.85)]" />
-    </div>
+    />
   );
 }
 
@@ -213,6 +221,27 @@ export function UpgradeGauge({
                 filter: "drop-shadow(0 0 3px rgba(163,230,53,0.55))",
               }}
             />
+          )}
+          {chance > 0 && (
+            <>
+              {[startDeg, endDeg].map((deg, i) => {
+                const cap = arcCap(deg);
+                return (
+                  <line
+                    key={i}
+                    x1={cap.x1}
+                    y1={cap.y1}
+                    x2={cap.x2}
+                    y2={cap.y2}
+                    stroke="#bef264"
+                    strokeWidth={CAP_STROKE}
+                    strokeLinecap="butt"
+                    pointerEvents="none"
+                    style={{ filter: "drop-shadow(0 0 2px rgba(163,230,53,0.9))" }}
+                  />
+                );
+              })}
+            </>
           )}
         </svg>
 

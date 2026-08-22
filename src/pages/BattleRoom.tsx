@@ -31,7 +31,9 @@ import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
+import { coinflipPot, coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
 import { saveBattleDraft } from "../lib/battleDraft";
+import { useCommunityCaseStore } from "../store/communityCaseStore";
 
 type BattlePlayer = BattleRosterSeat;
 
@@ -263,9 +265,13 @@ export function BattleRoom() {
           clearInterval(id);
           sound.countdownBeep(true);
           sound.battleStart();
-          setPhase("running");
           if (battleId && !isReplayRef.current) setBattleStatus(battleId, "active");
-          setCaseIndex(0);
+          if (battle?.coinflip) {
+            finishBattle();
+          } else {
+            setPhase("running");
+            setCaseIndex(0);
+          }
           return 0;
         }
         sound.countdownBeep();
@@ -273,7 +279,7 @@ export function BattleRoom() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [phase, battleId, setBattleStatus]);
+  }, [phase, battleId, setBattleStatus, battle?.coinflip]);
 
   const runRound = useCallback(
     async (idx: number) => {
@@ -289,6 +295,9 @@ export function BattleRoom() {
         players.forEach((p, i) => {
           results[p.slotIndex] = rollCaseItem(c, rolls[i]);
         });
+        if (!isReplayRef.current && (battle?.costPerPlayer ?? 0) > 0) {
+          useCommunityCaseStore.getState().payOpens(caseId, players.length);
+        }
         const log = replayLogRef.current.slice();
         log[idx] = results;
         replayLogRef.current = log;
@@ -297,7 +306,7 @@ export function BattleRoom() {
       setPendingResults(results);
       setSpinToken((t) => t + 1);
     },
-    [caseSequence, play, players],
+    [caseSequence, play, players, battle?.costPerPlayer],
   );
 
   useEffect(() => {
@@ -365,13 +374,57 @@ export function BattleRoom() {
         setJackpotSpinToken((t) => t + 1);
         return;
       }
+      if (battle?.coinflip) {
+        resolveCoinflip();
+        return;
+      }
       // Seeded / unfinished snapshot: resolve visually from the openings we just replayed, no payout.
       resolveOutcome(roundStatesRef.current, { payout: false });
       return;
     }
     if (resolvedRef.current) return;
     resolvedRef.current = true;
+    if (battle?.coinflip) {
+      resolveCoinflip();
+      return;
+    }
     resolveOutcome(roundStatesRef.current, { payout: true });
+  }
+
+  function battlePayoutPot() {
+    if (!battle) return 0;
+    if (battle.coinflip) return coinflipPot(battle.costPerPlayer, players.length);
+    return Object.values(roundStatesRef.current).reduce((s, r) => s + r.total, 0);
+  }
+
+  function resolveCoinflip() {
+    if (!battle || !mode) return;
+    const tickets = coinflipTicketsFor(players);
+    if (tickets.length === 0) {
+      setPhase("finished");
+      return;
+    }
+    void play(1).then(([roll]) => {
+      const winnerIdx = pickWeightedTicketIndex(tickets, roll);
+      const winnerId = tickets[winnerIdx].playerId;
+      const team =
+        teamFromJackpotWinner(winnerId) ??
+        players.find((p) => String(p.slotIndex) === winnerId)?.teamIndex ??
+        0;
+      const jp = {
+        tickets,
+        winnerId,
+        tieBreak: false,
+      };
+      setTieBreak(false);
+      setJackpotTickets(tickets);
+      setJackpotWinnerId(winnerId);
+      setWinningTeam(team);
+      replayJackpotRef.current = jp;
+      persistReplay(jp);
+      setPhase("jackpot");
+      setJackpotSpinToken((t) => t + 1);
+    });
   }
 
   function resolveOutcome(finalStates: Record<number, PlayerRoundState>, opts: { payout: boolean }) {
@@ -560,7 +613,7 @@ export function BattleRoom() {
 
   function handleJackpotFinished() {
     const settle = !isReplayRef.current;
-    const pot = Object.values(roundStatesRef.current).reduce((s, r) => s + r.total, 0);
+    const pot = battlePayoutPot();
     const winnerId = replayJackpotRef.current?.winnerId ?? jackpotWinnerId;
     const team = winningTeam ?? teamFromJackpotWinner(winnerId);
     persistReplay(replayJackpotRef.current);
@@ -598,6 +651,7 @@ export function BattleRoom() {
       goldSpin: battle.goldSpin,
       terminal: battle.terminal,
       shared: battle.shared,
+      coinflip: battle.coinflip,
       fastSpin: battle.fastSpin,
       cases: battle.cases,
       fundedPct: battle.fundedPct,
@@ -665,8 +719,9 @@ export function BattleRoom() {
 
   const currentCaseId = caseIndex >= 0 ? caseSequence[caseIndex] : undefined;
   const currentCase = currentCaseId ? getCase(currentCaseId) : undefined;
-  const pot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
-  const showJackpotPot = Boolean(battle.jackpot || phase === "jackpot");
+  const pullPot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
+  const pot = battle.coinflip ? coinflipPot(battle.costPerPlayer, players.length) : pullPot;
+  const showJackpotPot = Boolean(battle.jackpot || battle.coinflip || phase === "jackpot");
   const reelSize = battleReelSize(players.length);
   const crowded = players.length >= 6;
   const denseVs = teams.length >= 4;

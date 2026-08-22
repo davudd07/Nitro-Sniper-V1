@@ -11,3 +11,4 @@ export * from "./authStore";
 export * from "./loyaltyStore";
 export * from "./identityStore";
 export * from "./winLeaderStore";
+export * from "./communityCaseStore";

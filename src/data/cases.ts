@@ -1,4 +1,5 @@
 import { ITEMS, type CaseItem } from "./items";
+import { findHydratedCommunityCase } from "../store/communityCaseStore";
 
 export interface CaseOddsEntry {
   item: CaseItem;
@@ -267,6 +268,11 @@ export interface Case extends CaseDef {
   ev: number;
   rtp: number;
   houseEdge: number;
+  community?: boolean;
+  creatorId?: string;
+  creatorName?: string;
+  designItemIds?: string[];
+  commissionRate?: number;
 }
 
 export const CASES: Case[] = CASE_DEFS.map((def) => {
@@ -275,7 +281,7 @@ export const CASES: Case[] = CASE_DEFS.map((def) => {
 });
 
 export function getCase(id: string): Case | undefined {
-  return CASES.find((c) => c.id === id);
+  return CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
 }
 
 /** Rolls a single item id from a case's odds table given a uniform float in [0,1). */

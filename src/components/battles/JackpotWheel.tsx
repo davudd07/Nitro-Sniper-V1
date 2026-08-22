@@ -20,6 +20,13 @@ const LAND_LOOP = 3;
 
 /** Battle jackpot strip (not the circle jackpot game): spin + slow brake. */
 export const BATTLE_JACKPOT_SPIN_MS = 14000;
+/**
+ * Pause after the strip is visually parked before overlay / payout.
+ * Previously the overlay waited until t=1 — about 4900ms after remaining
+ * travel dropped under 1px with slowBrake^8 on a 14s spin.
+ */
+export const BATTLE_JACKPOT_SETTLE_MS = 400;
+const VISUAL_STOP_PX = 1;
 
 type LoopSeg = { ticket: JackpotTicket; width: number };
 
@@ -44,6 +51,8 @@ export function JackpotWheel({
   winnerId,
   duration = BATTLE_JACKPOT_SPIN_MS,
   compact = false,
+  settleDelayMs = BATTLE_JACKPOT_SETTLE_MS,
+  finishVerb = "takes the jackpot",
   onFinished,
 }: {
   tickets: JackpotTicket[];
@@ -51,6 +60,8 @@ export function JackpotWheel({
   winnerId: string | null;
   duration?: number;
   compact?: boolean;
+  settleDelayMs?: number;
+  finishVerb?: string;
   onFinished?: () => void;
 }) {
   const [offset, setOffset] = useState(0);
@@ -58,6 +69,7 @@ export function JackpotWheel({
   const [activeIndex, setActiveIndex] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
+  const settleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastIndexRef = useRef(-1);
 
   const loopSegments = buildLoopSegments(tickets);
@@ -70,6 +82,10 @@ export function JackpotWheel({
     if (spinToken === 0 || !winnerId) return;
     setDone(false);
     setActiveIndex(-1);
+    if (settleTimerRef.current) {
+      clearTimeout(settleTimerRef.current);
+      settleTimerRef.current = null;
+    }
     const containerWidth = containerRef.current?.clientWidth ?? 320;
 
     const winnerIdxInLoop = loopSegments.findIndex((s) => s.ticket.playerId === winnerId);
@@ -84,6 +100,21 @@ export function JackpotWheel({
 
     const start = performance.now();
     lastIndexRef.current = -1;
+    let parked = false;
+
+    function parkAndSettle() {
+      if (parked) return;
+      parked = true;
+      setOffset(targetOffset);
+      const landed = segmentAt(targetOffset + containerWidth / 2, fullStrip);
+      if (landed) setActiveIndex(landed.index);
+      setDone(true);
+      sound.jackpotWin();
+      settleTimerRef.current = setTimeout(() => {
+        settleTimerRef.current = null;
+        onFinished?.();
+      }, settleDelayMs);
+    }
 
     function frame(now: number) {
       const t = Math.min(1, (now - start) / duration);
@@ -95,23 +126,28 @@ export function JackpotWheel({
       if (hit && hit.index !== lastIndexRef.current) {
         lastIndexRef.current = hit.index;
         setActiveIndex(hit.index);
-        if (t < 1) sound.jackpotSpin();
+        if (t < 1 && !parked) sound.jackpotSpin();
+      }
+
+      const remaining = Math.abs(targetOffset - pos);
+      if (!parked && (remaining <= VISUAL_STOP_PX || t >= 1)) {
+        parkAndSettle();
+        return;
       }
 
       if (t < 1) {
         rafRef.current = requestAnimationFrame(frame);
       } else {
-        setOffset(targetOffset);
-        const landed = segmentAt(targetOffset + containerWidth / 2, fullStrip);
-        if (landed) setActiveIndex(landed.index);
-        setDone(true);
-        sound.jackpotWin();
-        onFinished?.();
+        parkAndSettle();
       }
     }
     rafRef.current = requestAnimationFrame(frame);
     return () => {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (settleTimerRef.current) {
+        clearTimeout(settleTimerRef.current);
+        settleTimerRef.current = null;
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
@@ -179,7 +215,7 @@ export function JackpotWheel({
       )}
       {done && winnerId && (
         <p className="text-center text-sm font-semibold text-amber-300">
-          {tickets.find((t) => t.playerId === winnerId)?.name} takes the jackpot!
+          {tickets.find((t) => t.playerId === winnerId)?.name} {finishVerb}!
         </p>
       )}
     </div>

@@ -14,9 +14,11 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useAdminViewStore } from "../store/adminViewStore";
+import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { takeStake } from "../lib/stake";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { formatCredits, formatPercent } from "../lib/format";
+import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
+import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
 import type { CaseItem } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
 
@@ -59,6 +61,9 @@ export function CaseOpenPage() {
     if (!takeStake(stake, HOUSE_EDGE.cases)) {
       push(`You need ${formatCredits(c.price * n)} SH to open this case.`, "danger");
       return;
+    }
+    if (!demo && c.community) {
+      useCommunityCaseStore.getState().payOpens(c.id, n);
     }
     demoRoundRef.current = demo;
     setSpinning(true);
@@ -118,11 +123,20 @@ export function CaseOpenPage() {
               <RiskBadge risk={c.risk} />
             </div>
             <p className="text-sm text-slate-400">{c.blurb}</p>
+            {c.community && c.creatorName ? (
+              <p className="text-[11px] text-slate-500">Community · {c.creatorName}</p>
+            ) : null}
           </div>
           <InfoButton title={`${c.name} — Odds & House Edge`}>
             <StatRow label="Price" value={`${formatCredits(c.price)} SH`} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
+            {c.community && (
+              <StatRow
+                label="Creator commission"
+                value={`${formatRakeback(communityCommissionPerOpen(c.price, c.houseEdge))} SH/open · ${formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of house edge to ${c.creatorName ?? "creator"}`}
+              />
+            )}
           </InfoButton>
         </div>
       </div>

@@ -49,6 +49,11 @@ export interface BattleConfig {
   isPrivate: boolean;
   /** Everyone splits the pot equally after the last case. */
   shared: boolean;
+  /**
+   * Coinflip battle: cases still set the buy-in, but pulls do not score.
+   * An equal-odds strip spin (one player per team) decides the winner.
+   */
+  coinflip: boolean;
   /** Shorter reel duration in the battle room. */
   fastSpin: boolean;
   createdAt: number;
@@ -94,13 +99,14 @@ function costOf(cases: BattleCaseEntry[]): number {
 }
 
 function seedBattle(
-  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct" | "status"> & {
+  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct" | "status" | "coinflip"> & {
     id: string;
     createdAt: number;
     fundedPct?: number;
     isPrivate?: boolean;
     shared?: boolean;
     fastSpin?: boolean;
+    coinflip?: boolean;
     creatorBorrowPct?: number;
     status?: BattleLobbyStatus;
     payout?: number;
@@ -114,6 +120,7 @@ function seedBattle(
     isPrivate: partial.isPrivate ?? false,
     shared: partial.shared ?? false,
     fastSpin: partial.fastSpin ?? false,
+    coinflip: partial.coinflip ?? false,
     creatorBorrowPct: partial.creatorBorrowPct ?? 0,
     status: partial.status ?? "open",
     costPerPlayer: costOf(partial.cases),
@@ -241,6 +248,19 @@ function seedBattles(): Record<string, BattleConfig> {
       prefillBots: 0,
       fundedPct: 0.5,
       createdAt: now - 4000,
+    }),
+    seedBattle({
+      id: "lobby_2v2_coinflip",
+      modeId: "2v2",
+      crazy: false,
+      jackpot: false,
+      goldSpin: false,
+      terminal: false,
+      coinflip: true,
+      cases: [{ caseId: "starter", count: 2 }],
+      prefillBots: 2,
+      botSeats: [1, 2],
+      createdAt: now - 2800,
     }),
     seedBattle({
       id: "hist_whale",
@@ -438,6 +458,21 @@ function seedBattles(): Record<string, BattleConfig> {
       finishedAt: now - 36000000,
       createdAt: now - 36100000,
     }),
+    seedBattle({
+      id: "hist_coinflip",
+      modeId: "1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: false,
+      terminal: false,
+      coinflip: true,
+      cases: [{ caseId: "prime", count: 1 }],
+      prefillBots: 1,
+      status: "finished",
+      payout: 2100,
+      finishedAt: now - 4200000,
+      createdAt: now - 4300000,
+    }),
   ];
   return Object.fromEntries(seeds.map((b) => [b.id, b]));
 }
@@ -447,7 +482,13 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
   joinIntents: {},
   createBattle: (cfg) => {
     const id = shortId("battle");
-    const battle: BattleConfig = { ...cfg, id, createdAt: Date.now(), status: cfg.status ?? "open" };
+    const battle: BattleConfig = {
+      ...cfg,
+      id,
+      createdAt: Date.now(),
+      status: cfg.status ?? "open",
+      coinflip: cfg.coinflip ?? false,
+    };
     set((s) => ({ battles: { ...s.battles, [id]: battle } }));
     return id;
   },

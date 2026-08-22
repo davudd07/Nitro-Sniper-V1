@@ -4,21 +4,24 @@ import { houseEdgeForGame, sortedTiers, type VipTier } from "./loyalty";
 import { HOUSE_EDGE } from "./rakeback";
 
 /**
- * Community case pricing (must keep EV < price so the house cannot be arb'd):
+ * Community case pricing matches official cases (EV stays below price by the
+ * cases house edge). Creator commission is a slice of the house's edge take,
+ * not extra rake stacked on the player:
  *
- *   Item EV = Σ (itemPrice × chance)
- *   houseEdge = live Cases edge from VIP/admin config (default HOUSE_EDGE.cases = 4%)
- *   commission = 2% to the creator, paid from the open (not from winners)
+ *   Item EV     = Σ (itemPrice × chance)
+ *   houseEdge   = live Cases edge from VIP/admin config (default HOUSE_EDGE.cases = 4%)
+ *   price       = ceil(EV / (1 − houseEdge))     // same identity as official
+ *   houseTake   = houseEdge × price
+ *   commission  = 5% of houseTake
+ *               = COMMUNITY_COMMISSION_OF_EDGE × houseEdge × price
  *
- * Official cases set price first, then solve EV so rtp = EV/price = targetRtp (0.96),
- * i.e. price = EV / (1 − houseEdge). Community cases invert the same identity and
- * also reserve commission:
- *
- *   price = ceil(EV / (1 − houseEdge − commission))
- *
- * Example at 4% house + 2% commission: price = ceil(EV / 0.94). RTP ≈ 94%.
+ * Example at 4% house edge, EV 96 → price 100. House take 4 SH. Creator 0.20 SH.
+ * Player RTP is unchanged vs official (~96%). Commission does NOT raise price.
+ * +EV community cases are rejected (EV must be < price).
  */
-export const COMMUNITY_COMMISSION = 0.02;
+export const COMMUNITY_COMMISSION_OF_EDGE = 0.05;
+/** @deprecated Use COMMUNITY_COMMISSION_OF_EDGE — this is 5% of the house-edge take, not of price. */
+export const COMMUNITY_COMMISSION = COMMUNITY_COMMISSION_OF_EDGE;
 export const COMMUNITY_MAX_ITEMS = 25;
 export const COMMUNITY_MAX_DESIGN_ITEMS = 5;
 export const COMMUNITY_NAME_MIN = 4;
@@ -120,13 +123,33 @@ export function itemEv(entries: CommunityOddsInput[]): number {
 }
 
 /**
- * Inverse of official `EV = price × (1 − houseEdge)`, with creator commission reserved.
- * Returns 0 when the edge stack would make a non-positive denominator (block create).
+ * Inverse of official `EV = price × (1 − houseEdge)`. Commission is paid from
+ * the house-edge take and is not added to the denominator.
+ * Returns 0 when EV cannot sit strictly below a fair (edged) price.
  */
 export function communityCasePrice(ev: number, houseEdge: number): number {
-  const denom = 1 - houseEdge - COMMUNITY_COMMISSION;
-  if (!(ev > 0) || !(denom > 0)) return 0;
-  return Math.max(1, Math.ceil(ev / denom));
+  const edge = Math.min(0.99, Math.max(0, houseEdge));
+  const denom = 1 - edge;
+  if (!(ev > 0) || !(edge > 0) || !(denom > 0)) return 0;
+  const price = Math.max(1, Math.ceil(ev / denom));
+  if (ev >= price) return 0;
+  return price;
+}
+
+/** House-edge take on one paid open: `houseEdge × casePrice`. */
+export function communityHouseTake(price: number, houseEdge: number): number {
+  if (!(price > 0) || !(houseEdge > 0)) return 0;
+  return houseEdge * price;
+}
+
+/** Creator commission on one paid open: `0.05 × houseEdge × casePrice`. */
+export function communityCommissionPerOpen(
+  price: number,
+  houseEdge: number,
+  rate: number = COMMUNITY_COMMISSION_OF_EDGE,
+): number {
+  const slice = rate > 0 ? rate : COMMUNITY_COMMISSION_OF_EDGE;
+  return communityHouseTake(price, houseEdge) * slice;
 }
 
 export function riskFromEntries(entries: CommunityOddsInput[]): RiskLevel {

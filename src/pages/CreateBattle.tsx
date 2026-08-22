@@ -196,6 +196,7 @@ export function CreateBattle() {
       jackpot: shared ? false : jackpot,
       goldSpin,
       terminal: shared ? false : terminal,
+      coinflip: false,
       shared,
       fastSpin,
       cases,

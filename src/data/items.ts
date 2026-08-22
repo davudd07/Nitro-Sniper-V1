@@ -128,3 +128,6 @@ export const ITEMS: Record<string, CaseItem> = {
   void_monarch: { id: "void_monarch", name: "Void Monarch", value: 20000, rarity: "epic", icon: "eye" },
   apex_singularity: { id: "apex_singularity", name: "Apex Singularity", value: 50000, rarity: "mythic", icon: "atom" },
 };
+
+/** Every catalog item, website prices only. */
+export const ITEM_LIST: CaseItem[] = Object.values(ITEMS);

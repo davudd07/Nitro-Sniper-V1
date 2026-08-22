@@ -9,6 +9,7 @@ export interface BattleDraft {
   goldSpin: boolean;
   terminal: boolean;
   shared: boolean;
+  coinflip: boolean;
   fastSpin: boolean;
   cases: BattleCaseEntry[];
   fundedPct: number;

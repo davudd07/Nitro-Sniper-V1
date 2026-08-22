@@ -35,11 +35,6 @@ export function sanitizeBattleModifiers(flags: Partial<BattleModifierFlags>): Ba
   };
 }
 
-/** Buy-in pot for a coinflip battle — cases set the seat cost; pulls do not score. */
-export function coinflipPot(costPerPlayer: number, seats: number): number {
-  return Math.max(0, costPerPlayer) * Math.max(0, seats);
-}
-
 /**
  * Equal-odds tickets: one representative per team (FFA = one ticket per player).
  * Prefer the local player when they sit on that team so the strip features "You".

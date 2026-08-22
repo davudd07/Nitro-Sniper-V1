@@ -51,8 +51,8 @@ export interface BattleConfig {
   /** Everyone splits the pot equally after the last case. */
   shared: boolean;
   /**
-   * Coinflip battle: cases still set the buy-in, but pulls do not score.
-   * An equal-odds strip spin (one player per team) decides the winner.
+   * Coinflip battle: equal-odds strip spin (one player per team) decides the winner.
+   * The pot is the live pull total, not the seat buy-in.
    */
   coinflip: boolean;
   /** Shorter reel duration in the battle room. */

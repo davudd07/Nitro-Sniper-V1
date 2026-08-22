@@ -31,7 +31,7 @@ import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
-import { coinflipPot, coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
+import { coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
 import { saveBattleDraft } from "../lib/battleDraft";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
 
@@ -410,7 +410,6 @@ export function BattleRoom() {
 
   function battlePayoutPot() {
     if (!battle) return 0;
-    if (battle.coinflip) return coinflipPot(battle.costPerPlayer, players.length);
     return Object.values(roundStatesRef.current).reduce((s, r) => s + r.total, 0);
   }
 
@@ -760,8 +759,7 @@ export function BattleRoom() {
 
   const currentCaseId = caseIndex >= 0 ? caseSequence[caseIndex] : undefined;
   const currentCase = currentCaseId ? getCase(currentCaseId) : undefined;
-  const pullPot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
-  const pot = battle.coinflip ? coinflipPot(battle.costPerPlayer, players.length) : pullPot;
+  const pot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
   const showJackpotPot = Boolean(battle.jackpot || battle.coinflip || phase === "jackpot");
   const reelSize = battleReelSize(players.length);
   const crowded = players.length >= 6;
@@ -865,7 +863,7 @@ export function BattleRoom() {
             )}
             {battle.coinflip && (
               <span className="text-indigo-200">
-                {battle.goldSpin ? "Open cases · gold reels · flip for the buy-in" : "Open cases, then flip for the buy-in"}
+                {battle.goldSpin ? "Live pot from pulls · gold reels · equal-odds flip" : "Live pot from pulls · equal-odds flip"}
               </span>
             )}
             {battle.terminal && (

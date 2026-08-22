@@ -525,7 +525,7 @@ export function CreateBattle() {
             <SideToggle
               icon={Circle}
               label="Coinflip"
-              hint="Open every case, then an equal-odds spin for the buy-in. One player per team; pulls do not score. Works with Gold Spin. Off with Crazy, Jackpot, Terminal, and Shared."
+              hint="Open every case — the pot starts at 0 and grows with each pull — then an equal-odds spin. Pulls do not pick the winner. Works with Gold Spin. Off with Crazy, Jackpot, Terminal, and Shared."
               color="#a5b4fc"
               checked={coinflip}
               disabled={shared}

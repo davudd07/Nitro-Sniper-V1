@@ -10,7 +10,7 @@ import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
-import { BATTLE_REEL_HEIGHT, CaseReel } from "../components/cases/CaseReel";
+import { BATTLE_REEL_HEIGHT, battleReelSize, CaseReel, type BattleReelSize } from "../components/cases/CaseReel";
 import { PlayerAvatar } from "../components/identity/PlayerAvatar";
 import { RoleBadge } from "../components/identity/RoleBadge";
 import { useIdentityStore } from "../store/identityStore";
@@ -667,6 +667,10 @@ export function BattleRoom() {
   const currentCase = currentCaseId ? getCase(currentCaseId) : undefined;
   const pot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
   const showJackpotPot = Boolean(battle.jackpot || phase === "jackpot");
+  const reelSize = battleReelSize(players.length);
+  const crowded = players.length >= 6;
+  const denseVs = teams.length >= 4;
+  const laneMin = players.length >= 7 ? "5.5rem" : undefined;
 
   return (
     <div className="space-y-6">
@@ -794,6 +798,7 @@ export function BattleRoom() {
               spinToken={jackpotSpinToken}
               winnerId={jackpotWinnerId}
               duration={BATTLE_JACKPOT_SPIN_MS}
+              compact={jackpotTickets.length >= 6}
               onFinished={handleJackpotFinished}
             />
           </div>
@@ -828,18 +833,21 @@ export function BattleRoom() {
 
         <div className="relative min-w-0 w-full">
           {phase === "countdown" && <BattleCountdown countdown={countdown} />}
-          <div className="flex w-full min-w-0 items-stretch">
+          <div className="min-w-0 w-full overflow-x-auto scrollbar-thin">
+            <div className="min-w-full">
+          <div className="flex w-full items-stretch">
             {teams.map((teamPlayers, teamIdx) => {
-              const isTeam = teamPlayers.length > 1;
-              const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
-              return (
-                <Fragment key={`head-${teamIdx}`}>
-                  {teamIdx > 0 && <TeamDivider mark={false} />}
+                const isTeam = teamPlayers.length > 1;
+                const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
+                return (
+                  <Fragment key={`head-${teamIdx}`}>
+                    {teamIdx > 0 && <TeamDivider mark={false} dense={denseVs} />}
                   <div
                     className="flex min-w-0 flex-col overflow-hidden"
                     style={{
                       flex: "1 1 0%",
                       width: 0,
+                      minWidth: laneMin ? `calc(${laneMin} * ${teamPlayers.length})` : undefined,
                       ...(isTeam
                         ? {
                             borderLeft: `1px solid ${teamColor}40`,
@@ -851,7 +859,7 @@ export function BattleRoom() {
                     }}
                   >
                     {isTeam && (
-                      <p className="py-1.5 text-center text-[11px] font-bold uppercase tracking-widest" style={{ color: teamColor }}>
+                      <p className={clsx("text-center font-bold uppercase tracking-widest", crowded ? "py-1 text-[10px]" : "py-1.5 text-[11px]")} style={{ color: teamColor }}>
                         Team {teamIdx + 1}
                       </p>
                     )}
@@ -860,7 +868,7 @@ export function BattleRoom() {
                         <div
                           key={p.slotIndex}
                           className={clsx("min-w-0", isTeam && i > 0 && "border-l border-solid border-white/15")}
-                          style={{ flex: "1 1 0%", width: 0 }}
+                          style={{ flex: "1 1 0%", width: 0, minWidth: laneMin }}
                         >
                           <PlayerHeader
                             player={p}
@@ -873,6 +881,7 @@ export function BattleRoom() {
                             terminal={battle.terminal}
                             grouped={isTeam}
                             borrowPct={p.kind === "you" ? borrowPct : 0}
+                            compact={crowded}
                           />
                         </div>
                       ))}
@@ -893,19 +902,19 @@ export function BattleRoom() {
                 onReplay={replayBattle}
               />
             )}
-            <div className="flex w-full min-w-0 items-stretch">
+            <div className="flex w-full items-stretch">
               {teams.map((teamPlayers, teamIdx) => {
                 const isTeam = teamPlayers.length > 1;
                 const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
-                const reelSize = players.length <= 4 ? "lg" : "md";
                 return (
                   <Fragment key={`stage-${teamIdx}`}>
-                    {teamIdx > 0 && <TeamDivider reelSize={reelSize} />}
+                    {teamIdx > 0 && <TeamDivider reelSize={reelSize} dense={denseVs} />}
                     <div
                       className="flex min-w-0 flex-col overflow-hidden"
                       style={{
                         flex: "1 1 0%",
                         width: 0,
+                        minWidth: laneMin ? `calc(${laneMin} * ${teamPlayers.length})` : undefined,
                         ...(isTeam
                           ? {
                               borderLeft: `1px solid ${teamColor}40`,
@@ -920,7 +929,7 @@ export function BattleRoom() {
                           <div
                             key={p.slotIndex}
                             className={clsx("min-w-0", isTeam && i > 0 && "border-l border-solid border-white/15")}
-                            style={{ flex: "1 1 0%", width: 0 }}
+                            style={{ flex: "1 1 0%", width: 0, minWidth: laneMin }}
                           >
                             <PlayerStage
                               player={p}
@@ -933,6 +942,7 @@ export function BattleRoom() {
                               costPerPlayer={battle.costPerPlayer}
                               grouped={isTeam}
                               reelSize={reelSize}
+                              compact={crowded}
                               fastSpin={battle.fastSpin}
                               fundedPct={battle.fundedPct}
                               canManageSeats={!spectating && phase === "filling" && battle.status !== "finished"}
@@ -956,6 +966,8 @@ export function BattleRoom() {
                   </Fragment>
                 );
               })}
+            </div>
+          </div>
             </div>
           </div>
         </div>
@@ -985,14 +997,22 @@ export function BattleRoom() {
   );
 }
 
-function TeamDivider({ mark = true, reelSize = "lg" }: { mark?: boolean; reelSize?: "md" | "lg" }) {
+function TeamDivider({
+  mark = true,
+  reelSize = "lg",
+  dense = false,
+}: {
+  mark?: boolean;
+  reelSize?: BattleReelSize;
+  dense?: boolean;
+}) {
   const reelH = BATTLE_REEL_HEIGHT[reelSize];
   return (
-    <div className="relative w-9 shrink-0 self-stretch sm:w-11">
+    <div className={clsx("relative shrink-0 self-stretch", dense ? "w-6 sm:w-7" : "w-9 sm:w-11")}>
       {mark ? (
         <div className="pointer-events-none absolute inset-x-0 top-0" style={{ height: reelH }}>
-          <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-full bg-bg-900 px-2 py-2 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15">
-            <Swords className="h-4 w-4 text-slate-300" />
+          <div className="absolute left-1/2 top-1/2 z-10 flex -translate-x-1/2 -translate-y-1/2 flex-col items-center gap-0.5 rounded-full bg-bg-900 px-1.5 py-1.5 shadow-[0_0_16px_rgba(0,0,0,0.45)] ring-1 ring-white/15 sm:px-2 sm:py-2">
+            <Swords className={clsx(dense ? "h-3 w-3" : "h-4 w-4", "text-slate-300")} />
             <span className="text-[8px] font-bold uppercase tracking-widest text-slate-400">vs</span>
           </div>
         </div>
@@ -1031,6 +1051,7 @@ function PlayerHeader({
   terminal = false,
   grouped = false,
   borrowPct = 0,
+  compact = false,
 }: {
   player: BattlePlayer;
   state: PlayerRoundState;
@@ -1038,13 +1059,14 @@ function PlayerHeader({
   terminal?: boolean;
   grouped?: boolean;
   borrowPct?: number;
+  compact?: boolean;
 }) {
   const label = player.kind === "you" ? "You" : player.name || `Player ${player.slotIndex + 1}`;
   const avatar = useIdentityStore((s) => s.avatarFor(player.kind === "you" ? "You" : label));
   const role = useIdentityStore((s) => s.roleFor(player.kind === "you" ? "You" : label));
   return (
     <div
-      className={clsx("w-full px-3 pt-3 pb-2", !grouped && "rounded-t-xl border border-b-0 border-white/10 bg-black/20")}
+      className={clsx("w-full", compact ? "px-1.5 pt-2 pb-1.5" : "px-3 pt-3 pb-2", !grouped && "rounded-t-xl border border-b-0 border-white/10 bg-black/20")}
       style={grouped ? { boxShadow: `inset 0 3px 0 ${player.color}` } : { borderTopColor: player.color, borderTopWidth: 3 }}
     >
       <div className="flex items-center gap-2">
@@ -1052,11 +1074,11 @@ function PlayerHeader({
           src={avatar}
           name={label}
           color={player.color}
-          size={28}
+          size={compact ? 22 : 28}
           kind={player.kind === "you" ? "you" : player.kind === "bot" ? "bot" : "player"}
         />
         <div className="min-w-0">
-          <p className="flex items-center gap-1.5 truncate text-sm font-semibold text-white">
+          <p className={clsx("flex items-center gap-1.5 truncate font-semibold text-white", compact ? "text-xs" : "text-sm")}>
             {label}
             <RoleBadge role={role} />
             {jackpotOdds !== undefined && (
@@ -1070,14 +1092,15 @@ function PlayerHeader({
               </span>
             )}
           </p>
-          <p className="text-[11px] text-slate-500">
+          <p className={clsx("text-slate-500", compact ? "text-[10px]" : "text-[11px]")}>
             Player {player.slotIndex + 1} · Team {player.teamIndex + 1}
           </p>
         </div>
         <span className="ml-auto shrink-0 text-right">
           <span
             className={clsx(
-              "inline-block rounded-md px-1.5 py-0.5 font-mono text-sm font-bold",
+              "inline-block rounded-md px-1.5 py-0.5 font-mono font-bold",
+              compact ? "text-xs" : "text-sm",
               terminal ? "bg-pink-500/15 text-pink-300" : "text-emerald-300",
             )}
           >
@@ -1105,6 +1128,7 @@ function PlayerStage({
   costPerPlayer,
   grouped = false,
   reelSize = "lg",
+  compact = false,
   fastSpin = false,
   fundedPct = 0,
   canManageSeats = true,
@@ -1124,7 +1148,8 @@ function PlayerStage({
   activeCase: (typeof CASES)[number];
   costPerPlayer: number;
   grouped?: boolean;
-  reelSize?: "md" | "lg";
+  reelSize?: BattleReelSize;
+  compact?: boolean;
   fastSpin?: boolean;
   fundedPct?: number;
   canManageSeats?: boolean;
@@ -1139,9 +1164,12 @@ function PlayerStage({
   const goldPool = activeCase.odds.filter((o) => o.goldTier).map((o) => o.item);
 
   return (
-    <div className={clsx("flex h-full w-full flex-col px-3 pb-3", !grouped && "rounded-b-xl border border-t-0 border-white/10 bg-black/20")}>
+    <div className={clsx("flex h-full w-full flex-col", compact ? "px-1.5 pb-2" : "px-3 pb-3", !grouped && "rounded-b-xl border border-t-0 border-white/10 bg-black/20")}>
       {player.kind === "empty" || player.kind === "joining" ? (
-        <div className="flex h-full min-h-[220px] flex-col items-center justify-center gap-2 rounded-lg bg-black/25 p-3 text-center">
+        <div
+          className="flex h-full flex-col items-center justify-center gap-2 rounded-lg bg-black/25 p-3 text-center"
+          style={{ minHeight: BATTLE_REEL_HEIGHT[reelSize] }}
+        >
           {player.kind === "joining" ? (
             <p className="text-xs text-slate-400">Waiting for player to join…</p>
           ) : (
@@ -1211,11 +1239,11 @@ function PlayerStage({
         />
       )}
 
-      <div className="mt-2 max-h-64 min-h-[92px] overflow-y-auto rounded-lg bg-black/20 p-1.5 scrollbar-thin">
+      <div className={clsx("mt-2 overflow-y-auto rounded-lg bg-black/20 p-1.5 scrollbar-thin", compact ? "max-h-48 min-h-[72px]" : "max-h-64 min-h-[92px]")}>
         {state.history.length === 0 ? (
-          <p className="grid h-full min-h-[80px] place-items-center text-[11px] text-slate-600">No pulls yet</p>
+          <p className={clsx("grid h-full place-items-center text-[11px] text-slate-600", compact ? "min-h-[64px]" : "min-h-[80px]")}>No pulls yet</p>
         ) : (
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className={clsx("grid gap-1.5", compact ? "grid-cols-1" : "grid-cols-2")}>
             {state.history.map((h) => (
               <ItemCard key={h.id} item={h.item} size="sm" showChance={false} />
             ))}

@@ -13,9 +13,11 @@ import { sound } from "../../lib/sound";
 const REEL_LENGTH = 64;
 const LAND_INDEX = 58;
 
-const ICON_PX = { md: 56, lg: 80 } as const;
+export type BattleReelSize = "sm" | "md" | "lg";
 
-// Shared tick clock so 2–6 battle lanes don't each spawn Web Audio nodes
+const ICON_PX: Record<BattleReelSize, number> = { sm: 40, md: 56, lg: 80 };
+
+// Shared tick clock so 2–8 battle lanes don't each spawn Web Audio nodes
 // on every item crossing (that stacks into audible + main-thread jank).
 let lastSharedTickAt = 0;
 function playSpinTick(speed: number) {
@@ -48,20 +50,35 @@ type PendingSpin = {
 // pointer. Vertical (battles): items stack and scroll top-to-bottom past a
 // horizontal pointer, so each player's column takes up less side-by-side
 // width when many players are on screen at once.
-export const BATTLE_REEL_HEIGHT = { md: 276, lg: 324 } as const;
+export const BATTLE_REEL_HEIGHT: Record<BattleReelSize, number> = { sm: 220, md: 276, lg: 324 };
 
-const SIZE_CONFIG = {
+const SIZE_CONFIG: Record<
+  BattleReelSize,
+  { horizontal: { itemSize: number; boxSize: number }; vertical: { itemSize: number; boxSize: number }; icon: BattleReelSize }
+> = {
+  sm: {
+    horizontal: { itemSize: 112, boxSize: 112 },
+    vertical: { itemSize: 72, boxSize: 220 },
+    icon: "sm",
+  },
   md: {
     horizontal: { itemSize: 140, boxSize: 140 },
     vertical: { itemSize: 92, boxSize: 276 },
-    icon: "md" as const,
+    icon: "md",
   },
   lg: {
     horizontal: { itemSize: 180, boxSize: 180 },
     vertical: { itemSize: 108, boxSize: 324 },
-    icon: "lg" as const,
+    icon: "lg",
   },
 };
+
+/** Keep 2–4 player rooms large; shrink so 6–8 lanes still fit the stage. */
+export function battleReelSize(playerCount: number): BattleReelSize {
+  if (playerCount <= 4) return "lg";
+  if (playerCount <= 6) return "md";
+  return "sm";
+}
 
 function stripTransform(horizontal: boolean, px: number) {
   return horizontal ? `translate3d(${-px}px,0,0)` : `translate3d(0,${-px}px,0)`;
@@ -115,7 +132,7 @@ export function CaseReel({
   duration?: number;
   goldDuration?: number;
   laneSeed?: number;
-  size?: "md" | "lg";
+  size?: BattleReelSize;
   orientation?: Orientation;
   onLanded?: (item: CaseItem, wasGold: boolean) => void;
   onGoldTriggered?: () => void;
@@ -420,7 +437,7 @@ const ReelSlot = memo(function ReelSlot({
   item: CaseItem;
   index: number;
   itemSize: number;
-  iconSize: "md" | "lg";
+  iconSize: BattleReelSize;
   orientation: Orientation;
   pulse: boolean;
 }) {
@@ -431,7 +448,15 @@ const ReelSlot = memo(function ReelSlot({
 
   return (
     <div
-      className={clsx("absolute flex", pulse && "gold-pulse", isHorizontal ? "h-full flex-col items-center justify-center gap-0.5" : "w-full items-center gap-2.5 px-2")}
+      className={clsx(
+        "absolute flex",
+        pulse && "gold-pulse",
+        isHorizontal
+          ? "h-full flex-col items-center justify-center gap-0.5"
+          : iconSize === "sm"
+            ? "w-full flex-col items-center justify-center gap-0.5 px-1"
+            : "w-full items-center gap-2.5 px-2",
+      )}
       style={{
         contain: "layout paint",
         width: isHorizontal ? itemSize : "100%",
@@ -454,8 +479,11 @@ const ReelSlot = memo(function ReelSlot({
         className="shrink-0 rounded object-cover"
         style={{ width: iconPx, height: iconPx }}
       />
-      {isHorizontal ? (
-        <span className="max-w-[92%] truncate px-0.5 text-[10px] font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
+      {isHorizontal || iconSize === "sm" ? (
+        <span
+          className={clsx("max-w-[92%] truncate px-0.5 font-bold", iconSize === "sm" ? "text-[9px]" : "text-[10px]")}
+          style={{ color: isIndicator ? "#fbbf24" : r.text }}
+        >
           {item.name}
         </span>
       ) : (

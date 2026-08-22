@@ -105,8 +105,8 @@ export function CaseBattlesLobby() {
 
   const rowGrid =
     filter === "finished"
-      ? "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(13rem,17rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem]"
-      : "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(7rem,9rem)_minmax(0,1fr)_10.5rem]";
+      ? "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(13rem,17rem)_minmax(8rem,13rem)_minmax(0,1fr)_10.5rem]"
+      : "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(8rem,13rem)_minmax(0,1fr)_10.5rem]";
 
   return (
     <div className="space-y-5">
@@ -265,16 +265,17 @@ export function CaseBattlesLobby() {
                       <p className="font-mono text-sm font-semibold text-amber-200">{formatCredits(b.costPerPlayer)}</p>
                     )}
                   </div>
-                  <div className="hidden items-center gap-1.5 md:flex">
+                  <div className="hidden flex-wrap items-center gap-1 md:flex">
                     {flags.map((taken, i) => (
                       <span
                         key={i}
                         className={clsx(
-                          "grid h-6 w-6 place-items-center rounded-full text-[10px] font-bold",
+                          "grid place-items-center rounded-full text-[10px] font-bold",
+                          seats > 6 ? "h-5 w-5" : "h-6 w-6",
                           taken ? "bg-white/15 text-white" : "border border-dashed border-white/20 text-slate-600",
                         )}
                       >
-                        {taken ? <Users className="h-3 w-3" /> : ""}
+                        {taken ? <Users className={seats > 6 ? "h-2.5 w-2.5" : "h-3 w-3"} /> : ""}
                       </span>
                     ))}
                     <span className="text-[11px] text-slate-500">

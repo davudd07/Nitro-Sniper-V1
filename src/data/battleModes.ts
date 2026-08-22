@@ -10,14 +10,19 @@ export const BATTLE_MODES: BattleMode[] = [
   { id: "1v1v1", label: "1v1v1", teamSizes: [1, 1, 1] },
   { id: "1v1v1v1", label: "1v1v1v1", teamSizes: [1, 1, 1, 1] },
   { id: "1v1v1v1v1", label: "1v1v1v1v1", teamSizes: [1, 1, 1, 1, 1] },
+  { id: "1v1v1v1v1v1", label: "1v1v1v1v1v1", teamSizes: [1, 1, 1, 1, 1, 1] },
   { id: "2v2", label: "2v2", teamSizes: [2, 2] },
   { id: "2v2v2", label: "2v2v2", teamSizes: [2, 2, 2] },
+  { id: "2v2v2v2", label: "2v2v2v2", teamSizes: [2, 2, 2, 2] },
   { id: "3v3", label: "3v3", teamSizes: [3, 3] },
+  { id: "4v4", label: "4v4", teamSizes: [4, 4] },
 ];
 
 export function totalPlayers(mode: BattleMode): number {
   return mode.teamSizes.reduce((s, n) => s + n, 0);
 }
+
+export const MAX_BATTLE_PLAYERS = Math.max(...BATTLE_MODES.map(totalPlayers));
 
 export function teamIndexForSeat(mode: BattleMode, seat: number): number {
   let cursor = 0;

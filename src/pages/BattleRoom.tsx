@@ -918,6 +918,7 @@ export function BattleRoom() {
               winnerId={jackpotWinnerId}
               duration={BATTLE_JACKPOT_SPIN_MS}
               compact={jackpotTickets.length >= 6}
+              variant={battle.coinflip ? "circles" : "bars"}
               finishVerb={battle.coinflip ? "wins the flip" : "takes the jackpot"}
               onFinished={handleJackpotFinished}
             />

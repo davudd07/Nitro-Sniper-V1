@@ -62,6 +62,7 @@ export function coinflipTicketsFor(players: CoinflipSeat[]): JackpotTicket[] {
       name: rep.kind === "you" ? "You" : rep.name || `Player ${rep.slotIndex + 1}`,
       color: rep.color,
       weight,
+      kind: rep.kind === "you" ? "you" : rep.kind === "bot" ? "bot" : "player",
     };
   });
 }

@@ -1,12 +1,50 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { longBrake } from "../../lib/easing";
-import { degFromCenter, formatChancePct, formatRollBand, shortestDegDelta, wrapDeg } from "../../lib/upgrader";
+import { degFromCenter, formatChancePct, shortestDegDelta, wrapDeg } from "../../lib/upgrader";
 import { sound } from "../../lib/sound";
 import { clsx } from "clsx";
 
 const EXTRA_SPINS = 7;
 const TICK_EVERY = 14;
-const TICK_COUNT = 48;
+/** Stroke-center radius in a 100×100 viewBox (0 = top, clockwise). */
+const RING_R = 42;
+const RING_STROKE = 8;
+
+function polar(deg: number, r: number) {
+  const rad = (deg * Math.PI) / 180;
+  return { x: 50 + Math.sin(rad) * r, y: 50 - Math.cos(rad) * r };
+}
+
+function describeArc(startDeg: number, sweep: number, r: number): string {
+  if (sweep <= 0.001) return "";
+  const s = wrapDeg(startDeg);
+  if (sweep >= 359.99) {
+    const a = polar(s, r);
+    const b = polar(s + 180, r);
+    return `M ${a.x} ${a.y} A ${r} ${r} 0 1 1 ${b.x} ${b.y} A ${r} ${r} 0 1 1 ${a.x} ${a.y}`;
+  }
+  const start = polar(s, r);
+  const end = polar(s + sweep, r);
+  const large = sweep > 180 ? 1 : 0;
+  return `M ${start.x.toFixed(3)} ${start.y.toFixed(3)} A ${r} ${r} 0 ${large} 1 ${end.x.toFixed(3)} ${end.y.toFixed(3)}`;
+}
+
+function ArcHandle({ deg, spinning, grabbing }: { deg: number; spinning: boolean; grabbing: boolean }) {
+  const p = polar(deg, RING_R);
+  return (
+    <div
+      data-arc-grab=""
+      className={clsx(
+        "absolute z-30 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center",
+        spinning ? "cursor-default" : grabbing ? "cursor-grabbing" : "cursor-grab",
+      )}
+      style={{ left: `${p.x}%`, top: `${p.y}%` }}
+      aria-hidden
+    >
+      <span className="pointer-events-none h-3.5 w-3.5 rounded-full border-2 border-[#0c1410] bg-lime-300 shadow-[0_0_10px_rgba(163,230,53,0.85)]" />
+    </div>
+  );
+}
 
 export function UpgradeGauge({
   chance,
@@ -47,11 +85,9 @@ export function UpgradeGauge({
   const [dragging, setDragging] = useState(false);
 
   const winSweep = Math.max(0, Math.min(360, chance * 360));
-  const gradient =
-    chance > 0
-      ? `conic-gradient(from ${arcStartDeg}deg, #a3e635 0deg ${winSweep}deg, #365314 ${winSweep}deg ${Math.min(360, winSweep + 1.2)}deg, #1a2420 ${Math.min(360, winSweep + 1.2)}deg 360deg)`
-      : "conic-gradient(#1a2420 0deg 360deg)";
-  const handleDeg = wrapDeg(arcStartDeg + winSweep / 2);
+  const startDeg = wrapDeg(arcStartDeg);
+  const endDeg = wrapDeg(arcStartDeg + winSweep);
+  const arcPath = describeArc(arcStartDeg, winSweep, RING_R);
 
   useEffect(() => {
     if (spinToken === 0) {
@@ -114,18 +150,13 @@ export function UpgradeGauge({
 
   function onPointerDown(e: PointerEvent<HTMLDivElement>) {
     if (spinning) return;
-    const el = dialRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const dx = e.clientX - (rect.left + rect.width / 2);
-    const dy = e.clientY - (rect.top + rect.height / 2);
-    const dist = Math.hypot(dx, dy);
-    const minR = rect.width * 0.22;
-    const maxR = rect.width * 0.54;
-    if (dist < minR || dist > maxR) return;
+    const grab = (e.target as Element | null)?.closest?.("[data-arc-grab]");
+    if (!grab) return;
+    const now = pointerDeg(e);
+    if (now == null) return;
     e.preventDefault();
-    el.setPointerCapture(e.pointerId);
-    dragRef.current = { lastDeg: degFromCenter(dx, dy) };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    dragRef.current = { lastDeg: now };
     setDragging(true);
   }
 
@@ -153,10 +184,7 @@ export function UpgradeGauge({
     <div className="relative mx-auto w-full max-w-[280px] sm:max-w-[320px]">
       <div
         ref={dialRef}
-        className={clsx(
-          "relative mx-auto aspect-square w-full select-none touch-none",
-          spinning ? "cursor-default" : dragging ? "cursor-grabbing" : "cursor-grab",
-        )}
+        className={clsx("relative mx-auto aspect-square w-full select-none touch-none", dragging && "cursor-grabbing")}
         style={{ touchAction: "none" }}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -169,92 +197,72 @@ export function UpgradeGauge({
         aria-valuenow={Math.round(wrapDeg(arcStartDeg))}
         aria-disabled={spinning}
       >
-        <div
-          className="pointer-events-none absolute inset-0 rounded-full ring-4 ring-[#3d5a3a]/80"
-          style={{ boxShadow: "0 0 36px rgba(163,230,53,0.18), 6px 6px 0 #050805" }}
-        />
-        <div
-          className="pointer-events-none absolute inset-[6px] overflow-hidden rounded-full"
-          style={{ background: gradient }}
-        >
-          <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden>
-            {Array.from({ length: TICK_COUNT }, (_, i) => {
-              const a = (i / TICK_COUNT) * Math.PI * 2 - Math.PI / 2;
-              const major = i % 4 === 0;
-              const inner = major ? 45.4 : 46.6;
-              const outer = 49.4;
-              const x1 = 50 + Math.cos(a) * inner;
-              const y1 = 50 + Math.sin(a) * inner;
-              const x2 = 50 + Math.cos(a) * outer;
-              const y2 = 50 + Math.sin(a) * outer;
-              return (
-                <line
-                  key={i}
-                  x1={x1}
-                  y1={y1}
-                  x2={x2}
-                  y2={y2}
-                  stroke={major ? "rgba(236,252,203,0.55)" : "rgba(236,252,203,0.22)"}
-                  strokeWidth={major ? 0.7 : 0.45}
-                />
-              );
-            })}
-          </svg>
-        </div>
+        <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden>
+          <circle cx="50" cy="50" r="47.6" fill="none" stroke="#3d5a3a" strokeWidth="1.15" pointerEvents="none" />
+          <circle cx="50" cy="50" r={RING_R} fill="none" stroke="#1a2420" strokeWidth={RING_STROKE} pointerEvents="none" />
+          {chance > 0 && arcPath && (
+            <path
+              d={arcPath}
+              fill="none"
+              stroke="#a3e635"
+              strokeWidth={RING_STROKE}
+              strokeLinecap="butt"
+              data-arc-grab=""
+              className={spinning ? undefined : dragging ? "cursor-grabbing" : "cursor-grab"}
+              style={{
+                pointerEvents: spinning ? "none" : "stroke",
+                filter: "drop-shadow(0 0 3px rgba(163,230,53,0.55))",
+              }}
+            />
+          )}
+        </svg>
 
-        {chance > 0 && !spinning && (
-          <div
-            className="pointer-events-none absolute z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0c1410] bg-lime-300 shadow-[0_0_8px_rgba(163,230,53,0.7)]"
-            style={{
-              left: `${50 + Math.sin((handleDeg * Math.PI) / 180) * 47}%`,
-              top: `${50 - Math.cos((handleDeg * Math.PI) / 180) * 47}%`,
-            }}
-            aria-hidden
-          />
+        {chance > 0 && (
+          <>
+            <ArcHandle deg={startDeg} spinning={spinning} grabbing={dragging} />
+            <ArcHandle deg={endDeg} spinning={spinning} grabbing={dragging} />
+          </>
         )}
 
         <div
           ref={needleRef}
-          className="pointer-events-none absolute inset-0 z-20"
+          className="pointer-events-none absolute inset-0 z-40"
           style={{ willChange: "transform" }}
           aria-hidden
         >
-          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -8 }}>
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: 2 }}>
             <div
               className="h-0 w-0"
               style={{
-                borderLeft: "11px solid transparent",
-                borderRight: "11px solid transparent",
-                borderTop: "20px solid #d9f99d",
+                borderLeft: "10px solid transparent",
+                borderRight: "10px solid transparent",
+                borderTop: "18px solid #d9f99d",
                 filter: "drop-shadow(0 2px 6px rgba(5,8,5,0.7))",
               }}
             />
           </div>
           <div
-            className="absolute left-1/2 top-[10px] h-[18%] w-[3px] -translate-x-1/2 rounded-full"
+            className="absolute left-1/2 top-[18px] h-[14%] w-[3px] -translate-x-1/2 rounded-full"
             style={{ background: "#d9f99d", boxShadow: "0 0 8px rgba(163,230,53,0.65)" }}
           />
         </div>
 
-        <div className="pointer-events-none absolute inset-[22%] z-30 grid place-items-center rounded-full bg-[#0c1410] ring-2 ring-lime-300/15">
+        <div className="pointer-events-none absolute inset-[24%] z-20 grid place-items-center rounded-full bg-[#0c1410]">
           <div className="px-2 text-center">
             {hub === "spin" || spinning ? (
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300/80">Spinning</p>
                 <p className="mt-1 font-mono text-3xl font-black tabular-nums text-white">{formatChancePct(chance)}</p>
-                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-lime-200/80">{formatRollBand(chance)}</p>
               </>
             ) : hub === "win" ? (
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-lime-300">Hit</p>
                 <p className="mt-1 text-2xl font-black uppercase tracking-wide text-lime-200">Upgrade</p>
-                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-lime-200/70">{formatRollBand(chance)}</p>
               </>
             ) : hub === "lose" ? (
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Miss</p>
                 <p className="mt-1 text-2xl font-black uppercase tracking-wide text-slate-300">Bust</p>
-                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-slate-500">{formatRollBand(chance)}</p>
               </>
             ) : (
               <>
@@ -267,15 +275,11 @@ export function UpgradeGauge({
                 >
                   {formatChancePct(chance)}
                 </p>
-                <p className="mt-0.5 font-mono text-[11px] tabular-nums text-emerald-200/70">{formatRollBand(chance)}</p>
               </>
             )}
           </div>
         </div>
       </div>
-      <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
-        {spinning ? "Arrow spinning" : "Drag the green zone"}
-      </p>
     </div>
   );
 }

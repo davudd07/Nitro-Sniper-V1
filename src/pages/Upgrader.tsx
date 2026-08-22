@@ -11,15 +11,15 @@ import { sound } from "../lib/sound";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { ItemIcon } from "../components/ui/ItemIcon";
-import { Switch } from "../components/ui/Switch";
 import { UpgradeGauge } from "../components/upgrader/UpgradeGauge";
 import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { RARITIES } from "../data/rarities";
 import type { CaseItem } from "../data/items";
 import {
+  UPGRADER_EXTRA_SPINS,
+  UPGRADER_FAST_EXTRA_SPINS,
   UPGRADER_FAST_SPIN_MS,
   UPGRADER_HOUSE_EDGE,
-  UPGRADER_INSTANT_SPIN_MS,
   UPGRADER_MAX_MULTIPLIER,
   UPGRADER_MIN_MULTIPLIER,
   UPGRADER_SPIN_MS,
@@ -102,7 +102,6 @@ export function Upgrader() {
   const [maxPrice, setMaxPrice] = useState("");
   const [sort, setSort] = useState<UpgradeSort>("price_desc");
   const [fast, setFast] = useState(false);
-  const [instant, setInstant] = useState(false);
   const [arcStartDeg, setArcStartDeg] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [won, setWon] = useState<boolean | null>(null);
@@ -129,7 +128,8 @@ export function Upgrader() {
   const needHigherTarget = inputValue > 0 && targetValue > 0 && inputValue >= targetValue;
   const spinning = phase === "spinning";
   const canSpin = !spinning && chance > 0 && inputValue > 0 && !tooLow && !needHigherTarget;
-  const spinMs = instant ? UPGRADER_INSTANT_SPIN_MS : fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS;
+  const spinMs = fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS;
+  const extraSpins = fast ? UPGRADER_FAST_EXTRA_SPINS : UPGRADER_EXTRA_SPINS;
 
   const catalog = useMemo(
     () =>
@@ -266,9 +266,9 @@ export function Upgrader() {
           <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
           <p>
             Win chance is <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>, clamped to (0, 1).
-            Default house edge is 5% (no +EV). Drag the green slice around the dial — only its position is yours; its
-            size comes from that math. The arrow spins and lands; a hit inside your placed slice credits the target SH
-            value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
+            Default house edge is 5% (no +EV). Drag either end-dot to rotate the green slice — length stays locked to
+            that math, so you cannot change the odds. The arrow spins and lands; a hit inside your placed slice credits
+            the target SH value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
           </p>
         </InfoButton>
       </div>
@@ -325,7 +325,7 @@ export function Upgrader() {
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-center gap-3">
+          <div className="flex flex-col items-center">
             <UpgradeGauge
               chance={chance}
               spinning={spinning}
@@ -333,77 +333,68 @@ export function Upgrader() {
               landDeg={landDeg}
               spinToken={spinToken}
               durationMs={spinMs}
-              extraSpins={instant ? 0 : 7}
+              extraSpins={extraSpins}
               arcStartDeg={arcStartDeg}
               onArcStartChange={setArcStartDeg}
               onSettled={handleSettled}
             />
-            <p className="text-center text-xs text-slate-500">
-              {formatCredits(inputValue)} SH → {formatCredits(targetValue)} SH · {displayedMulti.toFixed(2)}× ·{" "}
-              {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
-            </p>
           </div>
-          <SlotCard
-            label="Target"
-            item={targetItem}
-            value={targetValue}
-            active={slot === "target"}
-            onClick={() => {
-              if (spinning) return;
-              sound.click();
-              setSlot("target");
-            }}
-          />
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-1.5 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">x</span>
-            <input
-              type="number"
-              min={UPGRADER_MIN_MULTIPLIER}
-              max={UPGRADER_MAX_MULTIPLIER}
-              step={0.01}
-              disabled={spinning}
-              value={multiplierText}
-              onChange={(e) => setMultiplierText(e.target.value)}
-              onBlur={(e) => commitMultiplier(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") commitMultiplier(multiplierText);
-              }}
-              className="w-16 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
-            />
-          </label>
-          <button
-            type="button"
-            disabled={spinning}
-            onClick={() => {
-              sound.click();
-              setFast((v) => !v);
-              if (!fast) setInstant(false);
-            }}
-            title={fast ? "Fast spin on" : "Fast spin off"}
-            className={clsx(
-              "inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-40",
-              fast && !instant
-                ? "border-lime-300/70 bg-lime-400/15 text-lime-100"
-                : "border-white/10 text-slate-400 hover:border-white/20 hover:text-slate-200",
-            )}
-          >
-            <Zap className="h-3.5 w-3.5" />
-            Fast
-          </button>
-          <label className="ml-auto inline-flex items-center gap-2 text-[11px] font-extrabold uppercase tracking-wide text-slate-400">
-            Instant
-            <Switch
-              checked={instant}
-              disabled={spinning}
-              onChange={(next) => {
-                setInstant(next);
-                if (next) setFast(false);
+          <div className="flex flex-col gap-3">
+            <SlotCard
+              label="Target"
+              item={targetItem}
+              value={targetValue}
+              active={slot === "target"}
+              onClick={() => {
+                if (spinning) return;
+                sound.click();
+                setSlot("target");
               }}
             />
-          </label>
+            <div className="space-y-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 p-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
+                  <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">x</span>
+                  <input
+                    type="number"
+                    min={UPGRADER_MIN_MULTIPLIER}
+                    max={UPGRADER_MAX_MULTIPLIER}
+                    step={0.01}
+                    disabled={spinning}
+                    value={multiplierText}
+                    onChange={(e) => setMultiplierText(e.target.value)}
+                    onBlur={(e) => commitMultiplier(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitMultiplier(multiplierText);
+                    }}
+                    className="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
+                  />
+                </label>
+                <button
+                  type="button"
+                  disabled={spinning}
+                  onClick={() => {
+                    sound.click();
+                    setFast((v) => !v);
+                  }}
+                  title={fast ? "Fast spin on" : "Normal spin"}
+                  className={clsx(
+                    "inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-40",
+                    fast
+                      ? "border-lime-300/70 bg-lime-400/15 text-lime-100"
+                      : "border-[#3d5a3a]/70 text-slate-400 hover:border-lime-400/50 hover:text-slate-200",
+                  )}
+                >
+                  <Zap className="h-3.5 w-3.5" />
+                  Fast
+                </button>
+              </div>
+              <p className="px-0.5 font-mono text-[11px] tabular-nums text-slate-500">
+                {formatCredits(inputValue)} → {formatCredits(targetValue)} SH · {displayedMulti.toFixed(2)}× ·{" "}
+                {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
+              </p>
+            </div>
+          </div>
         </div>
 
         <button

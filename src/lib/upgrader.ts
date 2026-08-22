@@ -6,9 +6,12 @@ export const UPGRADER_HOUSE_EDGE = HOUSE_EDGE.upgrader;
 
 export const UPGRADER_MIN_MULTIPLIER = 1.01;
 export const UPGRADER_MAX_MULTIPLIER = 10_000;
-export const UPGRADER_SPIN_MS = 2400;
-export const UPGRADER_FAST_SPIN_MS = 780;
-export const UPGRADER_INSTANT_SPIN_MS = 90;
+/** Normal spin: ~1.75× the previous 2400ms roll, with more loops so it still feels like a spin. */
+export const UPGRADER_SPIN_MS = 4200;
+export const UPGRADER_EXTRA_SPINS = 12;
+/** Fast spin is the previous Normal timing (no instant/0ms snap). */
+export const UPGRADER_FAST_SPIN_MS = 2400;
+export const UPGRADER_FAST_EXTRA_SPINS = 7;
 
 /** Prefer the Upgrader VIP override, else the 5% Upgrader default. */
 export function resolveUpgraderHouseEdge(overrides: Record<string, number> = {}): number {

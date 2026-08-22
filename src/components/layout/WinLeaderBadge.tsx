@@ -24,7 +24,7 @@ export function WinLeaderBadge({
   return <WinLeaderMark game={game} record={record} className={className} compact={compact} />;
 }
 
-/** Small trophy + name, inset on the bottom-right of a play stage. */
+/** Compact trophy + name, inset in the bottom-right of the green game `surface`. */
 export function WinLeaderStageMark({
   game,
   className,
@@ -35,12 +35,12 @@ export function WinLeaderStageMark({
   const record = useWinLeaderStore((s) => s.records[game]);
   if (!record) return null;
   return (
-    <div className={clsx("pointer-events-auto absolute bottom-2.5 right-2.5 z-20", className)}>
+    <div className={clsx("pointer-events-auto absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3", className)}>
       <WinLeaderMark
         game={game}
         record={record}
         compact
-        className="rounded-md bg-[#07110c]/85 px-1.5 py-1 shadow-[0_0_0_1px_rgba(251,191,36,0.22)] backdrop-blur-[2px]"
+        className="rounded-md bg-[#07110c]/90 px-1.5 py-1 shadow-[0_0_0_1px_rgba(251,191,36,0.28)] backdrop-blur-[2px]"
       />
     </div>
   );

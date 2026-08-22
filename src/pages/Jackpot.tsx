@@ -227,7 +227,8 @@ export function JackpotPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="surface space-y-6 p-5">
+        <div className="relative surface space-y-6 p-5 pb-11">
+          <WinLeaderStageMark game="jackpot" />
           <div className="relative">
             <AnimatedPot value={total} label={`${def.label} pot`} size="lg" />
             <p className="mt-1 text-center text-xs text-slate-500">Pays {formatCredits(payout)} SH after house edge</p>
@@ -239,19 +240,16 @@ export function JackpotPage() {
             )}
           </div>
 
-          <div className="relative mx-auto w-full max-w-sm">
-            <JackpotCircleWheel
-              tickets={tickets}
-              spinToken={pot.spinToken}
-              winnerId={pot.winnerId}
-              shouldSpin={pot.phase === "spinning"}
-              countdown={pot.phase === "open" ? countdownLeft : null}
-              onFinished={handleFinished}
-            />
-            <WinLeaderStageMark game="jackpot" />
-          </div>
+          <JackpotCircleWheel
+            tickets={tickets}
+            spinToken={pot.spinToken}
+            winnerId={pot.winnerId}
+            shouldSpin={pot.phase === "spinning"}
+            countdown={pot.phase === "open" ? countdownLeft : null}
+            onFinished={handleFinished}
+          />
 
-          <div className="space-y-2">
+          <div className="space-y-2 pr-24">
             {pot.entries.length === 0 ? (
               <p className="text-center text-sm text-slate-500">No players yet. Join to open this pot.</p>
             ) : (

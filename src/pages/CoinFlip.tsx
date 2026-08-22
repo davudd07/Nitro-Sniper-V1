@@ -503,7 +503,8 @@ export function CoinFlip() {
           </div>
         </div>
 
-        <div className="relative surface p-5 sm:p-8">
+        <div className="relative surface p-5 pb-11 sm:p-8 sm:pb-12">
+          <WinLeaderStageMark game="coinflip" />
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <span>{status}</span>
             <span>
@@ -517,9 +518,8 @@ export function CoinFlip() {
             </span>
           </div>
 
-          <div className="relative mx-auto w-full max-w-sm place-items-center py-4 pb-10">
-            <WinLeaderStageMark game="coinflip" />
-            <div className="relative mx-auto h-56 w-56 sm:h-64 sm:w-64" style={{ perspective: 900 }}>
+          <div className="mx-auto grid max-w-sm place-items-center py-4">
+            <div className="relative h-56 w-56 sm:h-64 sm:w-64" style={{ perspective: 900 }}>
               <motion.div
                 className="relative h-full w-full"
                 style={{ transformStyle: "preserve-3d" }}
@@ -553,7 +553,7 @@ export function CoinFlip() {
             </AnimatePresence>
           </div>
 
-          <div className="mt-4 flex items-center gap-2 overflow-x-auto px-0.5 py-3 scrollbar-thin">
+          <div className="mt-4 flex items-center gap-2 overflow-x-auto px-0.5 py-3 pr-28 scrollbar-thin">
             {runFlips.length === 0 && !(ghostRun && ghostRun.length > 0) ? (
               <p className="text-xs text-slate-500">Pulled coins land here. Unpulled remainder stays shadowed.</p>
             ) : (

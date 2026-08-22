@@ -217,7 +217,8 @@ export function Mines() {
         <ProvablyFairPanel />
       </div>
 
-      <div className="relative surface p-5 sm:p-8">
+      <div className="relative surface p-5 pb-11 sm:p-8 sm:pb-12">
+        <WinLeaderStageMark game="mines" />
         <div className="mb-5 flex items-center justify-between text-xs text-slate-400">
           <span>
             Gems {gemsFound} / {GRID_SIZE - mines}
@@ -229,9 +230,7 @@ export function Mines() {
             {phase === "cashed" && "Cashed out"}
           </span>
         </div>
-        <div className="relative mx-auto w-full max-w-md pb-8">
-          <WinLeaderStageMark game="mines" />
-          <div className="grid grid-cols-5 gap-2">
+        <div className="mx-auto grid max-w-md grid-cols-5 gap-2">
           {tiles.map((t, i) => {
             const isMine = minePositions.has(i);
             const revealed = t !== "hidden" || (revealAllMines && isMine);
@@ -266,13 +265,12 @@ export function Mines() {
               </motion.button>
             );
           })}
-          </div>
         </div>
         {phase === "busted" && (
-          <p className="mt-6 text-center text-sm font-semibold text-rose-300">Busted — better luck next round.</p>
+          <p className="mt-6 pr-28 text-center text-sm font-semibold text-rose-300">Busted — better luck next round.</p>
         )}
         {phase === "cashed" && (
-          <p className="mt-6 text-center text-sm font-semibold text-emerald-300">Cashed out successfully!</p>
+          <p className="mt-6 pr-28 text-center text-sm font-semibold text-emerald-300">Cashed out successfully!</p>
         )}
       </div>
     </div>

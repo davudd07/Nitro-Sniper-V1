@@ -325,6 +325,7 @@ export function Upgrader() {
           <div className="flex flex-col items-center">
             <UpgradeGauge
               chance={chance}
+              multiplier={displayedMulti}
               spinning={spinning}
               won={won}
               landDeg={landDeg}

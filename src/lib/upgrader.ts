@@ -128,11 +128,16 @@ export function landDegForRoll(roll: number, chance: number, won: boolean, arcSt
 }
 
 export function formatChancePct(chance: number): string {
-  if (!(chance > 0)) return "0%";
+  if (!(chance > 0)) return "0.00%";
   const pct = chance * 100;
   if (pct < 0.01) return `${pct.toFixed(4)}%`;
-  if (pct < 1) return `${pct.toFixed(2)}%`;
   return `${pct.toFixed(2)}%`;
+}
+
+/** Attempted upgrade multiplier for hub copy, e.g. `2.00x`. */
+export function formatAttemptMultiplier(multi: number): string {
+  if (!Number.isFinite(multi) || multi <= 0) return "0.00x";
+  return `${multi.toFixed(2)}x`;
 }
 
 /** Winning roll band shown on the dial, e.g. `0.00–47.50`. */

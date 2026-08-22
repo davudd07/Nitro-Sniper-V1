@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { longBrake } from "../../lib/easing";
-import { degFromCenter, formatChancePct, shortestDegDelta, wrapDeg } from "../../lib/upgrader";
+import {
+  degFromCenter,
+  formatAttemptMultiplier,
+  formatChancePct,
+  shortestDegDelta,
+  wrapDeg,
+} from "../../lib/upgrader";
 import { sound } from "../../lib/sound";
 import { clsx } from "clsx";
 
@@ -56,6 +62,7 @@ function ArcHandle({ deg, spinning, grabbing }: { deg: number; spinning: boolean
 
 export function UpgradeGauge({
   chance,
+  multiplier,
   spinning,
   won,
   landDeg,
@@ -67,6 +74,7 @@ export function UpgradeGauge({
   onSettled,
 }: {
   chance: number;
+  multiplier: number;
   spinning: boolean;
   won: boolean | null;
   landDeg: number;
@@ -275,36 +283,52 @@ export function UpgradeGauge({
           />
         </div>
 
-        <div className="pointer-events-none absolute inset-[24%] z-20 grid place-items-center rounded-full bg-[#0c1410]">
-          <div className="px-2 text-center">
-            {hub === "spin" || spinning ? (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300/80">Spinning</p>
-                <p className="mt-1 font-mono text-3xl font-black tabular-nums text-white">{formatChancePct(chance)}</p>
-              </>
-            ) : hub === "win" ? (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-lime-300">Hit</p>
-                <p className="mt-1 text-2xl font-black uppercase tracking-wide text-lime-200">Upgrade</p>
-              </>
-            ) : hub === "lose" ? (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Miss</p>
-                <p className="mt-1 text-2xl font-black uppercase tracking-wide text-slate-300">Bust</p>
-              </>
-            ) : (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Chance</p>
-                <p
-                  className={clsx(
-                    "mt-1 font-mono text-3xl font-black tabular-nums",
-                    chance > 0 ? "text-lime-300" : "text-slate-500",
-                  )}
-                >
-                  {formatChancePct(chance)}
-                </p>
-              </>
-            )}
+        <div className="pointer-events-none absolute inset-[22%] z-20 grid place-items-center rounded-full bg-[#0c1410]">
+          <div
+            className="px-1.5 text-center"
+            aria-live="polite"
+            aria-label={`${formatChancePct(chance)} for ${formatAttemptMultiplier(multiplier)}`}
+          >
+            <p
+              className={clsx(
+                "min-h-[12px] text-[9px] font-bold uppercase tracking-[0.18em]",
+                hub === "spin" || spinning
+                  ? "text-emerald-300/80"
+                  : hub === "win"
+                    ? "text-lime-300"
+                    : hub === "lose"
+                      ? "text-slate-400"
+                      : "text-transparent",
+              )}
+            >
+              {hub === "spin" || spinning ? "Spinning" : hub === "win" ? "Hit" : hub === "lose" ? "Miss" : "\u00a0"}
+            </p>
+            <p
+              className={clsx(
+                "font-mono text-[1.65rem] font-black leading-none tabular-nums sm:text-3xl",
+                hub === "win"
+                  ? "text-lime-200"
+                  : hub === "lose"
+                    ? "text-slate-300"
+                    : chance > 0
+                      ? "text-lime-300"
+                      : "text-slate-500",
+              )}
+            >
+              {formatChancePct(chance)}
+            </p>
+            <p
+              className={clsx(
+                "mt-1 font-mono text-[11px] font-semibold tabular-nums sm:text-xs",
+                hub === "win"
+                  ? "text-lime-300/85"
+                  : hub === "lose"
+                    ? "text-slate-400"
+                    : "text-emerald-200/85",
+              )}
+            >
+              for {formatAttemptMultiplier(multiplier)}
+            </p>
           </div>
         </div>
       </div>

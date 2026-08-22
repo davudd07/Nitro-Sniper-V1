@@ -33,6 +33,7 @@ function seedRecords(): Partial<Record<WinLeaderGame, WinLeaderRecord>> {
     battles: { name: "LuckyComet", multiplier: 4.82, at: SEED_AT, battleId: "hist_whale" },
     jackpot: { name: "EmberDrift", multiplier: 6.12, at: SEED_AT },
     coinflip: { name: "GlassWolf", multiplier: 30.72, at: SEED_AT },
+    upgrader: { name: "PrismKite", multiplier: 24.5, at: SEED_AT },
     keno: { name: "NeonWisp", multiplier: 70, at: SEED_AT },
   };
 }
@@ -62,6 +63,7 @@ export function winLeaderGameFromPath(pathname: string): WinLeaderGame | null {
   if (pathname === "/blackjack" || pathname.startsWith("/blackjack/")) return "blackjack";
   if (pathname === "/jackpot" || pathname.startsWith("/jackpot/")) return "jackpot";
   if (pathname === "/coinflip" || pathname.startsWith("/coinflip/")) return "coinflip";
+  if (pathname === "/upgrader" || pathname.startsWith("/upgrader/")) return "upgrader";
   if (pathname === "/keno" || pathname.startsWith("/keno/")) return "keno";
   if (pathname.startsWith("/cases")) return "cases";
   if (pathname.startsWith("/battles")) return "battles";

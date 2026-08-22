@@ -20,6 +20,7 @@ import { CreateBattle } from "./pages/CreateBattle";
 import { BattleRoom } from "./pages/BattleRoom";
 import { JackpotPage } from "./pages/Jackpot";
 import { CoinFlip } from "./pages/CoinFlip";
+import { Upgrader } from "./pages/Upgrader";
 import { ComingSoon } from "./pages/ComingSoon";
 import { ChatRainController } from "./components/chat/ChatRainController";
 import { SupportWidget } from "./components/support/SupportWidget";
@@ -107,6 +108,7 @@ export default function App() {
             <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
             <Route path="/jackpot" element={<JackpotPage />} />
             <Route path="/coinflip" element={<CoinFlip />} />
+            <Route path="/upgrader" element={<Upgrader />} />
             <Route path="/keno" element={<ComingSoon title="Keno" />} />
           </Routes>
         </main>

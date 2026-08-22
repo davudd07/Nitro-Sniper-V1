@@ -92,6 +92,7 @@ export const LOYALTY_GAMES: LoyaltyGameDef[] = [
   { id: "battles", label: "Case Battles", category: "originals", houseEdge: HOUSE_EDGE.battles },
   { id: "jackpot", label: "Jackpot", category: "originals", houseEdge: HOUSE_EDGE.jackpot },
   { id: "coinflip", label: "Coin Flip", category: "originals", houseEdge: HOUSE_EDGE.coinflip },
+  { id: "upgrader", label: "Upgrader", category: "originals", houseEdge: HOUSE_EDGE.upgrader },
   { id: "keno", label: "Keno", category: "originals", houseEdge: HOUSE_EDGE.keno },
   { id: "plinko", label: "Plinko", category: "originals", houseEdge: 0.04 },
   { id: "dice", label: "Dice", category: "originals", houseEdge: 0.04 },

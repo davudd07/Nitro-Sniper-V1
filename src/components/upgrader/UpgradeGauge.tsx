@@ -36,7 +36,7 @@ function ArcHandle({ deg, spinning, grabbing }: { deg: number; spinning: boolean
       data-arc-grab=""
       className={clsx(
         "absolute z-30 flex h-8 w-8 -translate-x-1/2 -translate-y-1/2 items-center justify-center",
-        spinning ? "cursor-default" : grabbing ? "cursor-grabbing" : "cursor-grab",
+        spinning ? "pointer-events-none cursor-default" : grabbing ? "cursor-grabbing" : "cursor-grab",
       )}
       style={{ left: `${p.x}%`, top: `${p.y}%` }}
       aria-hidden
@@ -198,8 +198,7 @@ export function UpgradeGauge({
         aria-disabled={spinning}
       >
         <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden>
-          <circle cx="50" cy="50" r="47.6" fill="none" stroke="#3d5a3a" strokeWidth="1.15" pointerEvents="none" />
-          <circle cx="50" cy="50" r={RING_R} fill="none" stroke="#1a2420" strokeWidth={RING_STROKE} pointerEvents="none" />
+          <circle cx="50" cy="50" r={RING_R} fill="none" stroke="#243830" strokeWidth={RING_STROKE} pointerEvents="none" />
           {chance > 0 && arcPath && (
             <path
               d={arcPath}

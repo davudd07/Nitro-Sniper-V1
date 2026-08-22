@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { createPortal } from "react-dom";
 import { ChevronDown, Palette, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ITEM_LIST } from "../../data/items";
@@ -37,13 +36,9 @@ import type { Case } from "../../data/cases";
 
 type PriceSort = "low" | "high" | "name";
 
-export function CreateCommunityCaseModal({
-  open,
-  onClose,
+export function CreateCommunityCaseForm({
   onCreated,
 }: {
-  open: boolean;
-  onClose: () => void;
   onCreated?: (id: string) => void;
 }) {
   const push = useToastStore((s) => s.push);
@@ -125,8 +120,6 @@ export function CreateCommunityCaseModal({
     });
   }, [entries, name, price, ev, houseEdge, color.from, color.to, designIds, session]);
 
-  if (!open) return null;
-
   function addItem(itemId: string) {
     if (selected.has(itemId) || entries.length >= COMMUNITY_MAX_ITEMS) return;
     sound.click();
@@ -172,36 +165,19 @@ export function CreateCommunityCaseModal({
     sound.click();
     push("Community case published.", "success");
     onCreated?.(result.id);
-    onClose();
   }
 
   const canSubmit = unlocked && !nameIssue && hundred && entries.length > 0 && price > 0 && Boolean(session);
 
-  return createPortal(
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/75 p-3 sm:p-6" onClick={onClose}>
-      <div
-        className="surface my-4 w-full max-w-5xl overflow-hidden bg-[#101810] p-4 sm:p-5"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="mb-4 flex items-start justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-white">Create Case</h2>
-            <p className="mt-1 max-w-2xl text-sm text-slate-400">
+  return (
+    <div className="surface w-full overflow-hidden bg-[#101810] p-4 sm:p-5">
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold tracking-tight text-white">Create Case</h1>
+          <p className="mt-1 max-w-2xl text-sm text-slate-400">
               Same economics as official cases: price covers item EV plus the {formatPercent(houseEdge)} house edge. You
               earn {formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of that house-edge take on each paid open — not{" "}
               {formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of the pot, and not extra rake stacked on the player.
             </p>
-          </div>
-          <button
-            type="button"
-            onClick={() => {
-              sound.click();
-              onClose();
-            }}
-            className="rounded-lg p-1 text-slate-400 hover:bg-white/10"
-          >
-            <X className="h-5 w-5" />
-          </button>
         </div>
 
         {!unlocked && (
@@ -211,7 +187,7 @@ export function CreateCommunityCaseModal({
           </div>
         )}
 
-        <div className="max-h-[72vh] space-y-4 overflow-y-auto scrollbar-thin pr-1">
+        <div className="space-y-4 pr-1">
           <section className="overflow-hidden rounded-xl border border-[#3d5a3a]/60 bg-black/25">
             <button
               type="button"
@@ -437,7 +413,8 @@ export function CreateCommunityCaseModal({
               </div>
               <p className="text-xs text-slate-500">
                 Price is solved from EV the same way official cases are: EV stays below price by ~{formatPercent(houseEdge)}.
-                Demo 0-stakes, battle replays, and bot battle seats do not pay commission.
+                Demo 0-stakes, battle replays, and bot battle seats do not pay commission. Borrowed battle seats
+                accrue only on the paid fraction (1 − borrow%).
               </p>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-lg font-bold text-white">
@@ -455,8 +432,6 @@ export function CreateCommunityCaseModal({
             </div>
           </section>
         </div>
-      </div>
-    </div>,
-    document.body,
+    </div>
   );
 }

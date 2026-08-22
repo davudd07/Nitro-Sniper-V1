@@ -15,13 +15,15 @@ export function isHumanBattleOpener(kind: BattleRosterKind): boolean {
   return kind === "you" || kind === "player";
 }
 
+type CommunityOpenSeat = { kind: BattleRosterKind; slotIndex?: number };
+
 /**
  * Paid-open credits toward creator earnings. Defaults to 1 per human seat.
  * Pass `creditForHuman` so borrow-mode can scale a human seat (bots stay 0).
  */
 export function communityPaidOpenCredits(
-  seats: { kind: BattleRosterKind }[],
-  creditForHuman: (seat: { kind: BattleRosterKind }, index: number) => number = () => 1,
+  seats: CommunityOpenSeat[],
+  creditForHuman: (seat: CommunityOpenSeat, index: number) => number = () => 1,
 ): number {
   return seats.reduce((sum, seat, index) => {
     if (!isHumanBattleOpener(seat.kind) || isBotSeatKind(seat.kind)) return sum;

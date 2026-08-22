@@ -1,15 +1,16 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
-import { Heart, Plus, Search, Wallet } from "lucide-react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Heart, Plus, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { RiskBadge } from "../components/cases/RiskBadge";
 import { CatalogSwitch, type CaseCatalogKind } from "../components/cases/CatalogSwitch";
-import { CreateCommunityCaseModal } from "../components/cases/CreateCommunityCaseModal";
+import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { CommunityEarningsModal } from "../components/cases/CommunityEarningsModal";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { formatCredits, formatPercent, formatRakeback, formatXp } from "../lib/format";
+import { matchesCaseName } from "../lib/caseSearch";
 import { RARITIES } from "../data/rarities";
 import { useAdminViewStore } from "../store/adminViewStore";
 import { useAuthStore } from "../store/authStore";
@@ -35,11 +36,15 @@ type PriceSort = "low" | "high";
 
 export function Cases() {
   const adminView = useAdminViewStore((s) => s.active);
-  const [catalog, setCatalog] = useState<CaseCatalogKind>("official");
-  const [subNav, setSubNav] = useState<CommunitySubNav>("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [catalog, setCatalog] = useState<CaseCatalogKind>(
+    searchParams.get("catalog") === "community" ? "community" : "official",
+  );
+  const [subNav, setSubNav] = useState<CommunitySubNav>(
+    searchParams.get("nav") === "mine" ? "mine" : searchParams.get("nav") === "favorites" ? "favorites" : "all",
+  );
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<PriceSort>("low");
-  const [createOpen, setCreateOpen] = useState(false);
   const [earningsOpen, setEarningsOpen] = useState(false);
   const hydrated = useCommunityCasesHydrated();
   const records = useCommunityCaseStore((s) => s.cases);
@@ -56,12 +61,24 @@ export function Cases() {
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
 
   const shownCommunity = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    let list = communityCases.filter((c) => !q || c.name.toLowerCase().includes(q));
+    let list = communityCases.filter((c) => matchesCaseName(c.name, query));
     if (subNav === "mine") list = list.filter((c) => c.creatorId === session);
     if (subNav === "favorites") list = list.filter((c) => favoriteSet.has(c.id));
     return [...list].sort((a, b) => (sort === "high" ? b.price - a.price : a.price - b.price));
   }, [communityCases, query, sort, subNav, session, favoriteSet]);
+
+  const shownOfficial = useMemo(
+    () => SORTED_OFFICIAL.filter((c) => matchesCaseName(c.name, query)),
+    [query],
+  );
+
+  function setCatalogKind(next: CaseCatalogKind) {
+    setCatalog(next);
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === "community") nextParams.set("catalog", "community");
+    else nextParams.delete("catalog");
+    setSearchParams(nextParams, { replace: true });
+  }
 
   return (
     <div>
@@ -74,7 +91,7 @@ export function Cases() {
               : "Player-made cases using website item prices. Price matches official house-edge economics; creators earn 5% of the edge take."}
           </p>
         </div>
-        <CatalogSwitch value={catalog} onChange={setCatalog} />
+        <CatalogSwitch value={catalog} onChange={setCatalogKind} />
       </div>
 
       {catalog === "community" ? (
@@ -115,12 +132,9 @@ export function Cases() {
               >
                 <Wallet className="h-3.5 w-3.5" /> My earnings
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  sound.click();
-                  setCreateOpen(true);
-                }}
+              <Link
+                to="/cases/create"
+                onClick={() => sound.click()}
                 className={clsx(
                   "inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide",
                   unlocked
@@ -129,7 +143,7 @@ export function Cases() {
                 )}
               >
                 <Plus className="h-3.5 w-3.5" /> Create Case
-              </button>
+              </Link>
             </div>
           </div>
 
@@ -141,15 +155,7 @@ export function Cases() {
           )}
 
           <div className="mb-5 flex flex-wrap items-center gap-2">
-            <label className="relative min-w-[200px] flex-1">
-              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-slate-500" />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Search cases"
-                className="w-full rounded-lg border-2 border-[#3d5a3a] bg-black/30 py-2 pl-8 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
-              />
-            </label>
+            <CaseSearchInput value={query} onChange={setQuery} />
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as PriceSort)}
@@ -172,9 +178,9 @@ export function Cases() {
                       : "No community cases yet."}
               </p>
               {subNav !== "favorites" && (
-                <button type="button" onClick={() => setCreateOpen(true)} className="btn-primary mt-4 inline-flex px-4 py-2 text-sm">
+                <Link to="/cases/create" onClick={() => sound.click()} className="btn-primary mt-4 inline-flex px-4 py-2 text-sm">
                   Create Case
-                </button>
+                </Link>
               )}
             </div>
           ) : (
@@ -193,18 +199,24 @@ export function Cases() {
             </div>
           )}
 
-          <CreateCommunityCaseModal
-            open={createOpen}
-            onClose={() => setCreateOpen(false)}
-            onCreated={() => setSubNav("mine")}
-          />
           <CommunityEarningsModal open={earningsOpen} onClose={() => setEarningsOpen(false)} />
         </div>
       ) : (
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
-          {SORTED_OFFICIAL.map((c) => (
-            <OfficialCaseCard key={c.id} c={c} adminView={adminView} />
-          ))}
+        <div>
+          <div className="mb-5">
+            <CaseSearchInput value={query} onChange={setQuery} />
+          </div>
+          {shownOfficial.length === 0 ? (
+            <div className="surface px-5 py-10 text-center">
+              <p className="text-sm text-slate-400">No official cases match that search.</p>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {shownOfficial.map((c) => (
+                <OfficialCaseCard key={c.id} c={c} adminView={adminView} />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

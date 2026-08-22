@@ -148,14 +148,21 @@ export function communityHouseTake(price: number, houseEdge: number): number {
   return houseEdge * price;
 }
 
-/** Creator commission on one paid open: `0.05 × houseEdge × casePrice`. */
+/**
+ * Creator commission on paid opens: `0.05 × houseEdge × casePrice × paidFraction`.
+ * `paidFraction` is 1 for a fully funded seat, or `1 − borrow%` on a borrowed seat
+ * (and may be the sum of those fractions when several seats open at once).
+ */
 export function communityCommissionPerOpen(
   price: number,
   houseEdge: number,
   rate: number = COMMUNITY_COMMISSION_OF_EDGE,
+  paidFraction: number = 1,
 ): number {
   const slice = rate > 0 ? rate : COMMUNITY_COMMISSION_OF_EDGE;
-  return communityHouseTake(price, houseEdge) * slice;
+  const paid = Number.isFinite(paidFraction) ? Math.max(0, paidFraction) : 0;
+  if (!(paid > 0)) return 0;
+  return communityHouseTake(price, houseEdge) * slice * paid;
 }
 
 export function riskFromEntries(entries: CommunityOddsInput[]): RiskLevel {

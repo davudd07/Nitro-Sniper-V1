@@ -7,7 +7,9 @@ import { CaseThumb } from "../cases/CaseThumb";
 import { CasePreviewModal } from "../cases/CasePreviewModal";
 import { RiskBadge } from "../cases/RiskBadge";
 import { CatalogSwitch, type CaseCatalogKind } from "../cases/CatalogSwitch";
+import { CaseSearchInput } from "../cases/CaseSearchInput";
 import { formatCredits } from "../../lib/format";
+import { matchesCaseName } from "../../lib/caseSearch";
 import type { BattleCaseEntry } from "../../store/battleStore";
 import { listHydratedCommunityCases, useCommunityCaseStore } from "../../store/communityCaseStore";
 import { sound } from "../../lib/sound";
@@ -28,9 +30,14 @@ export function AddCasesModal({
   const [draft, setDraft] = useState<BattleCaseEntry[]>(entries);
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [catalog, setCatalog] = useState<CaseCatalogKind>("official");
+  const [query, setQuery] = useState("");
   const communityRecords = useCommunityCaseStore((s) => s.cases);
   const communityCases = useMemo(() => listHydratedCommunityCases(), [communityRecords]);
-  const shown = catalog === "official" ? CASES : communityCases;
+  const catalogCases = catalog === "official" ? CASES : communityCases;
+  const shown = useMemo(
+    () => catalogCases.filter((c) => matchesCaseName(c.name, query)),
+    [catalogCases, query],
+  );
 
   useEffect(() => {
     if (open) setDraft(entries);
@@ -86,8 +93,14 @@ export function AddCasesModal({
           </div>
         </div>
 
-        {shown.length === 0 ? (
+        <div className="mb-4">
+          <CaseSearchInput value={query} onChange={setQuery} />
+        </div>
+
+        {catalogCases.length === 0 ? (
           <p className="py-10 text-center text-sm text-slate-500">No community cases yet. Publish one from the Community tab on Cases.</p>
+        ) : shown.length === 0 ? (
+          <p className="py-10 text-center text-sm text-slate-500">No cases match that search.</p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             {shown.map((c) => {

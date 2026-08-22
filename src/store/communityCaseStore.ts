@@ -114,7 +114,7 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
         if (!(paidOpens > 0)) return 0;
         const rec = get().cases.find((c) => c.id === caseId);
         if (!rec) return 0;
-        const amount = communityCommissionPerOpen(rec.price, rec.houseEdge) * paidOpens;
+        const amount = communityCommissionPerOpen(rec.price, rec.houseEdge, rec.commissionRate, paidOpens);
         if (!(amount > 0)) return 0;
         set((s) => ({
           claimableByCreator: {

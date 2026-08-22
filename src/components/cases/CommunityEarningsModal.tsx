@@ -59,7 +59,8 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
             {formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of the house edge
           </span>{" "}
           as commission — not {formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of the whole pot, and not a cut of the case
-          price. Demo 0-stakes, battle replays, and bot seats do not pay.
+          price. Demo 0-stakes, battle replays, and bot seats do not pay. Borrowed battle seats only pay on the
+          player-funded fraction (1 − borrow%).
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">

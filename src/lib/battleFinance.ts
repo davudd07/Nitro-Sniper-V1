@@ -32,13 +32,43 @@ export function creatorCreateCost(
   return own + fund;
 }
 
-/** Winner keeps this fraction of their pot share after borrow. */
+/** Winner keeps this fraction of their pot share after borrow. Borrow 40% → keep 60%. */
 export function keepPct(borrowPct: number): number {
   return 1 - clampPct(borrowPct, 0, MAX_BORROW_PCT);
 }
 
+/** Player-paid fraction of a seat. Borrow 40% means they only put up 60%. */
+export function paidSeatFraction(borrowPct: number): number {
+  return keepPct(borrowPct);
+}
+
 export function winPayout(fullShare: number, borrowPct: number): number {
   return Math.round(fullShare * keepPct(borrowPct));
+}
+
+/**
+ * Paid-open weight for one human battle seat. Borrow 40% → 0.6 (never 1.0).
+ * Funded rooms disable borrow, so the seat is fully player-funded.
+ */
+export function humanSeatPaidFraction(
+  seat: { kind: string; slotIndex: number },
+  opts: {
+    fundedPct: number;
+    creatorSeat?: number;
+    creatorBorrowPct: number;
+    /** Local player's borrow. Same as creatorBorrowPct when they hosted. */
+    joinerBorrowPct: number;
+    youAreCreator: boolean;
+  },
+): number {
+  if (seat.kind === "bot" || seat.kind === "empty" || seat.kind === "joining") return 0;
+  if (clampPct(opts.fundedPct) > 0) return 1;
+  if (seat.kind === "you") return keepPct(opts.joinerBorrowPct);
+  if (seat.kind === "player" && seat.slotIndex === (opts.creatorSeat ?? 0)) {
+    return keepPct(opts.creatorBorrowPct);
+  }
+  if (seat.kind === "player") return 1;
+  return 0;
 }
 
 export function pctLabel(pct: number): string {

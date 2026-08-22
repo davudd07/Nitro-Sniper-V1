@@ -11,8 +11,10 @@ import { ModeGlyph } from "../components/battles/ModeGlyph";
 import { getCase } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
+import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
 import { formatCredits } from "../lib/format";
+import { matchesCaseName } from "../lib/caseSearch";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
@@ -29,6 +31,7 @@ const FILTERS = [
 export function CaseBattlesLobby() {
   const navigate = useNavigate();
   const [filter, setFilter] = useState<(typeof FILTERS)[number]["id"]>("open");
+  const [caseQuery, setCaseQuery] = useState("");
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [joinTarget, setJoinTarget] = useState<BattleConfig | null>(null);
   const battlesMap = useBattleStore((s) => s.battles);
@@ -44,12 +47,22 @@ export function CaseBattlesLobby() {
   const push = useToastStore((s) => s.push);
 
   const rows = useMemo(() => {
+    const q = caseQuery.trim();
     const visible = battles.filter((b) => {
       if (b.isPrivate && b.source !== "you") return false;
       const status = b.status ?? "open";
-      if (filter === "finished") return status === "finished";
-      if (filter === "active") return status === "active";
-      return status === "open";
+      if (filter === "finished") {
+        if (status !== "finished") return false;
+      } else if (filter === "active") {
+        if (status !== "active") return false;
+      } else if (status !== "open") {
+        return false;
+      }
+      if (!q) return true;
+      return b.cases.some((e) => {
+        const c = getCase(e.caseId);
+        return c ? matchesCaseName(c.name, q) : false;
+      });
     });
     if (filter === "finished") {
       return [...visible]
@@ -57,7 +70,7 @@ export function CaseBattlesLobby() {
         .slice(0, 10);
     }
     return visible;
-  }, [battles, filter]);
+  }, [battles, filter, caseQuery]);
 
   function occupied(b: BattleConfig) {
     return occupiedCount(occupiedSeatFlags(b, joinIntents[b.id]));
@@ -142,6 +155,8 @@ export function CaseBattlesLobby() {
         </span>
       </div>
 
+      <CaseSearchInput value={caseQuery} onChange={setCaseQuery} placeholder="Search cases in this lobby" />
+
       <div className="surface overflow-hidden">
         <div className="flex items-end justify-end border-b border-white/8 px-4 py-1.5">
           <WinLeaderBadge game="battles" />
@@ -156,7 +171,11 @@ export function CaseBattlesLobby() {
         </div>
         {rows.length === 0 ? (
           <p className="p-8 text-center text-sm text-slate-500">
-            {filter === "finished" ? "No finished battles yet." : "No battles in this filter. Create one to get started."}
+            {caseQuery.trim()
+              ? "No battles use a case matching that search."
+              : filter === "finished"
+                ? "No finished battles yet."
+                : "No battles in this filter. Create one to get started."}
           </p>
         ) : (
           <div className="divide-y divide-white/6">

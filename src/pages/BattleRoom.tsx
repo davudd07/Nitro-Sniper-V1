@@ -26,7 +26,7 @@ import { buildBattleRoster, communityPaidOpenCredits } from "../lib/battleSeats"
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { formatCredits } from "../lib/format";
-import { creatorCreateCost, fundedSeatCost, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
+import { creatorCreateCost, fundedSeatCost, humanSeatPaidFraction, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
 import { sound } from "../lib/sound";
@@ -295,8 +295,19 @@ export function BattleRoom() {
         players.forEach((p, i) => {
           results[p.slotIndex] = rollCaseItem(c, rolls[i]);
         });
-        if (!isReplayRef.current && (battle?.costPerPlayer ?? 0) > 0) {
-          const paidOpens = communityPaidOpenCredits(players);
+        if (!isReplayRef.current && !spectating && (battle?.costPerPlayer ?? 0) > 0) {
+          const paidOpens = communityPaidOpenCredits(players, (seat) =>
+            humanSeatPaidFraction(
+              { kind: seat.kind, slotIndex: seat.slotIndex ?? 0 },
+              {
+                fundedPct: battle?.fundedPct ?? 0,
+                creatorSeat: battle?.creatorSeat ?? 0,
+                creatorBorrowPct: battle?.creatorBorrowPct ?? 0,
+                joinerBorrowPct: borrowPct,
+                youAreCreator: battle?.source === "you",
+              },
+            ),
+          );
           if (paidOpens > 0) useCommunityCaseStore.getState().accrue(caseId, paidOpens);
         }
         const log = replayLogRef.current.slice();
@@ -307,7 +318,7 @@ export function BattleRoom() {
       setPendingResults(results);
       setSpinToken((t) => t + 1);
     },
-    [caseSequence, play, players, battle?.costPerPlayer],
+    [caseSequence, play, players, battle, borrowPct, spectating],
   );
 
   useEffect(() => {

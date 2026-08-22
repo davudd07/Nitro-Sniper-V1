@@ -15,6 +15,7 @@ import { Mines } from "./pages/Mines";
 import { Blackjack } from "./pages/Blackjack";
 import { Cases } from "./pages/Cases";
 import { CaseOpenPage } from "./pages/CaseOpenPage";
+import { CreateCommunityCasePage } from "./pages/CreateCommunityCase";
 import { CaseBattlesLobby } from "./pages/CaseBattlesLobby";
 import { CreateBattle } from "./pages/CreateBattle";
 import { BattleRoom } from "./pages/BattleRoom";
@@ -102,6 +103,7 @@ export default function App() {
             <Route path="/mines" element={<Mines />} />
             <Route path="/blackjack" element={<Blackjack />} />
             <Route path="/cases" element={<Cases />} />
+            <Route path="/cases/create" element={<CreateCommunityCasePage />} />
             <Route path="/cases/:caseId" element={<CaseOpenPage />} />
             <Route path="/battles" element={<CaseBattlesLobby />} />
             <Route path="/battles/create" element={<CreateBattle />} />

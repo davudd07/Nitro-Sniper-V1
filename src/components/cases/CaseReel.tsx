@@ -84,15 +84,58 @@ function stripTransform(horizontal: boolean, px: number) {
   return horizontal ? `translate3d(${-px}px,0,0)` : `translate3d(0,${-px}px,0)`;
 }
 
-function buildStrip(pool: CaseItem[], landing: CaseItem, rand: () => number): CaseItem[] {
+function pickFrom(pool: CaseItem[], rand: () => number): CaseItem {
+  return pool[Math.floor(rand() * pool.length)] ?? pool[0];
+}
+
+function shuffleInPlace<T>(arr: T[], rand: () => number): T[] {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    const tmp = arr[i];
+    arr[i] = arr[j]!;
+    arr[j] = tmp!;
+  }
+  return arr;
+}
+
+/**
+ * Visual-only pass-bys: gold-tier items scroll past on a normal reel so players
+ * can see the gold-spin pool exists. Never writes LAND_INDEX (fuchsia line).
+ * Does not change who wins or gold-spin probability.
+ */
+function sprinkleGoldBaits(strip: CaseItem[], baits: CaseItem[], rand: () => number): void {
+  if (baits.length === 0) return;
+  // Skip the idle/start window under the pointer (indices 0–2). Travel still
+  // covers the rest of the reel up to, but never including, the fuchsia line.
+  const travel: number[] = [];
+  for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
+  shuffleInPlace(travel, rand);
+
+  // One of each gold-pool item, then extra sprinkles so they keep flying by.
+  const extra = Math.floor(travel.length / 6);
+  const placeCount = Math.min(travel.length, baits.length + extra);
+  for (let n = 0; n < placeCount; n++) {
+    const slot = travel[n];
+    if (slot === undefined || slot === LAND_INDEX) continue;
+    strip[slot] = n < baits.length ? baits[n]! : pickFrom(baits, rand);
+  }
+}
+
+function buildStrip(
+  pool: CaseItem[],
+  landing: CaseItem,
+  rand: () => number,
+  baits: CaseItem[] = [],
+): CaseItem[] {
+  const baitIds = new Set(baits.map((item) => item.id));
+  const filler = baitIds.size ? pool.filter((item) => !baitIds.has(item.id)) : pool;
+  const fillerPool = filler.length ? filler : pool;
   const strip: CaseItem[] = [];
   for (let i = 0; i < REEL_LENGTH; i++) {
-    if (i === LAND_INDEX) {
-      strip.push(landing);
-    } else {
-      strip.push(pool[Math.floor(rand() * pool.length)]);
-    }
+    strip.push(i === LAND_INDEX ? landing : pickFrom(fillerPool, rand));
   }
+  if (baits.length) sprinkleGoldBaits(strip, baits, rand);
+  strip[LAND_INDEX] = landing;
   return strip;
 }
 
@@ -263,6 +306,7 @@ export function CaseReel({
     onGoldTriggered?.();
     timeoutRef.current = setTimeout(() => {
       const goldRand = mulberry32(seedBase * 104729 + 3);
+      // Gold reel: the pool is already gold-tier and those items can land. No baits.
       const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand);
       pendingSpinRef.current = {
         seed: seedBase + 1,
@@ -291,13 +335,14 @@ export function CaseReel({
   }, [spinToken]);
 
   // Full-length idle strip so unique icons decode during countdown / before Open.
+  // Sprinkle gold-tier pass-bys here too so the pool is visible before Open.
   useEffect(() => {
     if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
     const rand = mulberry32(laneSeed + 17);
-    setStrip(Array.from({ length: REEL_LENGTH }, () => pool[Math.floor(rand() * pool.length)]));
+    setStrip(buildStrip(pool, pickFrom(pool, rand), rand, goldPool));
     applyOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pool, spinToken, laneSeed]);
+  }, [pool, goldPool, spinToken, laneSeed]);
 
   useEffect(() => {
     if (!result || spinToken === 0) return;
@@ -305,7 +350,9 @@ export function CaseReel({
     const rand = mulberry32(seedBase);
     const goesGold = goldSpinEnabled && result.goldTier;
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
-    const mainStrip = buildStrip(pool, targetForMain, rand);
+    // Normal reel: gold-tier items fly past as baits. Landing stays the real result
+    // (or the GOLD SPIN indicator). The gold-spin reel below keeps the gold-only pool.
+    const mainStrip = buildStrip(pool, targetForMain, rand, goldPool);
     pendingSpinRef.current = {
       seed: seedBase,
       duration,
@@ -356,6 +403,7 @@ export function CaseReel({
 
   const isGoldPhase = phase === "gold" || phase === "charge" || phase === "awaitingGold";
   const stripLen = Math.max(strip.length, 1);
+  const goldIdSet = new Set(goldPool.map((item) => item.id));
 
   return (
     <div className="min-w-0 w-full max-w-full">
@@ -418,6 +466,7 @@ export function CaseReel({
               iconSize={SIZE_CONFIG[size].icon}
               orientation={orientation}
               pulse={item.id === GOLD_INDICATOR.id && !spinning}
+              goldBait={!isGoldPhase && goldIdSet.has(item.id)}
             />
           ))}
         </div>
@@ -433,6 +482,7 @@ const ReelSlot = memo(function ReelSlot({
   iconSize,
   orientation,
   pulse,
+  goldBait,
 }: {
   item: CaseItem;
   index: number;
@@ -440,11 +490,14 @@ const ReelSlot = memo(function ReelSlot({
   iconSize: BattleReelSize;
   orientation: Orientation;
   pulse: boolean;
+  goldBait: boolean;
 }) {
   const r = RARITIES[item.rarity];
   const isIndicator = item.id === GOLD_INDICATOR.id;
+  const goldChrome = isIndicator || goldBait;
   const iconPx = ICON_PX[iconSize];
   const isHorizontal = orientation === "horizontal";
+  const ring = goldChrome ? "#fbbf24" : r.ring;
 
   return (
     <div
@@ -463,10 +516,16 @@ const ReelSlot = memo(function ReelSlot({
         height: isHorizontal ? "100%" : itemSize,
         top: isHorizontal ? 0 : index * itemSize,
         left: isHorizontal ? index * itemSize : 0,
-        background: isHorizontal ? `linear-gradient(165deg, ${r.from}66, ${r.to})` : `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
-        boxShadow: isIndicator ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
-        borderRight: isHorizontal ? `2px solid ${r.ring}` : undefined,
-        borderBottom: isHorizontal ? undefined : `2px solid ${r.ring}`,
+        background: goldChrome
+          ? isHorizontal
+            ? `linear-gradient(165deg, #fbbf2466, ${r.to})`
+            : `linear-gradient(90deg, #fbbf2455, ${r.to}cc)`
+          : isHorizontal
+            ? `linear-gradient(165deg, ${r.from}66, ${r.to})`
+            : `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
+        boxShadow: goldChrome ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
+        borderRight: isHorizontal ? `2px solid ${ring}` : undefined,
+        borderBottom: isHorizontal ? undefined : `2px solid ${ring}`,
       }}
     >
       <img
@@ -482,13 +541,13 @@ const ReelSlot = memo(function ReelSlot({
       {isHorizontal || iconSize === "sm" ? (
         <span
           className={clsx("max-w-[92%] truncate px-0.5 font-bold", iconSize === "sm" ? "text-[9px]" : "text-[10px]")}
-          style={{ color: isIndicator ? "#fbbf24" : r.text }}
+          style={{ color: goldChrome ? "#fbbf24" : r.text }}
         >
           {item.name}
         </span>
       ) : (
         <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-bold" style={{ color: isIndicator ? "#fbbf24" : r.text }}>
+          <p className="truncate text-xs font-bold" style={{ color: goldChrome ? "#fbbf24" : r.text }}>
             {item.name}
           </p>
           {!isIndicator && <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>}

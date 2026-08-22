@@ -262,7 +262,7 @@ function seedBattles(): Record<string, BattleConfig> {
       modeId: "2v2",
       crazy: false,
       jackpot: false,
-      goldSpin: false,
+      goldSpin: true,
       terminal: false,
       coinflip: true,
       cases: [{ caseId: "starter", count: 2 }],

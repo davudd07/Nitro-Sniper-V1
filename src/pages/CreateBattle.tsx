@@ -159,7 +159,6 @@ export function CreateBattle() {
       setCrazy(false);
       setJackpot(false);
       setTerminal(false);
-      setGoldSpin(false);
     }
   }
 
@@ -526,7 +525,7 @@ export function CreateBattle() {
             <SideToggle
               icon={Circle}
               label="Coinflip"
-              hint="Equal-odds spin. One player per team; case pulls do not score. Incompatible with Crazy, Jackpot, Terminal, and Gold Spin."
+              hint="Open every case, then an equal-odds spin for the buy-in. One player per team; pulls do not score. Works with Gold Spin. Off with Crazy, Jackpot, Terminal, and Shared."
               color="#a5b4fc"
               checked={coinflip}
               disabled={shared}
@@ -574,14 +573,10 @@ export function CreateBattle() {
             <SideToggle
               icon={Sparkles}
               label="Gold spin"
-              hint="Rare pulls trigger a bonus gold reel"
+              hint="Rare pulls trigger a bonus gold reel. Works with Coinflip."
               color="#fbbf24"
               checked={goldSpin}
-              disabled={coinflip}
-              onChange={(v) => {
-                setGoldSpin(v);
-                if (v) setCoinflip(false);
-              }}
+              onChange={setGoldSpin}
             />
           </div>
 

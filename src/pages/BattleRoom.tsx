@@ -276,12 +276,8 @@ export function BattleRoom() {
           sound.countdownBeep(true);
           sound.battleStart();
           if (battleId && !isReplayRef.current) setBattleStatus(battleId, "active");
-          if (battle?.coinflip) {
-            finishBattle();
-          } else {
-            setPhase("running");
-            setCaseIndex(0);
-          }
+          setPhase("running");
+          setCaseIndex(0);
           return 0;
         }
         sound.countdownBeep();
@@ -289,7 +285,7 @@ export function BattleRoom() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [phase, battleId, setBattleStatus, battle?.coinflip]);
+  }, [phase, battleId, setBattleStatus]);
 
   const runRound = useCallback(
     async (idx: number) => {
@@ -868,7 +864,9 @@ export function BattleRoom() {
               </button>
             )}
             {battle.coinflip && (
-              <span className="text-indigo-200">Equal-odds spin · pulls do not score</span>
+              <span className="text-indigo-200">
+                {battle.goldSpin ? "Open cases · gold reels · flip for the buy-in" : "Open cases, then flip for the buy-in"}
+              </span>
             )}
             {battle.terminal && (
               <span className="text-pink-300">
@@ -1061,7 +1059,6 @@ export function BattleRoom() {
                               result={pendingResults[p.slotIndex] ?? null}
                               spinToken={spinToken}
                               goldSpinEnabled={battle.goldSpin}
-                              skipReels={battle.coinflip}
                               state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
                               battleActive={phase === "running"}
                               activeCase={currentCase ?? CASES[0]}
@@ -1252,7 +1249,6 @@ function PlayerStage({
   result,
   spinToken,
   goldSpinEnabled,
-  skipReels = false,
   state,
   battleActive,
   activeCase,
@@ -1274,7 +1270,6 @@ function PlayerStage({
   result: CaseOddsEntry | null;
   spinToken: number;
   goldSpinEnabled: boolean;
-  skipReels?: boolean;
   state: PlayerRoundState;
   battleActive: boolean;
   activeCase: (typeof CASES)[number];
@@ -1355,13 +1350,6 @@ function PlayerStage({
             </>
           )}
         </div>
-      ) : skipReels ? (
-        <div
-          className="grid h-full place-items-center rounded-lg bg-black/25 p-3 text-center"
-          style={{ minHeight: BATTLE_REEL_HEIGHT[reelSize] }}
-        >
-          <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Flip decides</p>
-        </div>
       ) : (
         <CaseReel
           pool={pool}
@@ -1378,7 +1366,6 @@ function PlayerStage({
         />
       )}
 
-      {!skipReels && (
       <div className={clsx("mt-2 overflow-y-auto rounded-lg bg-black/20 p-1.5 scrollbar-thin", compact ? "max-h-48 min-h-[72px]" : "max-h-64 min-h-[92px]")}>
         {state.history.length === 0 ? (
           <p className={clsx("grid h-full place-items-center text-[11px] text-slate-600", compact ? "min-h-[64px]" : "min-h-[80px]")}>No pulls yet</p>
@@ -1390,7 +1377,6 @@ function PlayerStage({
           </div>
         )}
       </div>
-      )}
     </div>
   );
 }

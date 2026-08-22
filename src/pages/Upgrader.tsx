@@ -103,6 +103,7 @@ export function Upgrader() {
   const [sort, setSort] = useState<UpgradeSort>("price_desc");
   const [fast, setFast] = useState(false);
   const [instant, setInstant] = useState(false);
+  const [arcStartDeg, setArcStartDeg] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [won, setWon] = useState<boolean | null>(null);
   const [landDeg, setLandDeg] = useState(0);
@@ -224,7 +225,7 @@ export function Upgrader() {
       hit,
     };
     setWon(hit);
-    setLandDeg(landDegForRoll(roll, chance, hit));
+    setLandDeg(landDegForRoll(roll, chance, hit, arcStartDeg));
     setSpinToken((n) => n + 1);
   }
 
@@ -264,9 +265,10 @@ export function Upgrader() {
           <StatRow label="RTP" value={formatPercent(1 - houseEdge)} />
           <StatRow label="Default originals edge" value={formatPercent(UPGRADER_HOUSE_EDGE)} />
           <p>
-            Win chance is <span className="font-mono text-white">(source ÷ target) × (1 − house edge)</span>. Chance is
-            always below 100%, so the house keeps its edge. A hit credits the target&apos;s SH value. A miss consumes
-            the source stake. Fair rolls land in the green win arc ({formatRollBand(chance)}) or the miss arc.
+            Win chance is <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>, clamped to (0, 1).
+            Default house edge is 5% (no +EV). Drag the green slice around the dial — only its position is yours; its
+            size comes from that math. The arrow spins and lands; a hit inside your placed slice credits the target SH
+            value. A miss consumes the source stake. Fair rolls use {formatRollBand(chance)}.
           </p>
         </InfoButton>
       </div>
@@ -274,18 +276,55 @@ export function Upgrader() {
       <div className="relative surface space-y-5 p-4 pb-11 sm:p-5 sm:pb-12">
         <WinLeaderStageMark game="upgrader" />
 
-        <div className="grid items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)_minmax(0,1fr)]">
-          <SlotCard
-            label="Source"
-            item={inputItem}
-            value={inputValue}
-            active={slot === "input"}
-            onClick={() => {
-              if (spinning) return;
-              sound.click();
-              setSlot("input");
-            }}
-          />
+        <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(240px,320px)_minmax(0,1fr)]">
+          <div className="flex flex-col gap-3">
+            <SlotCard
+              label="Source"
+              item={inputItem}
+              value={inputValue}
+              active={slot === "input"}
+              onClick={() => {
+                if (spinning) return;
+                sound.click();
+                setSlot("input");
+              }}
+            />
+            <div className="space-y-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 p-2.5">
+              <label className="flex items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Bet</span>
+                <input
+                  type="number"
+                  min={0}
+                  disabled={spinning}
+                  value={stake}
+                  onChange={(e) => applyStake(Number(e.target.value) || 0)}
+                  className="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
+                />
+                <span className="text-[10px] font-bold text-slate-500">SH</span>
+              </label>
+              <div className="grid grid-cols-4 gap-1.5">
+                {[
+                  { id: "clear", label: "CLEAR", run: () => applyStake(0) },
+                  { id: "half", label: "1/2", run: () => applyStake(Math.floor(inputValue / 2)) },
+                  { id: "dbl", label: "2X", run: () => applyStake(inputValue * 2) },
+                  { id: "max", label: "MAX", run: () => applyStake(Math.floor(balance)) },
+                ].map((btn) => (
+                  <button
+                    key={btn.id}
+                    type="button"
+                    disabled={spinning}
+                    onClick={() => {
+                      sound.click();
+                      btn.run();
+                    }}
+                    className="rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-1 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10 disabled:opacity-40"
+                  >
+                    {btn.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
           <div className="flex flex-col items-center gap-3">
             <UpgradeGauge
               chance={chance}
@@ -295,6 +334,8 @@ export function Upgrader() {
               spinToken={spinToken}
               durationMs={spinMs}
               extraSpins={instant ? 0 : 7}
+              arcStartDeg={arcStartDeg}
+              onArcStartChange={setArcStartDeg}
               onSettled={handleSettled}
             />
             <p className="text-center text-xs text-slate-500">
@@ -316,37 +357,6 @@ export function Upgrader() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
-            <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Stake</span>
-            <input
-              type="number"
-              min={0}
-              disabled={spinning}
-              value={stake}
-              onChange={(e) => applyStake(Number(e.target.value) || 0)}
-              className="w-24 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
-            />
-            <span className="text-[10px] font-bold text-slate-500">SH</span>
-          </label>
-          {[
-            { id: "clear", label: "CLEAR", run: () => applyStake(0) },
-            { id: "half", label: "1/2", run: () => applyStake(Math.floor(inputValue / 2)) },
-            { id: "dbl", label: "2X", run: () => applyStake(inputValue * 2) },
-            { id: "max", label: "MAX", run: () => applyStake(Math.floor(balance)) },
-          ].map((btn) => (
-            <button
-              key={btn.id}
-              type="button"
-              disabled={spinning}
-              onClick={() => {
-                sound.click();
-                btn.run();
-              }}
-              className="rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-3 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10 disabled:opacity-40"
-            >
-              {btn.label}
-            </button>
-          ))}
           <label className="flex items-center gap-1.5 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
             <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">x</span>
             <input

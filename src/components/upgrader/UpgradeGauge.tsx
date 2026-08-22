@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type PointerEvent } from "react";
 import { longBrake } from "../../lib/easing";
-import { formatChancePct, formatRollBand } from "../../lib/upgrader";
+import { degFromCenter, formatChancePct, formatRollBand, shortestDegDelta, wrapDeg } from "../../lib/upgrader";
 import { sound } from "../../lib/sound";
 import { clsx } from "clsx";
 
@@ -16,6 +16,8 @@ export function UpgradeGauge({
   spinToken,
   durationMs,
   extraSpins = EXTRA_SPINS,
+  arcStartDeg,
+  onArcStartChange,
   onSettled,
 }: {
   chance: number;
@@ -25,27 +27,37 @@ export function UpgradeGauge({
   spinToken: number;
   durationMs: number;
   extraSpins?: number;
+  arcStartDeg: number;
+  onArcStartChange: (deg: number) => void;
   onSettled: () => void;
 }) {
-  const wheelRef = useRef<HTMLDivElement>(null);
+  const dialRef = useRef<HTMLDivElement>(null);
+  const needleRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
   const rotationRef = useRef(0);
   const lastTickRef = useRef(0);
   const settledRef = useRef(onSettled);
   settledRef.current = onSettled;
+  const arcRef = useRef(arcStartDeg);
+  arcRef.current = arcStartDeg;
+  const onArcRef = useRef(onArcStartChange);
+  onArcRef.current = onArcStartChange;
+  const dragRef = useRef<{ lastDeg: number } | null>(null);
   const [hub, setHub] = useState<"idle" | "spin" | "win" | "lose">("idle");
+  const [dragging, setDragging] = useState(false);
 
   const winSweep = Math.max(0, Math.min(360, chance * 360));
   const gradient =
     chance > 0
-      ? `conic-gradient(#a3e635 0deg ${winSweep}deg, #365314 ${winSweep}deg ${Math.min(360, winSweep + 1.2)}deg, #1a2420 ${Math.min(360, winSweep + 1.2)}deg 360deg)`
+      ? `conic-gradient(from ${arcStartDeg}deg, #a3e635 0deg ${winSweep}deg, #365314 ${winSweep}deg ${Math.min(360, winSweep + 1.2)}deg, #1a2420 ${Math.min(360, winSweep + 1.2)}deg 360deg)`
       : "conic-gradient(#1a2420 0deg 360deg)";
+  const handleDeg = wrapDeg(arcStartDeg + winSweep / 2);
 
   useEffect(() => {
     if (spinToken === 0) {
       setHub("idle");
       rotationRef.current = 0;
-      if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
+      if (needleRef.current) needleRef.current.style.transform = "rotate(0deg)";
       return;
     }
 
@@ -53,7 +65,7 @@ export function UpgradeGauge({
     lastTickRef.current = 0;
     const startRot = rotationRef.current;
     const startMod = ((startRot % 360) + 360) % 360;
-    const targetMod = (360 - landDeg + 360) % 360;
+    const targetMod = wrapDeg(landDeg);
     const delta = (targetMod - startMod + 360) % 360;
     const loops = Math.max(0, extraSpins);
     const target = startRot + loops * 360 + delta;
@@ -66,7 +78,7 @@ export function UpgradeGauge({
       const eased = longBrake(t);
       const deg = startRot + (target - startRot) * eased;
       rotationRef.current = deg;
-      if (wheelRef.current) wheelRef.current.style.transform = `rotate(${deg}deg)`;
+      if (needleRef.current) needleRef.current.style.transform = `rotate(${deg}deg)`;
 
       if (tickSounds) {
         const ticks = Math.floor(deg / TICK_EVERY);
@@ -80,7 +92,7 @@ export function UpgradeGauge({
         rafRef.current = requestAnimationFrame(frame);
       } else {
         rotationRef.current = target;
-        if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target}deg)`;
+        if (needleRef.current) needleRef.current.style.transform = `rotate(${target}deg)`;
         setHub(won ? "win" : "lose");
         settledRef.current();
       }
@@ -93,33 +105,77 @@ export function UpgradeGauge({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
+  function pointerDeg(e: { clientX: number; clientY: number }): number | null {
+    const el = dialRef.current;
+    if (!el) return null;
+    const rect = el.getBoundingClientRect();
+    return degFromCenter(e.clientX - (rect.left + rect.width / 2), e.clientY - (rect.top + rect.height / 2));
+  }
+
+  function onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    if (spinning) return;
+    const el = dialRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const dx = e.clientX - (rect.left + rect.width / 2);
+    const dy = e.clientY - (rect.top + rect.height / 2);
+    const dist = Math.hypot(dx, dy);
+    const minR = rect.width * 0.22;
+    const maxR = rect.width * 0.54;
+    if (dist < minR || dist > maxR) return;
+    e.preventDefault();
+    el.setPointerCapture(e.pointerId);
+    dragRef.current = { lastDeg: degFromCenter(dx, dy) };
+    setDragging(true);
+  }
+
+  function onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    const drag = dragRef.current;
+    if (!drag) return;
+    const now = pointerDeg(e);
+    if (now == null) return;
+    const next = wrapDeg(arcRef.current + shortestDegDelta(drag.lastDeg, now));
+    drag.lastDeg = now;
+    arcRef.current = next;
+    onArcRef.current(next);
+  }
+
+  function endDrag(e: PointerEvent<HTMLDivElement>) {
+    if (!dragRef.current) return;
+    dragRef.current = null;
+    setDragging(false);
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    }
+  }
+
   return (
     <div className="relative mx-auto w-full max-w-[280px] sm:max-w-[320px]">
       <div
-        className="pointer-events-none absolute left-1/2 z-20 -translate-x-1/2"
-        style={{ top: -8 }}
-        aria-hidden
+        ref={dialRef}
+        className={clsx(
+          "relative mx-auto aspect-square w-full select-none touch-none",
+          spinning ? "cursor-default" : dragging ? "cursor-grabbing" : "cursor-grab",
+        )}
+        style={{ touchAction: "none" }}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={endDrag}
+        onPointerCancel={endDrag}
+        role="slider"
+        aria-label="Win zone position"
+        aria-valuemin={0}
+        aria-valuemax={359}
+        aria-valuenow={Math.round(wrapDeg(arcStartDeg))}
+        aria-disabled={spinning}
       >
         <div
-          className="h-0 w-0"
-          style={{
-            borderLeft: "11px solid transparent",
-            borderRight: "11px solid transparent",
-            borderTop: "20px solid #d9f99d",
-            filter: "drop-shadow(0 2px 6px rgba(5,8,5,0.7))",
-          }}
-        />
-      </div>
-
-      <div className="relative mx-auto aspect-square w-full">
-        <div
-          className="absolute inset-0 rounded-full ring-4 ring-[#3d5a3a]/80"
+          className="pointer-events-none absolute inset-0 rounded-full ring-4 ring-[#3d5a3a]/80"
           style={{ boxShadow: "0 0 36px rgba(163,230,53,0.18), 6px 6px 0 #050805" }}
         />
         <div
-          ref={wheelRef}
-          className="absolute inset-[6px] overflow-hidden rounded-full"
-          style={{ background: gradient, willChange: "transform" }}
+          className="pointer-events-none absolute inset-[6px] overflow-hidden rounded-full"
+          style={{ background: gradient }}
         >
           <svg className="absolute inset-0 h-full w-full" viewBox="0 0 100 100" aria-hidden>
             {Array.from({ length: TICK_COUNT }, (_, i) => {
@@ -145,7 +201,42 @@ export function UpgradeGauge({
             })}
           </svg>
         </div>
-        <div className="absolute inset-[22%] z-10 grid place-items-center rounded-full bg-[#0c1410] ring-2 ring-lime-300/15">
+
+        {chance > 0 && !spinning && (
+          <div
+            className="pointer-events-none absolute z-20 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-[#0c1410] bg-lime-300 shadow-[0_0_8px_rgba(163,230,53,0.7)]"
+            style={{
+              left: `${50 + Math.sin((handleDeg * Math.PI) / 180) * 47}%`,
+              top: `${50 - Math.cos((handleDeg * Math.PI) / 180) * 47}%`,
+            }}
+            aria-hidden
+          />
+        )}
+
+        <div
+          ref={needleRef}
+          className="pointer-events-none absolute inset-0 z-20"
+          style={{ willChange: "transform" }}
+          aria-hidden
+        >
+          <div className="absolute left-1/2 -translate-x-1/2" style={{ top: -8 }}>
+            <div
+              className="h-0 w-0"
+              style={{
+                borderLeft: "11px solid transparent",
+                borderRight: "11px solid transparent",
+                borderTop: "20px solid #d9f99d",
+                filter: "drop-shadow(0 2px 6px rgba(5,8,5,0.7))",
+              }}
+            />
+          </div>
+          <div
+            className="absolute left-1/2 top-[10px] h-[18%] w-[3px] -translate-x-1/2 rounded-full"
+            style={{ background: "#d9f99d", boxShadow: "0 0 8px rgba(163,230,53,0.65)" }}
+          />
+        </div>
+
+        <div className="pointer-events-none absolute inset-[22%] z-30 grid place-items-center rounded-full bg-[#0c1410] ring-2 ring-lime-300/15">
           <div className="px-2 text-center">
             {hub === "spin" || spinning ? (
               <>
@@ -182,6 +273,9 @@ export function UpgradeGauge({
           </div>
         </div>
       </div>
+      <p className="mt-2 text-center text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+        {spinning ? "Arrow spinning" : "Drag the green zone"}
+      </p>
     </div>
   );
 }

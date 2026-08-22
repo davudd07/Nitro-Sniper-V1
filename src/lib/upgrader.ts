@@ -1,7 +1,7 @@
 import { ITEMS, type CaseItem } from "../data/items";
 import { HOUSE_EDGE } from "./rakeback";
 
-/** Same originals/cases edge unless VIP admin overrides `upgrader` (or `cases`). */
+/** 5% Upgrader edge unless VIP admin overrides `upgrader`. */
 export const UPGRADER_HOUSE_EDGE = HOUSE_EDGE.upgrader;
 
 export const UPGRADER_MIN_MULTIPLIER = 1.01;
@@ -10,14 +10,31 @@ export const UPGRADER_SPIN_MS = 2400;
 export const UPGRADER_FAST_SPIN_MS = 780;
 export const UPGRADER_INSTANT_SPIN_MS = 90;
 
-/** Prefer the Upgrader VIP override, else the cases/originals edge, else 4%. */
+/** Prefer the Upgrader VIP override, else the 5% Upgrader default. */
 export function resolveUpgraderHouseEdge(overrides: Record<string, number> = {}): number {
   const pick = (key: string) => {
     const v = overrides[key];
     if (v != null && Number.isFinite(v)) return Math.min(0.99, Math.max(0, v));
     return null;
   };
-  return pick("upgrader") ?? pick("cases") ?? UPGRADER_HOUSE_EDGE;
+  return pick("upgrader") ?? UPGRADER_HOUSE_EDGE;
+}
+
+/** CSS conic degrees: 0 at the top, clockwise. */
+export function wrapDeg(deg: number): number {
+  return ((deg % 360) + 360) % 360;
+}
+
+/** Angle of a point relative to the dial center (0 = top, clockwise). */
+export function degFromCenter(dx: number, dy: number): number {
+  return wrapDeg((Math.atan2(dx, -dy) * 180) / Math.PI);
+}
+
+export function shortestDegDelta(from: number, to: number): number {
+  let d = wrapDeg(to) - wrapDeg(from);
+  if (d > 180) d -= 360;
+  if (d < -180) d += 360;
+  return d;
 }
 
 let cachedCatalog: CaseItem[] | null = null;
@@ -37,20 +54,16 @@ export function catalogItems(): CaseItem[] {
 }
 
 /**
- * Win chance = (input / target) × (1 − house edge).
- * Always strictly below 100%. Input must be below target so the house keeps its edge
- * (an even or overpay trade is rejected rather than paying above EV).
+ * Win chance = (source / target) × (1 − house edge), clamped to (0, 1).
+ * Default edge is 5%. Source must be below target so the round cannot be +EV.
  */
 export function upgraderChance(inputValue: number, targetValue: number, houseEdge: number): number {
   if (!(inputValue > 0) || !(targetValue > 0)) return 0;
   const edge = Math.min(0.99, Math.max(0, houseEdge));
   if (inputValue >= targetValue) return 0;
   const chance = (inputValue / targetValue) * (1 - edge);
-  const cap = 1 - edge;
   if (!(chance > 0)) return 0;
-  const clamped = Math.min(chance, cap);
-  if (!(clamped > 0) || clamped >= 1) return 0;
-  return clamped;
+  return Math.min(chance, 1 - Number.EPSILON);
 }
 
 export function targetFromMultiplier(inputValue: number, multiplier: number): number {
@@ -89,19 +102,26 @@ export function settleUpgrade(roll: number, chance: number): boolean {
   return roll < chance;
 }
 
-/** Map the fair roll into a landing angle (0 = top / start of the winning arc). */
-export function landDegForRoll(roll: number, chance: number, won: boolean): number {
+/**
+ * Map the fair roll onto the dial. `arcStartDeg` is the player-placed start of the
+ * green win slice (0 = top, clockwise). Roll 0..chance lands inside that slice.
+ */
+export function landDegForRoll(roll: number, chance: number, won: boolean, arcStartDeg = 0): number {
   const winSweep = Math.max(0, Math.min(360, chance * 360));
   const loseSweep = 360 - winSweep;
   const inset = 0.06;
+  let rel: number;
   if (won && winSweep > 0) {
     const t = chance > 0 ? Math.min(1, Math.max(0, roll / chance)) : 0.5;
-    return (inset + t * (1 - 2 * inset)) * winSweep;
+    rel = (inset + t * (1 - 2 * inset)) * winSweep;
+  } else if (loseSweep <= 0) {
+    rel = 180;
+  } else {
+    const denom = 1 - chance;
+    const t = denom > 0 ? Math.min(1, Math.max(0, (roll - chance) / denom)) : 0.5;
+    rel = winSweep + (inset + t * (1 - 2 * inset)) * loseSweep;
   }
-  if (loseSweep <= 0) return 180;
-  const denom = 1 - chance;
-  const t = denom > 0 ? Math.min(1, Math.max(0, (roll - chance) / denom)) : 0.5;
-  return winSweep + (inset + t * (1 - 2 * inset)) * loseSweep;
+  return wrapDeg(arcStartDeg + rel);
 }
 
 export function formatChancePct(chance: number): string {

@@ -759,6 +759,13 @@ export function BattleRoom() {
 
   const currentCaseId = caseIndex >= 0 ? caseSequence[caseIndex] : undefined;
   const currentCase = currentCaseId ? getCase(currentCaseId) : undefined;
+  const headerCasePos =
+    caseSequence.length === 0
+      ? 0
+      : phase === "jackpot" || phase === "finished"
+        ? caseSequence.length
+        : Math.min(caseSequence.length, Math.max(1, caseIndex + 1));
+  const headerCase = caseSequence.length > 0 ? getCase(caseSequence[headerCasePos - 1]) : undefined;
   const pot = Object.values(roundStates).reduce((s, r) => s + r.total, 0);
   const showJackpotPot = Boolean(battle.jackpot || battle.coinflip || phase === "jackpot");
   const reelSize = battleReelSize(players.length);
@@ -777,6 +784,16 @@ export function BattleRoom() {
           <div className="flex flex-wrap items-center gap-2">
             <Swords className="h-5 w-5 text-amber-300" />
             <span className="text-lg font-bold text-white">{mode.label} Battle</span>
+            {caseSequence.length > 0 && (
+              <span className="text-sm text-slate-400">
+                Case {headerCasePos}/{caseSequence.length}
+                {headerCase ? (
+                  <>
+                    : <span className="text-white">{headerCase.name}</span>
+                  </>
+                ) : null}
+              </span>
+            )}
             {battle.coinflip && (
               <span className="flex items-center gap-1 rounded-full bg-indigo-400/15 px-2 py-0.5 text-xs font-medium text-indigo-200">
                 <Circle className="h-3 w-3" /> Coinflip
@@ -861,20 +878,10 @@ export function BattleRoom() {
                 Replay battle
               </button>
             )}
-            {battle.coinflip && (
-              <span className="text-indigo-200">
-                {battle.goldSpin ? "Live pot from pulls · gold reels · equal-odds flip" : "Live pot from pulls · equal-odds flip"}
-              </span>
-            )}
             {battle.terminal && (
               <span className="text-pink-300">
                 {battle.crazy ? "Lowest last-case pull wins" : "Highest last-case pull wins"}
                 {battle.jackpot ? " · jackpot odds after last case" : ""}
-              </span>
-            )}
-            {phase === "running" && currentCase && (
-              <span>
-                Case {caseIndex + 1}/{caseSequence.length}: <span className="text-white">{currentCase.name}</span>
               </span>
             )}
           </div>

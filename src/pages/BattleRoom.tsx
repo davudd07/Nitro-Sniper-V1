@@ -784,16 +784,6 @@ export function BattleRoom() {
           <div className="flex flex-wrap items-center gap-2">
             <Swords className="h-5 w-5 text-amber-300" />
             <span className="text-lg font-bold text-white">{mode.label} Battle</span>
-            {caseSequence.length > 0 && (
-              <span className="text-sm text-slate-400">
-                Case {headerCasePos}/{caseSequence.length}
-                {headerCase ? (
-                  <>
-                    : <span className="text-white">{headerCase.name}</span>
-                  </>
-                ) : null}
-              </span>
-            )}
             {battle.coinflip && (
               <span className="flex items-center gap-1 rounded-full bg-indigo-400/15 px-2 py-0.5 text-xs font-medium text-indigo-200">
                 <Circle className="h-3 w-3" /> Coinflip
@@ -887,18 +877,37 @@ export function BattleRoom() {
           </div>
         </div>
 
-        {showJackpotPot && (
-          <div className="flex justify-center border-b border-amber-400/20 bg-amber-400/[0.05] px-4 py-3">
-            <AnimatedPot
-              value={pot}
-              label={
-                tieBreak && phase === "jackpot"
-                  ? "Tie-breaker pot"
-                  : battle.coinflip
-                    ? "Coinflip pot"
-                    : "Jackpot pot"
-              }
-            />
+        {(showJackpotPot || caseSequence.length > 0) && (
+          <div
+            className={clsx(
+              "border-b px-4 py-3",
+              showJackpotPot ? "border-amber-400/20 bg-amber-400/[0.05]" : "border-white/10 bg-black/20",
+            )}
+          >
+            {caseSequence.length > 0 && (
+              <p className="text-center text-sm text-slate-300">
+                Case {headerCasePos}/{caseSequence.length}
+                {headerCase ? (
+                  <>
+                    : <span className="font-semibold text-white">{headerCase.name}</span>
+                  </>
+                ) : null}
+              </p>
+            )}
+            {showJackpotPot && (
+              <div className={clsx("flex justify-center", caseSequence.length > 0 && "mt-2")}>
+                <AnimatedPot
+                  value={pot}
+                  label={
+                    tieBreak && phase === "jackpot"
+                      ? "Tie-breaker pot"
+                      : battle.coinflip
+                        ? "Coinflip pot"
+                        : "Jackpot pot"
+                  }
+                />
+              </div>
+            )}
           </div>
         )}
 

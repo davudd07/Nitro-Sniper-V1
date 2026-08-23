@@ -49,7 +49,7 @@ export function AccountGate() {
         <div className="mb-4 flex items-center gap-3">
           <BrandMark size={44} />
           <div>
-            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-300">GrowBET</p>
+            <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-300">SeedBET</p>
             <h2 className="text-xl font-extrabold text-white">{mode === "register" ? "Create username" : "Sign in"}</h2>
           </div>
         </div>

@@ -32,9 +32,9 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
     <header className="sticky top-0 z-50 overflow-visible border-b-2 border-[#2a4040] bg-[#0c1414]/90 backdrop-blur-xl">
       <div className={clsx("grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 pl-12 pr-12", wide ? "max-w-none" : "")}>
         <div className="flex min-w-0 items-center gap-2.5">
-          <Link to="/" className="flex min-w-0 items-center gap-2 rounded-md hover:opacity-90" title="GrowBET home">
+          <Link to="/" className="flex min-w-0 items-center gap-2 rounded-md hover:opacity-90" title="SeedBET home">
             <BrandMark size={44} />
-            <span className="brand-wordmark truncate">GrowBET</span>
+            <span className="brand-wordmark truncate">SeedBET</span>
           </Link>
         </div>
 

@@ -1,4 +1,4 @@
-import growbetLogo from "../../assets/brand/growbet-logo.png";
+import seedbetLogo from "../../assets/brand/seedbet-logo.png";
 
 export function BrandMark({
   size = 44,
@@ -9,7 +9,7 @@ export function BrandMark({
 }) {
   return (
     <img
-      src={growbetLogo}
+      src={seedbetLogo}
       alt=""
       width={size}
       height={size}

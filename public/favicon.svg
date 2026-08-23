@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" shape-rendering="crispEdges">
-  <!-- Fallback pixel vault-lock; browsers use /brand/growbet-logo.png as the favicon. -->
+  <!-- Fallback pixel crate; browsers use /brand/seedbet-logo.png as the favicon. -->
   <rect x="11" y="2" width="10" height="2" fill="#baf86e"/>
   <rect x="10" y="4" width="2" height="8" fill="#baf86e"/>
   <rect x="20" y="4" width="2" height="8" fill="#0a4e0e"/>

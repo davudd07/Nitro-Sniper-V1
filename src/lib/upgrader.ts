@@ -6,8 +6,8 @@ export const UPGRADER_HOUSE_EDGE = HOUSE_EDGE.upgrader;
 
 /** Playable floor: 1% green. Tiny enough to feel spicy, still a sane stake. */
 export const UPGRADER_MIN_CHANCE = 0.01;
-/** 1.00× at 5% edge is a 95% slice — never a free 100% green. */
-export const UPGRADER_MIN_MULTIPLIER = 1;
+/** Lowest legal upgrade: 1.20×. A 1.00× (same-value) spin is not an upgrade. */
+export const UPGRADER_MIN_MULTIPLIER = 1.2;
 export const UPGRADER_MAX_MULTIPLIER = 10_000;
 /** Normal spin: ~1.75× the previous 2400ms roll, with more loops so it still feels like a spin. */
 export const UPGRADER_SPIN_MS = 4200;
@@ -80,6 +80,17 @@ export function ceilToCents(value: number): number {
   return Math.ceil(value * 100 - 1e-9) / 100;
 }
 
+export function floorToCents(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return Math.floor(value * 100 + 1e-9) / 100;
+}
+
+/** Smallest target that is at least 1.20× the source (500 SH → 600 SH). */
+export function minTargetForSource(source: number): number {
+  if (!(source > 0)) return 0;
+  return ceilToCents(source * UPGRADER_MIN_MULTIPLIER);
+}
+
 export function formatUpgraderStake(value: number): string {
   return new Intl.NumberFormat("en-US", {
     minimumFractionDigits: 2,
@@ -94,23 +105,34 @@ export function parseUpgraderAmount(raw: string): number {
   return ceilToCents(n);
 }
 
-/** Largest source that stays strictly below target (coins mode). */
+/**
+ * Largest source whose 1.20× minimum target still fits under `targetValue`.
+ * 500 SH payout → max source 416.66 SH (416.67 would need 500.01).
+ */
 export function maxStakeBelowTarget(targetValue: number): number {
   if (!(targetValue > 0)) return 0;
-  const cap = ceilToCents(targetValue - 0.01);
-  return cap > 0 && cap < targetValue ? cap : 0;
+  let cap = floorToCents(targetValue / UPGRADER_MIN_MULTIPLIER);
+  while (cap > 0 && minTargetForSource(cap) > targetValue) {
+    cap = floorToCents(cap - 0.01);
+  }
+  return cap;
 }
 
 function normalizedEdge(houseEdge: number): number {
   return Math.min(0.99, Math.max(0, houseEdge));
 }
 
-/** Max green = 1 − edge (95% at the default 5%). Never 100% (that would be +EV). */
+/**
+ * Max green at the 1.20× floor: RTP / 1.20 (~79.17% at a 5% edge).
+ * Never 100%, and never a same-value 1.00× slice.
+ */
 export function upgraderMaxChance(houseEdge: number): number {
   const edge = normalizedEdge(houseEdge);
   const rtp = 1 - edge;
   if (!(rtp > 0)) return 0;
-  return Math.min(rtp, 1 - Number.EPSILON);
+  const maxFromMultiplier = rtp / UPGRADER_MIN_MULTIPLIER;
+  if (!(maxFromMultiplier > 0)) return 0;
+  return Math.min(rtp, maxFromMultiplier, 1 - Number.EPSILON);
 }
 
 export function clampUpgraderChance(chance: number, houseEdge: number): number {
@@ -129,18 +151,21 @@ export function stakeFromChance(chance: number, targetValue: number, houseEdge: 
   const rtp = 1 - normalizedEdge(houseEdge);
   if (!(rtp > 0)) return 0;
   const clamped = clampUpgraderChance(chance, houseEdge);
-  return ceilToCents((clamped * targetValue) / rtp);
+  const raw = ceilToCents((clamped * targetValue) / rtp);
+  const cap = maxStakeBelowTarget(targetValue);
+  if (cap > 0 && raw > cap) return cap;
+  return raw;
 }
 
 /**
  * Win chance = (source / target) × (1 − house edge).
- * Default edge is 5%. Source may equal target at 95% (1×, still −EV). Never 100%.
+ * Default edge is 5%. Target must be at least 1.20× source (never a 1.00× same-value spin).
  * Drag-resize and bet buttons in Items mode use `clampUpgraderChance` (1% floor).
  * Coins mode typed amounts may be smaller (e.g. 5 → 485 ≈ 0.98% at 5% edge).
  */
 export function upgraderChance(inputValue: number, targetValue: number, houseEdge: number): number {
   if (!(inputValue > 0) || !(targetValue > 0)) return 0;
-  if (inputValue > targetValue) return 0;
+  if (minTargetForSource(inputValue) > targetValue) return 0;
   const rtp = 1 - normalizedEdge(houseEdge);
   const chance = (inputValue / targetValue) * rtp;
   if (!(chance > 0)) return 0;
@@ -150,7 +175,7 @@ export function upgraderChance(inputValue: number, targetValue: number, houseEdg
 export function targetFromMultiplier(inputValue: number, multiplier: number): number {
   if (!(inputValue > 0) || !(multiplier >= UPGRADER_MIN_MULTIPLIER)) return 0;
   const raw = Math.round(inputValue * multiplier * 100) / 100;
-  return Math.max(raw, ceilToCents(inputValue));
+  return Math.max(raw, minTargetForSource(inputValue));
 }
 
 export function multiplierFromValues(inputValue: number, targetValue: number): number {
@@ -163,8 +188,9 @@ export function clampMultiplier(n: number): number {
   return Math.min(UPGRADER_MAX_MULTIPLIER, Math.max(UPGRADER_MIN_MULTIPLIER, n));
 }
 
-export function closestItemNear(value: number, minExclusive: number): CaseItem | undefined {
-  const pool = catalogItems().filter((item) => item.value > minExclusive);
+/** Closest catalog item at or above `minValue` (pass `minTargetForSource(source)`). */
+export function closestItemNear(value: number, minValue: number): CaseItem | undefined {
+  const pool = catalogItems().filter((item) => item.value >= minValue);
   if (pool.length === 0) return undefined;
   let best = pool[0]!;
   let bestDist = Math.abs(best.value - value);

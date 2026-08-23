@@ -37,6 +37,7 @@ import {
   formatUpgraderStake,
   landDegForRoll,
   maxStakeBelowTarget,
+  minTargetForSource,
   multiplierFromValues,
   parseUpgraderAmount,
   resolveUpgraderHouseEdge,
@@ -222,7 +223,9 @@ export function Upgrader() {
   const [coinSourceText, setCoinSourceText] = useState(String(UPGRADER_COIN_DEFAULT_SOURCE));
   const [coinTargetText, setCoinTargetText] = useState(String(UPGRADER_COIN_DEFAULT_TARGET));
   const [inputItem, setInputItem] = useState<CaseItem | null>(null);
-  const [targetItem, setTargetItem] = useState<CaseItem | null>(() => closestItemNear(200, 100) ?? null);
+  const [targetItem, setTargetItem] = useState<CaseItem | null>(
+    () => closestItemNear(200, minTargetForSource(100)) ?? null,
+  );
   const [multiplierText, setMultiplierText] = useState("2.00");
   const [slot, setSlot] = useState<Slot>("target");
   const [query, setQuery] = useState("");
@@ -259,9 +262,8 @@ export function Upgrader() {
   const chance = upgraderChance(inputValue, targetValue, houseEdge);
   const displayedMulti = inputValue > 0 && targetValue > 0 ? targetValue / inputValue : clampMultiplier(Number(multiplierText) || 2);
   const tooLow = inputValue > 0 && inputValue > balance;
-  const needHigherTarget = coins
-    ? inputValue > 0 && targetValue > 0 && inputValue >= targetValue
-    : inputValue > 0 && targetValue > 0 && inputValue > targetValue;
+  const needHigherTarget =
+    inputValue > 0 && targetValue > 0 && targetValue < minTargetForSource(inputValue);
   const spinning = phase === "spinning";
   const canSpin = !spinning && chance > 0 && inputValue > 0 && !tooLow && !needHigherTarget;
   const spinMs = fast ? UPGRADER_FAST_SPIN_MS : UPGRADER_SPIN_MS;
@@ -306,7 +308,7 @@ export function Upgrader() {
     }
     const multi = clampMultiplier(Number(multiplierText) || 2);
     const desired = targetFromMultiplier(value, multi);
-    const match = desired > 0 ? closestItemNear(desired, value) : undefined;
+    const match = desired > 0 ? closestItemNear(desired, minTargetForSource(value)) : undefined;
     setTargetItem(match ?? null);
   }
 
@@ -321,17 +323,21 @@ export function Upgrader() {
     if (cap > 0) value = Math.min(cap, value);
     setStake(value);
     setCoinSourceText(String(value));
-    if (targetValue > value) {
+    if (targetValue >= minTargetForSource(value)) {
       setMultiplierText(multiplierFromValues(value, targetValue).toFixed(2));
     }
   }
 
   function applyCoinTarget(next: number) {
-    const value = ceilToCents(next);
+    let value = ceilToCents(next);
+    if (inputValue > 0) {
+      const minT = minTargetForSource(inputValue);
+      if (minT > 0) value = Math.max(value, minT);
+    }
     setCoinTarget(value);
     setCoinTargetText(value > 0 ? String(value) : "");
     if (value > 0) arcTargetRef.current = value;
-    if (inputValue > 0 && value > inputValue) {
+    if (inputValue > 0 && value >= minTargetForSource(inputValue)) {
       setMultiplierText(multiplierFromValues(inputValue, value).toFixed(2));
     }
   }
@@ -351,9 +357,10 @@ export function Upgrader() {
   function maxAffordableStake(): number {
     if (coins) {
       const cap = maxStakeBelowTarget(targetValue);
-      const raw = cap > 0 ? Math.min(balance, cap) : Math.min(balance, targetValue > 0 ? targetValue : balance);
+      if (!(cap > 0)) return 0;
+      const raw = Math.min(balance, cap);
       const ceiled = ceilToCents(raw);
-      if (ceiled > 0 && ceiled <= balance && (cap <= 0 || ceiled <= cap)) return ceiled;
+      if (ceiled > 0 && ceiled <= balance && ceiled <= cap) return ceiled;
       return Math.floor(raw * 100 + 1e-9) / 100;
     }
     const cap = maxStakeForTarget > 0 ? maxStakeForTarget : balance;
@@ -373,7 +380,7 @@ export function Upgrader() {
     arcTargetRef.current = tgt;
     setStake(value);
     setCoinSourceText(value > 0 ? String(value) : "");
-    if (tgt > value && value > 0) {
+    if (value > 0 && tgt >= minTargetForSource(value)) {
       setMultiplierText(multiplierFromValues(value, tgt).toFixed(2));
     }
   }
@@ -389,8 +396,9 @@ export function Upgrader() {
     }
     const src = inputValue > 0 ? inputValue : 100;
     setStake(src);
+    const minT = minTargetForSource(src);
     const desired = targetFromMultiplier(src, clampMultiplier(Number(multiplierText) || 2));
-    setTargetItem(closestItemNear(desired, src) ?? closestItemNear(200, src) ?? null);
+    setTargetItem(closestItemNear(desired, minT) ?? closestItemNear(200, minT) ?? null);
   }
 
   function pickItem(item: CaseItem) {
@@ -398,11 +406,12 @@ export function Upgrader() {
     if (slot === "input") {
       setInputItem(item);
       setStake(item.value);
-      if (targetItem) {
+      const minT = minTargetForSource(item.value);
+      if (targetItem && targetItem.value >= minT) {
         setMultiplierText(multiplierFromValues(item.value, targetItem.value).toFixed(2));
       } else {
         const desired = targetFromMultiplier(item.value, clampMultiplier(Number(multiplierText) || 2));
-        setTargetItem(closestItemNear(desired, item.value) ?? null);
+        setTargetItem(closestItemNear(desired, minT) ?? null);
       }
       setSlot("target");
       return;
@@ -420,7 +429,7 @@ export function Upgrader() {
       applyCoinTarget(desired);
       return;
     }
-    setTargetItem(closestItemNear(desired, inputValue) ?? null);
+    setTargetItem(closestItemNear(desired, minTargetForSource(inputValue)) ?? null);
   }
 
   function spinLabel() {
@@ -428,7 +437,7 @@ export function Upgrader() {
     if (tooLow) return "Not enough Shards";
     if (inputValue <= 0) return "Enter a stake";
     if (needHigherTarget || chance <= 0) {
-      return coins ? "Source must be below target" : "Pick a cheaper source or richer target";
+      return "Target must be at least 1.20×";
     }
     return "Upgrade";
   }
@@ -442,12 +451,7 @@ export function Upgrader() {
       return;
     }
     if (chance <= 0 || needHigherTarget) {
-      push(
-        coins
-          ? "Type a source below the target so the house still has an edge."
-          : "Pick a target at least as high as the source so the house still has an edge.",
-        "warning",
-      );
+      push("Target must be at least 1.20× the source.", "warning");
       return;
     }
     if (!takeStake(inputValue, houseEdge)) {
@@ -528,11 +532,12 @@ export function Upgrader() {
             <p>
               Win chance is the green slice over 360°, equal to{" "}
               <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>. Default house edge is 5% (never
-              +EV). Items mode uses the catalog; Coins mode types a source SH and a higher target SH (e.g. 5 → 485 ≈
-              0.98%). Drag a thick end-cap to resize that slice — longer green is a higher chance and a higher source
-              stake (<span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents).
-              Drag the green stroke to rotate the slice without changing odds. The arrow spins and lands; a hit inside
-              your placed slice credits the target SH value. A miss consumes the source stake. Fair rolls use{" "}
+              +EV). The target must be at least 1.20× the source — a 500 → 500 spin is not an upgrade. Items mode uses
+              the catalog; Coins mode types a source SH and a higher target SH (e.g. 5 → 485 ≈ 0.98%). Drag a thick
+              end-cap to resize that slice — longer green is a higher chance and a higher source stake (
+              <span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents, capped
+              at 1.20×). Drag the green stroke to rotate the slice without changing odds. The arrow spins and lands; a
+              hit inside your placed slice credits the target SH value. A miss consumes the source stake. Fair rolls use{" "}
               {formatRollBand(chance)}.
             </p>
           </InfoButton>
@@ -748,9 +753,10 @@ export function Upgrader() {
             </div>
           </div>
           <p className="text-[11px] text-slate-500">
-            Source must stay below target. Typed 5 → 485 is about 0.98% at a 5% house edge. Dragging an arc end-cap
-            updates the stake to <span className="font-mono text-slate-400">chance × target / 0.95</span> (ceil to
-            cents).
+            Target must be at least 1.20× the source (500 SH upgrades to 600 SH, not 500). Typed 5 → 485 is about 0.98%
+            at a 5% house edge. Dragging an arc end-cap updates the stake to{" "}
+            <span className="font-mono text-slate-400">chance × target / 0.95</span> (ceil to cents, never above the
+            1.20× cap).
           </p>
         </div>
       ) : (

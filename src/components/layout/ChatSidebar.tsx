@@ -11,7 +11,7 @@ import { useAdminViewStore } from "../../store/adminViewStore";
 import { sound } from "../../lib/sound";
 
 const TAB_BTN =
-  "absolute right-full z-50 grid h-9 w-9 place-items-center rounded-r-none rounded-md border-2 border-r-0 border-[#3d5a3a] bg-[#152018] text-emerald-200 shadow-[2px_2px_0_#050805]";
+  "absolute right-full z-50 grid h-9 w-9 place-items-center rounded-r-none rounded-md border-2 border-r-0 border-[#3a5c5c] bg-[#152020] text-cyan-200 shadow-[2px_2px_0_#050808]";
 
 export function ChatSidebar() {
   const open = useSettingsStore((s) => s.chatOpen);
@@ -38,7 +38,7 @@ export function ChatSidebar() {
   return (
     <aside
       className={clsx(
-        "relative z-50 flex h-full min-h-0 shrink-0 flex-col overflow-visible border-l-2 border-[#2a3a28] bg-[#0c1410] transition-[width] duration-200 ease-out",
+        "relative z-50 flex h-full min-h-0 shrink-0 flex-col overflow-visible border-l-2 border-[#2a4040] bg-[#0c1414] transition-[width] duration-200 ease-out",
         open ? "w-[300px]" : "w-12",
       )}
     >
@@ -61,8 +61,8 @@ export function ChatSidebar() {
           toggle();
         }}
         className={clsx(
-          "absolute right-full bottom-4 z-50 grid h-9 w-9 place-items-center rounded-r-none rounded-md border-2 border-r-0 text-emerald-200 shadow-[2px_2px_0_#050805]",
-          open ? "border-emerald-400/50 bg-emerald-400/15" : "border-[#3d5a3a] bg-[#152018]",
+          "absolute right-full bottom-4 z-50 grid h-9 w-9 place-items-center rounded-r-none rounded-md border-2 border-r-0 text-cyan-200 shadow-[2px_2px_0_#050808]",
+          open ? "border-cyan-400/50 bg-cyan-400/15" : "border-[#3a5c5c] bg-[#152020]",
         )}
         title={open ? "Hide chat" : "Show chat"}
       >
@@ -113,7 +113,7 @@ export function ChatSidebar() {
             ))}
           </div>
           <form
-            className="flex shrink-0 gap-1.5 border-t border-white/8 bg-[#0c1410] p-2"
+            className="flex shrink-0 gap-1.5 border-t border-white/8 bg-[#0c1414] p-2"
             onSubmit={(e) => {
               e.preventDefault();
               submit();

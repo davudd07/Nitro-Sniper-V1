@@ -8,7 +8,7 @@ export function VaultHeroArt() {
           <radialGradient id="pv-door" cx="38%" cy="30%" r="70%">
             <stop offset="0%" stopColor="#1f3d32" />
             <stop offset="55%" stopColor="#0f1c16" />
-            <stop offset="100%" stopColor="#050805" />
+            <stop offset="100%" stopColor="#050808" />
           </radialGradient>
           <linearGradient id="pv-rim" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#67e8f9" />

@@ -9,7 +9,7 @@ import { LOCAL_PLAYER } from "../../store/moderationStore";
 
 export function AvatarPicker({
   name = LOCAL_PLAYER,
-  color = "#019201",
+  color = "#4af1f1",
   size = 56,
   kind = "you",
 }: {

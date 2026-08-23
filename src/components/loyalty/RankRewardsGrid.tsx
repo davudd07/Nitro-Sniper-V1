@@ -31,8 +31,8 @@ export function RankRewardsGrid({
             <article
               key={tier.id}
               className={clsx(
-                "relative overflow-hidden rounded-xl border-2 bg-[#0c1410] p-4 shadow-[3px_3px_0_#050805]",
-                current ? "border-lime-300/55" : unlocked ? "border-[#019201]/45" : "border-white/10 opacity-80",
+                "relative overflow-hidden rounded-xl border-2 bg-[#0c1414] p-4 shadow-[3px_3px_0_#050808]",
+                current ? "border-cyan-200/55" : unlocked ? "border-[#4af1f1]/45" : "border-white/10 opacity-80",
               )}
             >
               <div className="flex items-start justify-between gap-2">
@@ -46,7 +46,7 @@ export function RankRewardsGrid({
                   </p>
                 </div>
                 <div
-                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 bg-[#152018]"
+                  className="grid h-10 w-10 shrink-0 place-items-center rounded-full border-2 bg-[#152020]"
                   style={{ borderColor: tier.color, color: tier.color }}
                 >
                   {unlocked ? <Crown className="h-4 w-4" /> : <Lock className="h-4 w-4" />}

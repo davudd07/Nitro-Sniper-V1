@@ -78,7 +78,7 @@ export function ChatRainBanner() {
           <p className="rain-title text-[28px] font-extrabold uppercase leading-none">Rain</p>
         </div>
 
-        <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-cyan-400/20 bg-[#0c1410] py-1 pl-2 pr-1">
+        <div className="flex shrink-0 items-center gap-1.5 rounded-full border border-cyan-400/20 bg-[#0c1414] py-1 pl-2 pr-1">
           <span className="grid h-5 w-5 place-items-center rounded-full bg-cyan-400 text-bg-950">
             <Gem className="h-3 w-3" />
           </span>
@@ -92,7 +92,7 @@ export function ChatRainBanner() {
               setTipOpen((v) => !v);
             }}
             title="Tip the rain pot"
-            className="grid h-8 w-8 place-items-center rounded-md bg-[#019201]/80 text-white"
+            className="grid h-8 w-8 place-items-center rounded-md bg-[#4af1f1]/80 text-[#042020]"
           >
             <Plus className="h-4 w-4" />
           </button>
@@ -123,7 +123,7 @@ export function ChatRainBanner() {
               key={n}
               type="button"
               onClick={() => sendTip(n)}
-              className="rounded-md bg-[#019201]/30 px-2 py-1 text-[10px] font-bold text-emerald-200 hover:bg-[#019201]/50"
+              className="rounded-md bg-[#4af1f1]/30 px-2 py-1 text-[10px] font-bold text-cyan-100 hover:bg-[#4af1f1]/50"
             >
               +{n}
             </button>

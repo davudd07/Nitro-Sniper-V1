@@ -29,7 +29,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
   const vip = resolveVip(lifetimeXp, tiers);
 
   return (
-    <header className="sticky top-0 z-50 overflow-visible border-b-2 border-[#2a3a28] bg-[#0c1410]/90 backdrop-blur-xl">
+    <header className="sticky top-0 z-50 overflow-visible border-b-2 border-[#2a4040] bg-[#0c1414]/90 backdrop-blur-xl">
       <div className={clsx("grid w-full grid-cols-[1fr_auto_1fr] items-center gap-3 py-2 pl-12 pr-12", wide ? "max-w-none" : "")}>
         <div className="flex min-w-0 items-center gap-2.5">
           <Link to="/" className="flex min-w-0 items-center gap-2 rounded-md hover:opacity-90" title="GrowBET home">
@@ -53,7 +53,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
           </Link>
           {session ? (
             <span className="hidden max-w-[11rem] items-center gap-1.5 sm:inline-flex">
-              <PlayerAvatar src={avatar} name={session} color="#019201" size={22} kind="you" />
+              <PlayerAvatar src={avatar} name={session} color="#4af1f1" size={22} kind="you" />
               <span className="truncate font-mono text-xs font-semibold text-emerald-200">{session}</span>
               <RoleBadge role={role} />
             </span>

@@ -97,7 +97,7 @@ export function Cases() {
       {catalog === "community" ? (
         <div>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-lg border-2 border-[#3d5a3a] bg-black/40 p-0.5">
+            <div className="inline-flex rounded-lg border-2 border-[#3a5c5c] bg-black/40 p-0.5">
               {(
                 [
                   ["all", "All Cases"],
@@ -128,7 +128,7 @@ export function Cases() {
                   sound.click();
                   setEarningsOpen(true);
                 }}
-                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#3d5a3a] bg-black/40 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-emerald-100 hover:bg-emerald-500/15"
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#3a5c5c] bg-black/40 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-cyan-100 hover:bg-cyan-400/15"
               >
                 <Wallet className="h-3.5 w-3.5" /> My earnings
               </button>
@@ -159,7 +159,7 @@ export function Cases() {
             <select
               value={sort}
               onChange={(e) => setSort(e.target.value as PriceSort)}
-              className="rounded-lg border-2 border-[#3d5a3a] bg-black/40 px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-white"
+              className="rounded-lg border-2 border-[#3a5c5c] bg-black/40 px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-white"
             >
               <option value="low">Price: Low to High</option>
               <option value="high">Price: High to Low</option>

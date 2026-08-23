@@ -110,8 +110,8 @@ export function SupportWidget() {
       style={{ right: sidebar + chatTab + gap }}
     >
       {open && (
-        <div className="pointer-events-auto flex h-[440px] w-[340px] max-w-[calc(100vw-7rem)] flex-col overflow-hidden rounded-xl border-2 border-[#3d5a3a]/70 bg-[#101810] shadow-[6px_6px_0_#050805]">
-          <div className="flex items-center justify-between border-b border-white/10 bg-[#152018] px-3 py-2.5">
+        <div className="pointer-events-auto flex h-[440px] w-[340px] max-w-[calc(100vw-7rem)] flex-col overflow-hidden rounded-xl border-2 border-cyan-400/35 bg-[#101818] shadow-[6px_6px_0_#050808]">
+          <div className="flex items-center justify-between border-b border-white/10 bg-[#152020] px-3 py-2.5">
             <div className="flex items-center gap-2">
               <Headphones className="h-4 w-4 text-emerald-300" />
               <p className="text-sm font-bold uppercase tracking-wide text-white">Live support</p>
@@ -271,7 +271,7 @@ export function SupportWidget() {
               <button
                 type="submit"
                 disabled={!replyText.trim()}
-                className="grid h-9 w-9 place-items-center rounded-md bg-emerald-500 text-bg-950 disabled:opacity-40"
+                className="grid h-9 w-9 place-items-center rounded-md bg-cyan-400 text-bg-950 disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />
               </button>
@@ -286,7 +286,7 @@ export function SupportWidget() {
           sound.click();
           setOpen((v) => !v);
         }}
-        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border-2 border-emerald-400/50 bg-[#152018] px-3 py-2.5 text-sm font-bold text-emerald-100 shadow-[4px_4px_0_#050805] hover:bg-emerald-400/15"
+        className="pointer-events-auto inline-flex items-center gap-2 rounded-full border-2 border-cyan-400/50 bg-[#152020] px-3 py-2.5 text-sm font-bold text-cyan-100 shadow-[4px_4px_0_#050808] hover:bg-cyan-400/15"
         title="Live support"
       >
         {open ? <X className="h-4 w-4" /> : <Headphones className="h-4 w-4" />}

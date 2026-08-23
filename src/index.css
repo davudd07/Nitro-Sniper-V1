@@ -1,11 +1,13 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg-950: #09090f;
-  --color-bg-900: #0e0e16;
-  --color-bg-800: #14141e;
-  --color-bg-700: #1c1c28;
-  --color-bg-600: #262633;
+  --color-bg-950: #070a0a;
+  --color-bg-900: #0c1012;
+  --color-bg-800: #12181a;
+  --color-bg-700: #1a2224;
+  --color-bg-600: #243032;
+  --color-brand: #4af1f1;
+  --color-brand-hot: #58ffff;
   --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
   --font-brand: "Oswald", ui-sans-serif, sans-serif;
@@ -20,17 +22,17 @@ body,
 
 body {
   margin: 0;
-  color: #e8e8f0;
+  color: #e8f4f4;
   font-family: var(--font-display);
   -webkit-font-smoothing: antialiased;
   background:
-    radial-gradient(circle at 12% 0%, rgba(74, 222, 128, 0.07), transparent 42%),
+    radial-gradient(circle at 12% 0%, rgba(88, 255, 255, 0.10), transparent 42%),
     repeating-linear-gradient(
       0deg,
-      rgba(255, 255, 255, 0.015) 0 1px,
+      rgba(88, 255, 255, 0.025) 0 1px,
       transparent 1px 8px
     ),
-    #09090f;
+    #070a0a;
 }
 
 #root {
@@ -43,21 +45,21 @@ body {
   height: 10px;
 }
 ::-webkit-scrollbar-track {
-  background: #0e0e16;
+  background: #0c1012;
 }
 ::-webkit-scrollbar-thumb {
-  background: #2a2a38;
+  background: #2a4040;
   border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #3a3a4a;
+  background: #3a5555;
 }
 
 .surface {
-  border: 2px solid rgba(61, 90, 58, 0.55);
-  background: #101810;
+  border: 2px solid rgba(74, 241, 241, 0.28);
+  background: #101818;
   border-radius: 0.5rem;
-  box-shadow: 4px 4px 0 #050805;
+  box-shadow: 4px 4px 0 #050808;
 }
 
 .btn-primary {
@@ -65,12 +67,12 @@ body {
   align-items: center;
   justify-content: center;
   border-radius: 0.4rem;
-  border: 2px solid rgba(163, 230, 53, 0.45);
-  background: linear-gradient(180deg, #a3e635 0%, #16a34a 100%);
-  color: #052e16;
+  border: 2px solid rgba(88, 255, 255, 0.45);
+  background: linear-gradient(180deg, #58ffff 0%, #2aa8a8 100%);
+  color: #042020;
   font-weight: 800;
   letter-spacing: -0.01em;
-  box-shadow: 0 4px 0 #14532d;
+  box-shadow: 0 4px 0 #164e4e;
   transition: transform 150ms ease, filter 150ms ease;
 }
 .btn-primary:hover {
@@ -147,26 +149,26 @@ body {
   font-size: 1.4rem;
   line-height: 1;
   letter-spacing: 0.04em;
-  color: #019201;
-  -webkit-text-stroke: 2px #031403;
+  color: #4af1f1;
+  -webkit-text-stroke: 2px #031414;
   paint-order: stroke fill;
   text-shadow: 0 1px 0 #000, 1px 1px 0 #000;
 }
 
 .rain-banner {
   background:
-    radial-gradient(ellipse at 28% 50%, rgba(34, 211, 238, 0.16), transparent 58%),
+    radial-gradient(ellipse at 28% 50%, rgba(88, 255, 255, 0.16), transparent 58%),
     repeating-linear-gradient(
       0deg,
-      rgba(34, 211, 238, 0.055) 0 1px,
+      rgba(88, 255, 255, 0.055) 0 1px,
       transparent 1px 10px
     ),
     repeating-linear-gradient(
       90deg,
-      rgba(34, 211, 238, 0.055) 0 1px,
+      rgba(88, 255, 255, 0.055) 0 1px,
       transparent 1px 10px
     ),
-    #0c1410;
+    #0c1414;
 }
 
 .rain-title {
@@ -182,7 +184,7 @@ body {
 
 .drop-card {
   background-image:
-    radial-gradient(ellipse at 50% 18%, rgba(163, 230, 53, 0.08), transparent 58%),
+    radial-gradient(ellipse at 50% 18%, rgba(88, 255, 255, 0.08), transparent 58%),
     repeating-linear-gradient(
       0deg,
       rgba(255, 255, 255, 0.02) 0 1px,
@@ -197,16 +199,16 @@ body {
   letter-spacing: 0.015em;
   text-transform: uppercase;
   white-space: nowrap;
-  -webkit-text-stroke: 3px var(--drop-stroke, #031403);
+  -webkit-text-stroke: 3px var(--drop-stroke, #031414);
   paint-order: stroke fill;
   transform: perspective(520px) rotateX(20deg) rotateY(-6deg);
   text-shadow:
-    1px 1px 0 var(--drop-side, #019201),
-    2px 2px 0 var(--drop-side, #019201),
-    3px 3px 0 var(--drop-side, #017a01),
-    4px 4px 0 var(--drop-depth, #014d01),
-    5px 5px 0 var(--drop-depth, #014d01),
-    6px 7px 0 var(--drop-depth, #013301),
+    1px 1px 0 var(--drop-side, #4af1f1),
+    2px 2px 0 var(--drop-side, #4af1f1),
+    3px 3px 0 var(--drop-side, #2aa8a8),
+    4px 4px 0 var(--drop-depth, #164e4e),
+    5px 5px 0 var(--drop-depth, #164e4e),
+    6px 7px 0 var(--drop-depth, #0a2a2a),
     7px 9px 0 #000,
     8px 12px 14px rgba(0, 0, 0, 0.55);
 }
@@ -217,10 +219,10 @@ body {
 }
 
 .drop-word-green {
-  --drop-face: #86efac;
-  --drop-stroke: #031403;
-  --drop-side: #019201;
-  --drop-depth: #013301;
+  --drop-face: #a5f3fc;
+  --drop-stroke: #031414;
+  --drop-side: #4af1f1;
+  --drop-depth: #0a2a2a;
   color: var(--drop-face);
 }
 

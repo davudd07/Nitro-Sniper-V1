@@ -18,7 +18,7 @@ const LINKS = [
 
 // Mirrored chat chevron: full square tab on the outside of the rail (`left-full`).
 const TAB_BTN =
-  "absolute top-4 left-full z-50 grid h-9 w-9 place-items-center rounded-l-none rounded-md border-2 border-l-0 border-[#3d5a3a] bg-[#152018] text-emerald-200 shadow-[2px_2px_0_#050805]";
+  "absolute top-4 left-full z-50 grid h-9 w-9 place-items-center rounded-l-none rounded-md border-2 border-l-0 border-[#3a5c5c] bg-[#152020] text-cyan-200 shadow-[2px_2px_0_#050808]";
 
 export function GameSidebar() {
   const open = useSettingsStore((s) => s.leftNavOpen);
@@ -47,10 +47,10 @@ export function GameSidebar() {
         {open ? <ChevronLeft className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
       </button>
 
-      <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r-2 border-[#2a3a28] bg-[#0c1410]">
+      <aside className="flex h-full min-h-0 w-full flex-col overflow-hidden border-r-2 border-[#2a4040] bg-[#0c1414]">
         <div className={clsx("flex items-center gap-2 px-3 py-4", !open && "justify-center px-1")}>
-          <PanelLeft className="h-4 w-4 shrink-0 text-emerald-300" />
-          {open && <p className="pixel-label text-[15px] font-extrabold uppercase text-emerald-200/80">Menu</p>}
+          <PanelLeft className="h-4 w-4 shrink-0 text-cyan-300" />
+          {open && <p className="pixel-label text-[15px] font-extrabold uppercase text-cyan-200/80">Menu</p>}
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col gap-1.5 overflow-y-auto px-2 pb-4 scrollbar-thin">
@@ -60,11 +60,11 @@ export function GameSidebar() {
             onClick={() => sound.click()}
             className={({ isActive }) =>
               clsx(
-                "relative flex items-center gap-2.5 rounded-lg border-2 px-2.5 font-extrabold uppercase tracking-wide shadow-[3px_3px_0_#14532d] transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0",
+                "relative flex items-center gap-2.5 rounded-lg border-2 px-2.5 font-extrabold uppercase tracking-wide shadow-[3px_3px_0_#164e4e] transition-[transform,filter] hover:-translate-y-0.5 hover:brightness-110 active:translate-y-0",
                 open ? "justify-start py-3 text-[13px]" : "justify-center px-0 py-3",
                 isActive
-                  ? "border-lime-300 bg-gradient-to-br from-lime-300 to-emerald-600 text-[#052e16]"
-                  : "border-lime-400/70 bg-gradient-to-br from-lime-400/90 to-green-700 text-[#052e16]",
+                  ? "border-cyan-100 bg-gradient-to-br from-[#58ffff] to-[#1a8a8a] text-[#042020]"
+                  : "border-cyan-300/70 bg-gradient-to-br from-[#4af1f1]/90 to-[#0e5a5a] text-[#042020]",
               )
             }
           >
@@ -97,7 +97,7 @@ export function GameSidebar() {
                   "flex items-center gap-2.5 rounded-md border-2 px-2.5 py-2 text-[13px] font-semibold transition-colors",
                   open ? "justify-start" : "justify-center px-0",
                   isActive
-                    ? "border-emerald-400/50 bg-emerald-400/15 text-white"
+                    ? "border-cyan-400/50 bg-cyan-400/15 text-white"
                     : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200",
                 )
               }

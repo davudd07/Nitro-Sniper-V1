@@ -63,7 +63,7 @@ export function CurrencySwitcher() {
           setOpen((v) => !v);
         }}
         className={clsx(
-          "flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a3a28] px-2 py-1.5 shadow-[3px_3px_0_#050805]",
+          "flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a4040] px-2 py-1.5 shadow-[3px_3px_0_#050808]",
           primary.bar,
         )}
         title={open ? "Hide other currency" : "Show other currency"}
@@ -81,7 +81,7 @@ export function CurrencySwitcher() {
         <button
           type="button"
           onClick={() => pick(secondary.id)}
-          className="absolute left-0 right-0 top-full z-[70] mt-1 flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a3a28] bg-[#0c1410] px-2 py-1.5 text-left shadow-[3px_3px_0_#050805] hover:bg-[#173028]"
+          className="absolute left-0 right-0 top-full z-[70] mt-1 flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a4040] bg-[#0c1414] px-2 py-1.5 text-left shadow-[3px_3px_0_#050808] hover:bg-[#173030]"
           title={`Switch to ${secondary.suffix}`}
         >
           <SecondaryIcon className={clsx("h-3.5 w-3.5", secondary.iconClass)} />

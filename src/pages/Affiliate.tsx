@@ -33,7 +33,7 @@ export function Affiliate() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <div className="relative overflow-hidden rounded-xl border-2 border-cyan-400/40 bg-gradient-to-br from-cyan-500/15 via-[#102018] to-[#0c1410] p-6 shadow-[4px_4px_0_#050805]">
+      <div className="relative overflow-hidden rounded-xl border-2 border-cyan-400/40 bg-gradient-to-br from-cyan-500/15 via-[#102020] to-[#0c1414] p-6 shadow-[4px_4px_0_#050808]">
         <Users className="absolute -right-3 -top-3 h-24 w-24 text-cyan-300/15" />
         <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-cyan-300">Demo affiliate</p>
         <h1 className="pixel-label mt-1 text-3xl font-extrabold uppercase text-white">Share the vault</h1>

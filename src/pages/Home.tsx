@@ -48,7 +48,7 @@ export function Home() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           placeholder="Search for Game..."
-          className="w-full rounded-xl border-2 border-[#3d5a3a]/50 bg-white/[0.04] py-3.5 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
+          className="w-full rounded-xl border-2 border-cyan-400/25 bg-white/[0.04] py-3.5 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
         />
       </label>
 

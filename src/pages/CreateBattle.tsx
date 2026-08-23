@@ -697,7 +697,7 @@ function ModeDropdown({ value, onChange }: { value: string; onChange: (id: strin
           sound.click();
           setOpen((v) => !v);
         }}
-        className="flex w-full items-center justify-between rounded-xl border border-slate-600/70 bg-[#0c1410] px-3 py-2.5 text-sm font-semibold text-white outline-none hover:border-cyan-400/40 focus:border-cyan-400/50"
+        className="flex w-full items-center justify-between rounded-xl border border-slate-600/70 bg-[#0c1414] px-3 py-2.5 text-sm font-semibold text-white outline-none hover:border-cyan-400/40 focus:border-cyan-400/50"
       >
         <span className="flex min-w-0 items-center">
           {current ? (
@@ -711,7 +711,7 @@ function ModeDropdown({ value, onChange }: { value: string; onChange: (id: strin
       {open && (
         <ul
           role="listbox"
-          className="absolute z-40 mt-1 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-600/80 bg-[#0c1410] py-1 shadow-[0_12px_32px_rgba(0,0,0,0.55)] scrollbar-thin"
+          className="absolute z-40 mt-1 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-600/80 bg-[#0c1414] py-1 shadow-[0_12px_32px_rgba(0,0,0,0.55)] scrollbar-thin"
         >
           {BATTLE_MODES.map((m) => {
             const active = m.id === value;
@@ -726,7 +726,7 @@ function ModeDropdown({ value, onChange }: { value: string; onChange: (id: strin
                   }}
                   className={clsx(
                     "flex w-full items-center px-3 py-2.5",
-                    active ? "bg-[#019201]/20" : "hover:bg-white/5",
+                    active ? "bg-[#4af1f1]/20" : "hover:bg-white/5",
                   )}
                 >
                   <ModeGlyph mode={m} iconClass={crowdedGlyph ? "h-3.5 w-3.5" : "h-4 w-4"} />

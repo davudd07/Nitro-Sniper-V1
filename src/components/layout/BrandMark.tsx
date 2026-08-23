@@ -19,7 +19,7 @@ export function BrandMark({
       style={{
         width: size,
         height: size,
-        filter: "drop-shadow(0 0 6px rgba(1, 146, 1, 0.45))",
+        filter: "drop-shadow(0 0 8px rgba(88, 255, 255, 0.55))",
       }}
     />
   );

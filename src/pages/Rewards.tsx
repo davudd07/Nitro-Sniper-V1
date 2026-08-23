@@ -75,13 +75,13 @@ function DropCard({
 }) {
   const border =
     variant === "green"
-      ? "border-[#019201]/70"
+      ? "border-[#4af1f1]/70"
       : variant === "lime"
         ? "border-lime-400/45"
         : "border-amber-400/45";
   const glow =
     variant === "green"
-      ? "from-emerald-500/15"
+      ? "from-cyan-400/15"
       : variant === "lime"
         ? "from-lime-400/15"
         : "from-amber-400/15";
@@ -94,7 +94,7 @@ function DropCard({
   return (
     <article
       className={clsx(
-        "drop-card relative flex min-h-[420px] flex-col overflow-hidden rounded-xl border-2 bg-[#0c1410] shadow-[4px_4px_0_#050805]",
+        "drop-card relative flex min-h-[420px] flex-col overflow-hidden rounded-xl border-2 bg-[#0c1414] shadow-[4px_4px_0_#050808]",
         border,
       )}
     >

@@ -37,7 +37,7 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
       <div
-        className="surface w-full max-w-md overflow-hidden bg-[#101810] p-5"
+        className="surface w-full max-w-md overflow-hidden bg-[#101818] p-5"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-3 flex items-start justify-between gap-3">
@@ -64,11 +64,11 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
         </p>
 
         <div className="mt-4 grid grid-cols-2 gap-2">
-          <div className="rounded-xl border border-[#3d5a3a]/60 bg-black/30 px-3 py-3">
+          <div className="rounded-xl border border-[#3a5c5c]/60 bg-black/30 px-3 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Total Earned</p>
             <p className="mt-1 font-mono text-lg font-bold text-white">{formatRakeback(total)} SH</p>
           </div>
-          <div className="rounded-xl border border-[#3d5a3a]/60 bg-black/30 px-3 py-3">
+          <div className="rounded-xl border border-[#3a5c5c]/60 bg-black/30 px-3 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Your Cases Opened</p>
             <p className="mt-1 font-mono text-lg font-bold text-white">{formatCredits(opens)}</p>
           </div>

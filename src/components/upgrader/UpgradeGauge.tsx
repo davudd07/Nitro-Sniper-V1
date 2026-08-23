@@ -327,7 +327,7 @@ export function UpgradeGauge({
           />
         </div>
 
-        <div className="pointer-events-none absolute inset-[22%] z-20 grid place-items-center rounded-full bg-[#0c1410]">
+        <div className="pointer-events-none absolute inset-[22%] z-20 grid place-items-center rounded-full bg-[#0c1414]">
           <div
             className="px-1.5 text-center"
             aria-live="polite"

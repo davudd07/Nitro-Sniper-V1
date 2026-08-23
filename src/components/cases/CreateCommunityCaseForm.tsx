@@ -170,7 +170,7 @@ export function CreateCommunityCaseForm({
   const canSubmit = unlocked && !nameIssue && hundred && entries.length > 0 && price > 0 && Boolean(session);
 
   return (
-    <div className="surface w-full overflow-hidden bg-[#101810] p-4 sm:p-5">
+    <div className="surface w-full overflow-hidden bg-[#101818] p-4 sm:p-5">
         <div className="mb-4">
           <h1 className="text-xl font-semibold tracking-tight text-white">Create Case</h1>
           <p className="mt-1 max-w-2xl text-sm text-slate-400">
@@ -188,7 +188,7 @@ export function CreateCommunityCaseForm({
         )}
 
         <div className="space-y-4 pr-1">
-          <section className="overflow-hidden rounded-xl border border-[#3d5a3a]/60 bg-black/25">
+          <section className="overflow-hidden rounded-xl border border-[#3a5c5c]/60 bg-black/25">
             <button
               type="button"
               onClick={() => {
@@ -255,7 +255,7 @@ export function CreateCommunityCaseForm({
             )}
           </section>
 
-          <section className="rounded-xl border border-[#3d5a3a]/60 bg-black/25 p-4">
+          <section className="rounded-xl border border-[#3a5c5c]/60 bg-black/25 p-4">
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <h3 className="text-sm font-bold uppercase tracking-wide text-white">Item chances</h3>
               <span
@@ -313,7 +313,7 @@ export function CreateCommunityCaseForm({
             )}
           </section>
 
-          <section className="rounded-xl border border-[#3d5a3a]/60 bg-black/25 p-4">
+          <section className="rounded-xl border border-[#3a5c5c]/60 bg-black/25 p-4">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-sm font-bold uppercase tracking-wide text-white">Style your case</h3>
               <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">

@@ -42,7 +42,7 @@ export function TreasureChestArt() {
         <ellipse cx="100" cy="138" rx="72" ry="10" fill="#050805" opacity="0.55" />
         <path d="M28 62 L100 28 L172 62 L164 78 L36 78 Z" fill="#14532d" stroke="#a3e635" strokeWidth="3" />
         <path d="M44 48 L100 36 L156 48 L148 62 L52 62 Z" fill="#1a3d28" />
-        <path d="M36 76 L164 76 L154 132 L46 132 Z" fill="#0c1410" stroke="#ca8a04" strokeWidth="3" />
+        <path d="M36 76 L164 76 L154 132 L46 132 Z" fill="#0c1414" stroke="#ca8a04" strokeWidth="3" />
         <path d="M36 76 L164 76 L160 92 L40 92 Z" fill="#163326" />
         <rect x="88" y="96" width="24" height="22" rx="4" fill="#fbbf24" stroke="#854d0e" strokeWidth="2" />
         <circle cx="100" cy="107" r="4" fill="#14532d" />

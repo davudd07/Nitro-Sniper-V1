@@ -37,7 +37,7 @@ export function ChatModMenu({ name }: { name: string }) {
         <MoreHorizontal className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-6 z-[60] w-40 overflow-hidden rounded-md border-2 border-amber-400/30 bg-[#101810] py-1 shadow-[4px_4px_0_#050805]">
+        <div className="absolute right-0 top-6 z-[60] w-40 overflow-hidden rounded-md border-2 border-amber-400/30 bg-[#101818] py-1 shadow-[4px_4px_0_#050808]">
           {banned ? (
             <MenuItem onClick={() => act(`Unbanned ${label}`, () => unban(name))}>Unban</MenuItem>
           ) : (

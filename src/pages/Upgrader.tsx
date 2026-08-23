@@ -62,7 +62,7 @@ function WagerKindSwitch({
   onChange: (next: WagerKind) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg border-2 border-[#3d5a3a] bg-black/40 p-0.5">
+    <div className="inline-flex rounded-lg border-2 border-[#3a5c5c] bg-black/40 p-0.5">
       {(
         [
           ["items", "Items", Package],
@@ -113,7 +113,7 @@ function SlotCard({
         "flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 px-3 py-4 text-center transition-colors",
         active
           ? "border-lime-400/70 bg-lime-400/10"
-          : "border-[#3d5a3a]/60 bg-black/20 hover:border-emerald-400/40 hover:bg-white/[0.03]",
+          : "border-[#3a5c5c]/60 bg-black/20 hover:border-emerald-400/40 hover:bg-white/[0.03]",
       )}
     >
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{label}</p>
@@ -158,12 +158,12 @@ function CoinAmountCard({
   onCommit: (raw: string) => void;
 }) {
   return (
-    <div className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 px-3 py-4 text-center">
+    <div className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-[#3a5c5c]/60 bg-black/20 px-3 py-4 text-center">
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
         <span className="pixel-label text-2xl text-lime-200">SH</span>
       </div>
-      <label className="flex w-full items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-2">
+      <label className="flex w-full items-center gap-2 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-2">
         <input
           type="number"
           min={0}
@@ -207,7 +207,7 @@ function PresetChip({
         "rounded-md border-2 px-2.5 py-1.5 font-mono text-[11px] font-extrabold tabular-nums disabled:opacity-40",
         active
           ? "border-lime-300/70 bg-lime-400/15 text-lime-100"
-          : "border-[#3d5a3a]/70 bg-black/30 text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10",
+          : "border-[#3a5c5c]/70 bg-black/30 text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10",
       )}
     >
       {label}
@@ -564,8 +564,8 @@ export function Upgrader() {
                 }}
               />
             )}
-            <div className="space-y-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 p-2.5">
-              <label className="flex items-center gap-2 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
+            <div className="space-y-2 rounded-xl border-2 border-[#3a5c5c]/60 bg-black/20 p-2.5">
+              <label className="flex items-center gap-2 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Bet</span>
                 <input
                   type="number"
@@ -597,7 +597,7 @@ export function Upgrader() {
                       sound.click();
                       btn.run();
                     }}
-                    className="rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-1 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10 disabled:opacity-40"
+                    className="rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-1 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-emerald-100 hover:border-lime-400/50 hover:bg-lime-400/10 disabled:opacity-40"
                   >
                     {btn.label}
                   </button>
@@ -646,9 +646,9 @@ export function Upgrader() {
                 }}
               />
             )}
-            <div className="space-y-2 rounded-xl border-2 border-[#3d5a3a]/60 bg-black/20 p-2.5">
+            <div className="space-y-2 rounded-xl border-2 border-[#3a5c5c]/60 bg-black/20 p-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border-2 border-[#3d5a3a]/70 bg-black/30 px-2.5 py-1.5">
+                <label className="flex min-w-0 flex-1 items-center gap-1.5 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">x</span>
                   <input
                     type="number"
@@ -677,7 +677,7 @@ export function Upgrader() {
                     "inline-flex items-center gap-1 rounded-md border-2 px-2.5 py-1.5 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-40",
                     fast
                       ? "border-lime-300/70 bg-lime-400/15 text-lime-100"
-                      : "border-[#3d5a3a]/70 text-slate-400 hover:border-lime-400/50 hover:text-slate-200",
+                      : "border-[#3a5c5c]/70 text-slate-400 hover:border-lime-400/50 hover:text-slate-200",
                   )}
                 >
                   <Zap className="h-3.5 w-3.5" />
@@ -762,7 +762,7 @@ export function Upgrader() {
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="Search items…"
-                className="w-full rounded-lg border-2 border-[#3d5a3a]/50 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-lime-400/40"
+                className="w-full rounded-lg border-2 border-[#3a5c5c]/50 bg-white/[0.04] py-2 pl-9 pr-3 text-sm text-white outline-none placeholder:text-slate-500 focus:border-lime-400/40"
               />
             </label>
             <label className="text-[10px] font-bold uppercase tracking-wide text-slate-500">

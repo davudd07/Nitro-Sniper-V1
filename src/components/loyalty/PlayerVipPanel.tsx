@@ -34,10 +34,10 @@ export function PlayerVipPanel({ compact = false }: { compact?: boolean }) {
 
   return (
     <div className="space-y-4">
-      <section className="flex flex-col gap-4 rounded-xl border-2 border-[#3d5a3a] bg-[#101810] px-4 py-3 shadow-[4px_4px_0_#050805] lg:flex-row lg:items-center">
+      <section className="flex flex-col gap-4 rounded-xl border-2 border-[#3a5c5c] bg-[#101818] px-4 py-3 shadow-[4px_4px_0_#050808] lg:flex-row lg:items-center">
         <div className="flex min-w-0 items-center gap-3 lg:w-[240px]">
           <div
-            className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 bg-[#152018]"
+            className="grid h-14 w-14 shrink-0 place-items-center rounded-full border-2 bg-[#152020]"
             style={{ borderColor: current.color, color: current.color }}
           >
             <Crown className="h-6 w-6" />
@@ -55,9 +55,9 @@ export function PlayerVipPanel({ compact = false }: { compact?: boolean }) {
             {next ? `Progress to ${next.name}` : "Max tier"}
           </p>
           <div className="mt-1.5 flex items-center gap-3">
-            <div className="h-3.5 min-w-0 flex-1 overflow-hidden rounded-full border border-[#019201]/40 bg-black/50">
+            <div className="h-3.5 min-w-0 flex-1 overflow-hidden rounded-full border border-[#4af1f1]/40 bg-black/50">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#016b01] via-[#019201] to-[#a3e635] transition-[width] duration-500"
+                className="h-full rounded-full bg-gradient-to-r from-[#164e4e] via-[#4af1f1] to-[#58ffff] transition-[width] duration-500"
                 style={{ width: `${barPct}%` }}
               />
             </div>

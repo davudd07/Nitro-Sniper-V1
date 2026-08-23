@@ -19,7 +19,7 @@ export function CaseSearchInput({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-lg border-2 border-[#3d5a3a] bg-black/30 py-2 pl-8 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50"
+        className="w-full rounded-lg border-2 border-[#3a5c5c] bg-black/30 py-2 pl-8 pr-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/50"
       />
     </label>
   );

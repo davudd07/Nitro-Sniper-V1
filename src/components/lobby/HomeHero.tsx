@@ -15,16 +15,16 @@ export function HomeHero() {
   const role = useIdentityStore((s) => s.roleFor("You"));
 
   return (
-    <section className="relative overflow-hidden rounded-xl border-2 border-[#3d5a3a]/70 bg-gradient-to-br from-[#163326] via-[#0c1612] to-[#07100c] p-5 shadow-[6px_6px_0_#050805] sm:p-8">
-      <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-cyan-400/10 blur-3xl" />
-      <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-fuchsia-500/10 blur-3xl" />
+    <section className="relative overflow-hidden rounded-xl border-2 border-cyan-400/35 bg-gradient-to-br from-[#123333] via-[#0c1414] to-[#070a0a] p-5 shadow-[6px_6px_0_#050808] sm:p-8">
+      <div className="pointer-events-none absolute -right-16 -top-20 h-64 w-64 rounded-full bg-cyan-300/16 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-16 left-10 h-48 w-48 rounded-full bg-cyan-500/10 blur-3xl" />
       <div className="relative grid items-center gap-6 lg:grid-cols-[1fr_auto]">
         <div className="max-w-xl">
           <p className="text-[11px] font-bold uppercase tracking-[0.28em] text-cyan-300/90">
             {session ? "Welcome back," : "Welcome,"}
           </p>
           <div className="mt-1 flex flex-wrap items-center gap-3">
-            <AvatarPicker name="You" size={64} color="#019201" />
+            <AvatarPicker name="You" size={64} color="#4af1f1" />
             <div className="min-w-0">
               <h1 className="pixel-label text-4xl font-extrabold uppercase tracking-wide text-white sm:text-5xl">
                 {name}

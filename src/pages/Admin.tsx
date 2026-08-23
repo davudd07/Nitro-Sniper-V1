@@ -210,7 +210,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
 
   return (
     <div className="flex h-full min-h-0 w-full flex-col overflow-hidden bg-[#09090f]">
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-[#3d5a3a]/60 bg-[#101810] px-4 py-3">
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b-2 border-[#3a5c5c]/60 bg-[#101818] px-4 py-3">
         <div className="flex items-center gap-2">
           <Shield className="h-5 w-5 text-cyan-300" />
           <h1 className="pixel-label text-xl font-extrabold uppercase text-white">Vault warden</h1>

@@ -26,7 +26,7 @@ function PromoCard({
     <Link
       to={to}
       onClick={() => sound.click()}
-      className="group relative flex min-h-[168px] flex-col overflow-hidden rounded-xl border-2 border-white/10 p-4 shadow-[4px_4px_0_#050805] transition-transform hover:-translate-y-0.5"
+      className="group relative flex min-h-[168px] flex-col overflow-hidden rounded-xl border-2 border-white/10 p-4 shadow-[4px_4px_0_#050808] transition-transform hover:-translate-y-0.5"
       style={{ background: accent }}
     >
       <div className="mb-3 grid h-11 w-11 place-items-center rounded-lg border-2 border-white/20 bg-black/25 text-white">

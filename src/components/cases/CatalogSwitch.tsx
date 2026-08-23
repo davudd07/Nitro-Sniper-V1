@@ -11,7 +11,7 @@ export function CatalogSwitch({
   onChange: (next: CaseCatalogKind) => void;
 }) {
   return (
-    <div className="inline-flex rounded-lg border-2 border-[#3d5a3a] bg-black/40 p-0.5">
+    <div className="inline-flex rounded-lg border-2 border-[#3a5c5c] bg-black/40 p-0.5">
       {(["official", "community"] as const).map((id) => (
         <button
           key={id}

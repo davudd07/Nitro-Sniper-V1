@@ -54,7 +54,7 @@ export function PlayerTipButton({ name }: { name: string }) {
         <HandCoins className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-6 z-[60] w-44 rounded-md border-2 border-[#3d5a3a] bg-[#101810] p-2 shadow-[4px_4px_0_#050805]">
+        <div className="absolute right-0 top-6 z-[60] w-44 rounded-md border-2 border-[#3a5c5c] bg-[#101818] p-2 shadow-[4px_4px_0_#050808]">
           <p className="mb-1.5 text-[10px] font-bold uppercase tracking-wide text-slate-400">Tip {name}</p>
           <div className="mb-1.5 grid grid-cols-4 gap-1">
             {PRESETS.map((n) => (
@@ -62,7 +62,7 @@ export function PlayerTipButton({ name }: { name: string }) {
                 key={n}
                 type="button"
                 onClick={() => send(n)}
-                className="rounded bg-[#019201]/25 py-1 text-[10px] font-bold text-emerald-200 hover:bg-[#019201]/40"
+                className="rounded bg-[#4af1f1]/25 py-1 text-[10px] font-bold text-cyan-100 hover:bg-[#4af1f1]/40"
               >
                 {n}
               </button>

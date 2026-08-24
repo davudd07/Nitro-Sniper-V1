@@ -244,3 +244,23 @@ body {
   width: 6px;
   height: 6px;
 }
+
+@keyframes maxxx-pop {
+  0% { transform: scale(0.35) rotate(-10deg); opacity: 0; }
+  55% { transform: scale(1.14) rotate(3deg); opacity: 1; }
+  100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+.maxxx-pop {
+  animation: maxxx-pop 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes maxxx-coin {
+  0% { transform: translate3d(0, -8vh, 0) rotate(0deg); opacity: 0; }
+  8% { opacity: 1; }
+  100% { transform: translate3d(var(--drift, 0px), 115vh, 0) rotate(var(--spin, 480deg)); opacity: 0.85; }
+}
+.maxxx-coin {
+  animation-name: maxxx-coin;
+  animation-timing-function: cubic-bezier(0.22, 0.61, 0.36, 1);
+  animation-fill-mode: both;
+}

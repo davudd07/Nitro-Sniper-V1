@@ -58,13 +58,18 @@ export function pileStickers(itemIds: string[]): ChestSticker[] {
   });
 }
 
+function wrapAngle(deg: number): number {
+  const x = ((((deg + 180) % 360) + 360) % 360) - 180;
+  return x === -180 ? 180 : x;
+}
+
 export function clampSticker(s: ChestSticker): ChestSticker {
   return {
     ...s,
     x: Math.min(82, Math.max(18, s.x)),
     y: Math.min(72, Math.max(28, s.y)),
-    scale: Math.min(1.6, Math.max(0.55, s.scale)),
-    rotate: Math.min(40, Math.max(-40, s.rotate)),
+    scale: Math.min(2.2, Math.max(0.4, s.scale)),
+    rotate: wrapAngle(s.rotate),
   };
 }
 

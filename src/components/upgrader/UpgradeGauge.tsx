@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState, type PointerEvent } from "react";
-import { longBrake } from "../../lib/easing";
+import { longBrake as longBrake } from "../../lib/easing";
 import {
-  degFromCenter,
-  formatAttemptMultiplier,
-  formatChancePct,
-  shortestDegDelta,
-  wrapDeg,
+  degFromCenter as degFromCenter,
+  formatAttemptMultiplier as formatAttemptMultiplier,
+  formatChancePct as formatChancePct,
+  shortestDegDelta as shortestDegDelta,
+  wrapDeg as wrapDeg,
 } from "../../lib/upgrader";
+import { formatTickets } from "../../lib/format";
 import { sound } from "../../lib/sound";
 import { clsx } from "clsx";
 
@@ -84,6 +85,7 @@ export function UpgradeGauge({
   arcStartDeg,
   minChance,
   maxChance,
+  ticket = null,
   onArcStartChange,
   onWinChanceChange,
   onSettled,
@@ -99,6 +101,7 @@ export function UpgradeGauge({
   arcStartDeg: number;
   minChance: number;
   maxChance: number;
+  ticket?: number | null;
   onArcStartChange: (deg: number) => void;
   onWinChanceChange: (chance: number) => void;
   onSettled: () => void;
@@ -329,13 +332,13 @@ export function UpgradeGauge({
 
         <div className="pointer-events-none absolute inset-[22%] z-20 grid place-items-center rounded-full bg-[#0c1414]">
           <div
-            className="px-1.5 text-center"
+            className="-translate-y-2 px-1.5 text-center"
             aria-live="polite"
             aria-label={`${formatChancePct(hubChance)} for ${formatAttemptMultiplier(multiplier)}`}
           >
             <p
               className={clsx(
-                "min-h-[12px] text-[9px] font-bold uppercase tracking-[0.18em]",
+                "min-h-[12px] text-[9px] font-bold uppercase tracking-[0.22em]",
                 hub === "spin" || spinning
                   ? "text-emerald-300/80"
                   : hub === "win"
@@ -345,8 +348,18 @@ export function UpgradeGauge({
                       : "text-transparent",
               )}
             >
-              {hub === "spin" || spinning ? "Spinning" : hub === "win" ? "Hit" : hub === "lose" ? "Miss" : "\u00a0"}
+              {hub === "spin" || spinning ? "Spinning" : hub === "win" ? "HIT" : hub === "lose" ? "MISS" : "\u00a0"}
             </p>
+            {(hub === "win" || hub === "lose") && ticket != null ? (
+              <p
+                className={clsx(
+                  "mt-0.5 font-mono text-[10px] font-bold tabular-nums sm:text-[11px]",
+                  hub === "win" ? "text-lime-200/90" : "text-slate-300",
+                )}
+              >
+                #{formatTickets(ticket)}
+              </p>
+            ) : null}
             <p
               className={clsx(
                 "font-mono text-[1.65rem] font-black leading-none tabular-nums sm:text-3xl",

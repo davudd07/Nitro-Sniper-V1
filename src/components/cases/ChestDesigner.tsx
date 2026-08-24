@@ -1,21 +1,30 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { Palette, Plus, Trash2 } from "lucide-react";
 import { ITEM_LIST } from "../../data/items";
 import { ItemIcon } from "../ui/ItemIcon";
+import { ColorPicker } from "../ui/ColorPicker";
 import { sound } from "../../lib/sound";
 import {
   CHEST_MAX_STICKERS,
   clampSticker,
-  hexToHsl,
-  hslToHex,
-  normalizeHex,
   type ChestSticker,
 } from "../../lib/chest";
 import { ChestArt } from "./ChestArt";
 
 function newStickerId() {
   return `sticker-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+type DragMode = "move" | "rotate" | "scale";
+
+interface DragState {
+  id: string;
+  mode: DragMode;
+  grabX: number;
+  grabY: number;
+  startScale: number;
+  startDist: number;
 }
 
 export function ChestDesigner({
@@ -32,13 +41,109 @@ export function ChestDesigner({
   allowedItemIds: string[];
 }) {
   const boxRef = useRef<HTMLDivElement>(null);
-  const [dragId, setDragId] = useState<string | null>(null);
+  const stickersRef = useRef(stickers);
+  stickersRef.current = stickers;
+  const onStickersRef = useRef(onStickers);
+  onStickersRef.current = onStickers;
+  const dragRef = useRef<DragState | null>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const hsl = hexToHsl(color);
+  const [pickerOpen, setPickerOpen] = useState(false);
   const allowed = ITEM_LIST.filter((item) => allowedItemIds.includes(item.id));
+  const selected = stickers.find((s) => s.id === selectedId) ?? null;
 
-  function setHsl(next: { h?: number; s?: number; l?: number }) {
-    onColor(hslToHex(next.h ?? hsl.h, next.s ?? hsl.s, next.l ?? hsl.l));
+  function patch(id: string, partial: Partial<ChestSticker>) {
+    const next = stickersRef.current.map((s) => (s.id === id ? clampSticker({ ...s, ...partial }) : s));
+    stickersRef.current = next;
+    onStickersRef.current(next);
+  }
+
+  function pointerPct(clientX: number, clientY: number): { x: number; y: number } | null {
+    const box = boxRef.current;
+    if (!box) return null;
+    const rect = box.getBoundingClientRect();
+    return {
+      x: ((clientX - rect.left) / Math.max(1, rect.width)) * 100,
+      y: ((clientY - rect.top) / Math.max(1, rect.height)) * 100,
+    };
+  }
+
+  useEffect(() => {
+    function onMove(e: PointerEvent) {
+      const drag = dragRef.current;
+      if (!drag) return;
+      const pos = pointerPct(e.clientX, e.clientY);
+      if (!pos) return;
+      const cur = stickersRef.current.find((s) => s.id === drag.id);
+      if (!cur) return;
+      if (drag.mode === "move") {
+        patch(drag.id, { x: pos.x - drag.grabX, y: pos.y - drag.grabY });
+        return;
+      }
+      if (drag.mode === "rotate") {
+        const deg = (Math.atan2(pos.x - cur.x, -(pos.y - cur.y)) * 180) / Math.PI;
+        patch(drag.id, { rotate: deg });
+        return;
+      }
+      const dist = Math.hypot(pos.x - cur.x, pos.y - cur.y);
+      if (drag.startDist > 0.2) {
+        patch(drag.id, { scale: drag.startScale * (dist / drag.startDist) });
+      }
+    }
+    function onUp() {
+      dragRef.current = null;
+    }
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, []);
+
+  function beginMove(id: string, clientX: number, clientY: number) {
+    const pos = pointerPct(clientX, clientY);
+    const cur = stickersRef.current.find((s) => s.id === id);
+    if (!pos || !cur) return;
+    dragRef.current = {
+      id,
+      mode: "move",
+      grabX: pos.x - cur.x,
+      grabY: pos.y - cur.y,
+      startScale: cur.scale,
+      startDist: 1,
+    };
+    setSelectedId(id);
+  }
+
+  function beginRotate(id: string) {
+    const cur = stickersRef.current.find((s) => s.id === id);
+    if (!cur) return;
+    dragRef.current = {
+      id,
+      mode: "rotate",
+      grabX: 0,
+      grabY: 0,
+      startScale: cur.scale,
+      startDist: 1,
+    };
+    setSelectedId(id);
+  }
+
+  function beginScale(id: string, clientX: number, clientY: number) {
+    const pos = pointerPct(clientX, clientY);
+    const cur = stickersRef.current.find((s) => s.id === id);
+    if (!pos || !cur) return;
+    dragRef.current = {
+      id,
+      mode: "scale",
+      grabX: 0,
+      grabY: 0,
+      startScale: cur.scale,
+      startDist: Math.max(0.4, Math.hypot(pos.x - cur.x, pos.y - cur.y)),
+    };
+    setSelectedId(id);
   }
 
   function addItem(itemId: string) {
@@ -57,16 +162,7 @@ export function ChestDesigner({
     setSelectedId(sticker.id);
   }
 
-  function moveTo(id: string, clientX: number, clientY: number) {
-    const box = boxRef.current;
-    if (!box) return;
-    const rect = box.getBoundingClientRect();
-    const x = ((clientX - rect.left) / rect.width) * 100;
-    const y = ((clientY - rect.top) / rect.height) * 100;
-    onStickers(stickers.map((s) => (s.id === id ? clampSticker({ ...s, x, y }) : s)));
-  }
-
-  const selected = stickers.find((s) => s.id === selectedId) ?? null;
+  const boxPx = 56;
 
   return (
     <div className="space-y-4">
@@ -75,39 +171,30 @@ export function ChestDesigner({
           <Palette className="h-3.5 w-3.5" /> Chest color
         </p>
         <p className="mb-3 text-[11px] text-slate-500">
-          Recolors the gold wood only. The cyan heart, lid studs, and side studs stay locked.
+          Recolors the gold wood and the open interior. The cyan heart, lid studs, and side studs stay locked.
         </p>
-        <div className="flex flex-wrap items-center gap-3">
-          <label className="relative h-10 w-10 overflow-hidden rounded-lg border-2 border-white/20">
-            <input
-              type="color"
-              value={normalizeHex(color)}
-              onChange={(e) => onColor(e.target.value)}
-              className="absolute -inset-2 h-16 w-16 cursor-pointer"
-            />
-          </label>
-          <input
-            value={normalizeHex(color)}
-            onChange={(e) => onColor(normalizeHex(e.target.value, color))}
-            className="w-28 rounded-md border border-white/10 bg-black/40 px-2 py-1.5 font-mono text-xs text-white outline-none focus:border-emerald-400/40"
+        <div className="relative flex items-start gap-3">
+          <button
+            type="button"
+            onClick={() => setPickerOpen((v) => !v)}
+            className="h-10 w-10 shrink-0 rounded-lg border-2 border-white/20"
+            style={{ background: color }}
+            aria-label="Open color picker"
           />
-        </div>
-        <div className="mt-3 space-y-2">
-          <Slider label="Hue" min={0} max={360} value={hsl.h} onChange={(h) => setHsl({ h })} />
-          <Slider label="Saturation" min={10} max={100} value={hsl.s} onChange={(s) => setHsl({ s })} />
-          <Slider label="Lightness" min={16} max={68} value={hsl.l} onChange={(l) => setHsl({ l })} />
+          {pickerOpen && (
+            <div className="absolute left-12 top-0 z-30">
+              <ColorPicker value={color} onChange={onColor} />
+            </div>
+          )}
         </div>
       </div>
 
       <div
         ref={boxRef}
         className="relative mx-auto w-full max-w-[280px] select-none"
-        onPointerMove={(e) => {
-          if (!dragId || e.buttons === 0) return;
-          moveTo(dragId, e.clientX, e.clientY);
+        onPointerDown={(e) => {
+          if (e.target === e.currentTarget) setSelectedId(null);
         }}
-        onPointerUp={() => setDragId(null)}
-        onPointerLeave={() => setDragId(null)}
       >
         <ChestArt color={color} stickers={[]} className="w-full" />
         {stickers.map((sticker) => {
@@ -120,14 +207,12 @@ export function ChestDesigner({
               type="button"
               onPointerDown={(e) => {
                 e.preventDefault();
-                e.currentTarget.setPointerCapture(e.pointerId);
-                setDragId(sticker.id);
-                setSelectedId(sticker.id);
-                moveTo(sticker.id, e.clientX, e.clientY);
+                e.stopPropagation();
+                beginMove(sticker.id, e.clientX, e.clientY);
               }}
               className={clsx(
-                "absolute z-[4] -translate-x-1/2 -translate-y-1/2 cursor-grab touch-none active:cursor-grabbing",
-                on && "ring-2 ring-emerald-300 ring-offset-2 ring-offset-black/40",
+                "absolute z-[4] cursor-grab touch-none active:cursor-grabbing",
+                on && "z-[5]",
               )}
               style={{
                 left: `${sticker.x}%`,
@@ -139,29 +224,54 @@ export function ChestDesigner({
             </button>
           );
         })}
+        {selected && (
+          <div
+            className="pointer-events-none absolute z-[6]"
+            style={{
+              left: `${selected.x}%`,
+              top: `${selected.y}%`,
+              width: boxPx * selected.scale,
+              height: boxPx * selected.scale,
+              transform: `translate(-50%, -50%) rotate(${selected.rotate}deg)`,
+            }}
+          >
+            <div className="absolute inset-0 rounded-md border border-dashed border-emerald-300/80" />
+            <button
+              type="button"
+              aria-label="Rotate"
+              onPointerDown={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                beginRotate(selected.id);
+              }}
+              className="pointer-events-auto absolute left-1/2 top-0 z-10 h-4 w-4 -translate-x-1/2 -translate-y-7 cursor-grab rounded-full border-2 border-white bg-emerald-400 shadow touch-none"
+            />
+            <div className="pointer-events-none absolute left-1/2 top-0 h-7 w-px -translate-x-1/2 -translate-y-7 bg-emerald-300/80" />
+            {(["tl", "tr", "bl", "br"] as const).map((corner) => (
+              <button
+                key={corner}
+                type="button"
+                aria-label="Resize"
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  beginScale(selected.id, e.clientX, e.clientY);
+                }}
+                className={clsx(
+                  "pointer-events-auto absolute z-10 h-3 w-3 cursor-nwse-resize rounded-[2px] border border-emerald-200 bg-white touch-none",
+                  corner === "tl" && "-left-1.5 -top-1.5",
+                  corner === "tr" && "-right-1.5 -top-1.5",
+                  corner === "bl" && "-bottom-1.5 -left-1.5",
+                  corner === "br" && "-bottom-1.5 -right-1.5",
+                )}
+              />
+            ))}
+          </div>
+        )}
       </div>
 
       {selected && (
-        <div className="flex flex-wrap items-center gap-3 rounded-lg bg-black/30 px-3 py-2">
-          <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Selected item</span>
-          <Slider
-            label="Size"
-            min={55}
-            max={160}
-            value={selected.scale * 100}
-            onChange={(v) =>
-              onStickers(stickers.map((s) => (s.id === selected.id ? clampSticker({ ...s, scale: v / 100 }) : s)))
-            }
-          />
-          <Slider
-            label="Rotate"
-            min={-40}
-            max={40}
-            value={selected.rotate}
-            onChange={(v) =>
-              onStickers(stickers.map((s) => (s.id === selected.id ? clampSticker({ ...s, rotate: v }) : s)))
-            }
-          />
+        <div className="flex items-center justify-end">
           <button
             type="button"
             onClick={() => {
@@ -201,33 +311,5 @@ export function ChestDesigner({
         )}
       </div>
     </div>
-  );
-}
-
-function Slider({
-  label,
-  min,
-  max,
-  value,
-  onChange,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  value: number;
-  onChange: (v: number) => void;
-}) {
-  return (
-    <label className="flex min-w-[140px] flex-1 items-center gap-2 text-[10px] font-bold uppercase tracking-wide text-slate-500">
-      {label}
-      <input
-        type="range"
-        min={min}
-        max={max}
-        value={Math.round(value)}
-        onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 flex-1 accent-emerald-400"
-      />
-    </label>
   );
 }

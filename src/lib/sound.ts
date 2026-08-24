@@ -6,6 +6,7 @@ type Envelope = { attack?: number; decay?: number; sustain?: number; release?: n
 class SoundEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
+  private maxxxAudio: HTMLAudioElement | null = null;
   muted = false;
 
   private ensureCtx() {
@@ -22,6 +23,9 @@ class SoundEngine {
 
   setMuted(m: boolean) {
     this.muted = m;
+    if (m && this.maxxxAudio) {
+      this.maxxxAudio.pause();
+    }
   }
 
   setVolume(v: number) {
@@ -152,6 +156,16 @@ class SoundEngine {
 
   deal() {
     this.noiseBurst(0.04, 0.1, 3500);
+  }
+
+  maxxxWin() {
+    if (this.muted) return;
+    if (!this.maxxxAudio) {
+      this.maxxxAudio = new Audio("/sounds/maxxx-win.mp3");
+      this.maxxxAudio.volume = 0.88;
+    }
+    this.maxxxAudio.currentTime = 0;
+    void this.maxxxAudio.play().catch(() => {});
   }
 }
 

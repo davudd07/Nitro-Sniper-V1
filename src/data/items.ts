@@ -9,7 +9,7 @@ export type IconKey =
   | "shield" | "sword" | "zap" | "rocket" | "trophy" | "diamond"
   | "feather" | "leaf" | "anchor" | "compass" | "key" | "moon"
   | "sun" | "skull" | "ghost" | "wand" | "orbit" | "atom"
-  | "clover" | "eye" | "hexagon" | "infinity" | "meteor" | "bird";
+  | "clover" | "eye" | "hexagon" | "infinity" | "meteor" | "bird" | "maxxx";
 
 export interface CaseItem {
   id: string;
@@ -113,8 +113,9 @@ export const ITEMS: Record<string, CaseItem> = {
   leviathan_scale: { id: "leviathan_scale", name: "Leviathan Scale", value: 40000, rarity: "rare", icon: "shield" },
   kraken_heart: { id: "kraken_heart", name: "Kraken Heart", value: 100000, rarity: "epic", icon: "flame" },
   tidal_monarch: { id: "tidal_monarch", name: "Tidal Monarch", value: 300000, rarity: "epic", icon: "crown" },
-  maelstrom_core: { id: "maelstrom_core", name: "Maelstrom Core", value: 750000, rarity: "mythic", icon: "atom" },
-  leviathans_crown: { id: "leviathans_crown", name: "Leviathan's Crown", value: 2000000, rarity: "mythic", icon: "crown" },
+  maelstrom_core: { id: "maelstrom_core", name: "Maelstrom Core", value: 360000, rarity: "mythic", icon: "atom" },
+  leviathans_crown: { id: "leviathans_crown", name: "Leviathan's Crown", value: 420000, rarity: "mythic", icon: "crown" },
+  maxxx_win: { id: "maxxx_win", name: "MAXXX WIN", value: 500000, rarity: "mythic", icon: "maxxx" },
 
   // --- Apex Cache pool ---
   gilded_skull: { id: "gilded_skull", name: "Gilded Skull", value: 400, rarity: "common", icon: "skull" },
@@ -131,3 +132,14 @@ export const ITEMS: Record<string, CaseItem> = {
 
 /** Every catalog item, website prices only. */
 export const ITEM_LIST: CaseItem[] = Object.values(ITEMS);
+
+export const MAXXX_WIN = ITEMS.maxxx_win!;
+
+export function isMaxxxWin(item: { id: string }): boolean {
+  return item.id === "maxxx_win";
+}
+
+export function itemImageSrc(item: { id: string; icon: IconKey }): string {
+  if (item.id === "maxxx_win" || item.icon === "maxxx") return "/images/items/maxxx.png";
+  return `/images/items/${item.icon}.webp`;
+}

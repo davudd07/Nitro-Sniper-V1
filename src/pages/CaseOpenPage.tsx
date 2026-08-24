@@ -22,6 +22,7 @@ import { formatTicketRange } from "../lib/caseTickets";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
 import type { CaseItem } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
+import { useMaxxxWinStore } from "../store/maxxxWinStore";
 
 const MAX_OPENS = 4;
 
@@ -78,6 +79,7 @@ export function CaseOpenPage() {
 
   function handleLanded(item: CaseItem) {
     if (!c) return;
+    if (item.id === "maxxx_win") useMaxxxWinStore.getState().fire();
     const demo = demoRoundRef.current;
     if (!demo) {
       credit(item.value);

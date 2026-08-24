@@ -7,6 +7,7 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { requireAccount, takeStake } from "../lib/stake";
 import { formatCredits, formatPercent } from "../lib/format";
+import { ticketFromRoll } from "../lib/caseTickets";
 import { sound } from "../lib/sound";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
@@ -236,6 +237,7 @@ export function Upgrader() {
   const [arcStartDeg, setArcStartDeg] = useState(0);
   const [phase, setPhase] = useState<Phase>("idle");
   const [won, setWon] = useState<boolean | null>(null);
+  const [ticket, setTicket] = useState<number | null>(null);
   const [landDeg, setLandDeg] = useState(0);
   const [spinToken, setSpinToken] = useState(0);
   const settleLock = useRef(false);
@@ -462,6 +464,7 @@ export function Upgrader() {
     settleLock.current = true;
     setPhase("spinning");
     setWon(null);
+    setTicket(null);
     sound.chip();
     const [roll] = await play(1);
     const hit = settleUpgrade(roll, chance);
@@ -472,6 +475,7 @@ export function Upgrader() {
       hit,
     };
     setWon(hit);
+    setTicket(ticketFromRoll(roll));
     setLandDeg(landDegForRoll(roll, chance, hit, arcStartDeg));
     setSpinToken((n) => n + 1);
   }
@@ -616,6 +620,7 @@ export function Upgrader() {
               multiplier={displayedMulti}
               spinning={spinning}
               won={won}
+              ticket={ticket}
               landDeg={landDeg}
               spinToken={spinToken}
               durationMs={spinMs}

@@ -34,6 +34,7 @@ import { Admin } from "./pages/Admin";
 import { AdminViewBar } from "./components/admin/AdminViewBar";
 import { installChatModeration } from "./lib/moderation";
 import { AccountGate } from "./components/auth/AccountGate";
+import { MaxxxWinOverlay } from "./components/cases/MaxxxWinOverlay";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -122,6 +123,7 @@ export default function App() {
       <ChatRainController />
       <SupportWidget />
       <AccountGate />
+      <MaxxxWinOverlay />
       <Toasts />
     </div>
   );

@@ -2,6 +2,7 @@ import { memo, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import type { CaseOddsEntry } from "../../data/cases";
 import type { CaseItem } from "../../data/items";
+import { MAXXX_WIN, isMaxxxWin, itemImageSrc } from "../../data/items";
 import { GOLD_INDICATOR } from "../../data/goldItem";
 import { RARITIES } from "../../data/rarities";
 import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
@@ -34,7 +35,7 @@ function preloadIcons(items: CaseItem[]) {
     seen.add(item.icon);
     const img = new Image();
     img.decoding = "async";
-    img.src = `/images/items/${item.icon}.webp`;
+    img.src = itemImageSrc(item);
   }
 }
 
@@ -99,25 +100,33 @@ function shuffleInPlace<T>(arr: T[], rand: () => number): T[] {
 }
 
 /**
- * Visual-only pass-bys: gold-tier items scroll past on a normal reel so players
- * can see the gold-spin pool exists. Never writes LAND_INDEX (fuchsia line).
+ * Visual-only pass-bys: the GOLD SPIN indicator flies past on a normal reel
+ * so players see that a gold spin exists. Never writes LAND_INDEX.
  * Does not change who wins or gold-spin probability.
  */
-function sprinkleGoldBaits(strip: CaseItem[], baits: CaseItem[], rand: () => number): void {
-  if (baits.length === 0) return;
-  // Skip the idle/start window under the pointer (indices 0–2). Travel still
-  // covers the rest of the reel up to, but never including, the fuchsia line.
+function sprinkleGoldBaits(strip: CaseItem[], hasGold: boolean, rand: () => number): void {
+  if (!hasGold) return;
   const travel: number[] = [];
   for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
   shuffleInPlace(travel, rand);
-
-  // One of each gold-pool item, then extra sprinkles so they keep flying by.
   const extra = Math.floor(travel.length / 6);
-  const placeCount = Math.min(travel.length, baits.length + extra);
+  const placeCount = Math.min(travel.length, 8 + extra);
   for (let n = 0; n < placeCount; n++) {
     const slot = travel[n];
     if (slot === undefined || slot === LAND_INDEX) continue;
-    strip[slot] = n < baits.length ? baits[n]! : pickFrom(baits, rand);
+    strip[slot] = GOLD_INDICATOR;
+  }
+}
+
+function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number): void {
+  const travel: number[] = [];
+  for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
+  shuffleInPlace(travel, rand);
+  const placeCount = Math.min(travel.length, Math.max(10, Math.floor(travel.length / 3.2)));
+  for (let n = 0; n < placeCount; n++) {
+    const slot = travel[n];
+    if (slot === undefined || slot === LAND_INDEX) continue;
+    strip[slot] = MAXXX_WIN;
   }
 }
 
@@ -126,6 +135,7 @@ function buildStrip(
   landing: CaseItem,
   rand: () => number,
   baits: CaseItem[] = [],
+  baitMaxxx = false,
 ): CaseItem[] {
   const baitIds = new Set(baits.map((item) => item.id));
   const filler = baitIds.size ? pool.filter((item) => !baitIds.has(item.id)) : pool;
@@ -134,7 +144,8 @@ function buildStrip(
   for (let i = 0; i < REEL_LENGTH; i++) {
     strip.push(i === LAND_INDEX ? landing : pickFrom(fillerPool, rand));
   }
-  if (baits.length) sprinkleGoldBaits(strip, baits, rand);
+  if (baits.length) sprinkleGoldBaits(strip, true, rand);
+  if (baitMaxxx) sprinkleMaxxxBaits(strip, rand);
   strip[LAND_INDEX] = landing;
   return strip;
 }
@@ -339,7 +350,7 @@ export function CaseReel({
   useEffect(() => {
     if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
     const rand = mulberry32(laneSeed + 17);
-    setStrip(buildStrip(pool, pickFrom(pool, rand), rand, goldPool));
+    setStrip(buildStrip(pool, pickFrom(pool, rand), rand, goldPool, true));
     applyOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pool, goldPool, spinToken, laneSeed]);
@@ -352,7 +363,7 @@ export function CaseReel({
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
     // Normal reel: gold-tier items fly past as baits. Landing stays the real result
     // (or the GOLD SPIN indicator). The gold-spin reel below keeps the gold-only pool.
-    const mainStrip = buildStrip(pool, targetForMain, rand, goldPool);
+    const mainStrip = buildStrip(pool, targetForMain, rand, goldPool, true);
     pendingSpinRef.current = {
       seed: seedBase,
       duration,
@@ -494,10 +505,11 @@ const ReelSlot = memo(function ReelSlot({
 }) {
   const r = RARITIES[item.rarity];
   const isIndicator = item.id === GOLD_INDICATOR.id;
+  const maxxx = isMaxxxWin(item);
   const goldChrome = isIndicator || goldBait;
   const iconPx = ICON_PX[iconSize];
   const isHorizontal = orientation === "horizontal";
-  const ring = goldChrome ? "#fbbf24" : r.ring;
+  const ring = goldChrome ? "#fbbf24" : maxxx ? "#fbbf24" : r.ring;
 
   return (
     <div
@@ -520,25 +532,36 @@ const ReelSlot = memo(function ReelSlot({
           ? isHorizontal
             ? `linear-gradient(165deg, #fbbf2466, ${r.to})`
             : `linear-gradient(90deg, #fbbf2455, ${r.to}cc)`
+          : maxxx
+            ? isHorizontal
+              ? "linear-gradient(165deg, rgba(251,191,36,0.2), #1c1003)"
+              : "linear-gradient(90deg, rgba(251,191,36,0.18), #1c1003cc)"
           : isHorizontal
             ? `linear-gradient(165deg, ${r.from}66, ${r.to})`
             : `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
-        boxShadow: goldChrome ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
+        boxShadow: goldChrome || maxxx ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
         borderRight: isHorizontal ? `2px solid ${ring}` : undefined,
         borderBottom: isHorizontal ? undefined : `2px solid ${ring}`,
       }}
     >
       <img
-        src={`/images/items/${item.icon}.webp`}
+        src={itemImageSrc(item)}
         alt=""
-        width={iconPx}
+        width={maxxx ? Math.round(iconPx * 1.7) : iconPx}
         height={iconPx}
         decoding="async"
         draggable={false}
-        className="shrink-0 rounded object-cover"
-        style={{ width: iconPx, height: iconPx }}
+        className={clsx("shrink-0", maxxx ? "object-contain" : "rounded object-cover")}
+        style={{ width: maxxx ? Math.round(iconPx * 1.7) : iconPx, height: iconPx }}
       />
-      {isHorizontal || iconSize === "sm" ? (
+      {maxxx ? (
+        isHorizontal || iconSize === "sm" ? null : (
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-bold text-amber-200">{item.name}</p>
+            <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>
+          </div>
+        )
+      ) : isHorizontal || iconSize === "sm" ? (
         <span
           className={clsx("max-w-[92%] truncate px-0.5 font-bold", iconSize === "sm" ? "text-[9px]" : "text-[10px]")}
           style={{ color: goldChrome ? "#fbbf24" : r.text }}

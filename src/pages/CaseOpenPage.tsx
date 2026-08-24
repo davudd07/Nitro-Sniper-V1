@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Sparkles } from "lucide-react";
+import { ArrowLeft, Handshake, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
 import { getCase, rollCaseItem } from "../data/cases";
 import { CaseReel } from "../components/cases/CaseReel";
@@ -16,6 +16,7 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { useAdminViewStore } from "../store/adminViewStore";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { takeStake } from "../lib/stake";
+import { keepPct, MAX_BORROW_PCT, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { formatTicketRange } from "../lib/caseTickets";
@@ -23,7 +24,7 @@ import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib
 import type { CaseItem } from "../data/items";
 import { isMaxxxWin } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
-import { useMaxxxWinStore } from "../store/maxxxWinStore";
+import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 
 const MAX_OPENS = 4;
 
@@ -37,10 +38,13 @@ export function CaseOpenPage() {
   const [pendingResults, setPendingResults] = useState<(CaseOddsEntry | null)[]>([null]);
   const [spinning, setSpinning] = useState(false);
   const [history, setHistory] = useState<{ item: CaseItem; id: string }[]>([]);
+  const [borrowOn, setBorrowOn] = useState(false);
+  const [borrowPct, setBorrowPct] = useState(0.5);
   const landedRef = useRef(0);
   const roundCountRef = useRef(1);
   const roundItemsRef = useRef<CaseItem[]>([]);
   const demoRoundRef = useRef(false);
+  const roundBorrowRef = useRef(0);
 
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -56,19 +60,23 @@ export function CaseOpenPage() {
 
   const totalPrice = c.price * openCount;
   const reelSize = openCount >= 3 ? "md" : "lg";
+  const effectiveBorrow = borrowOn ? borrowPct : 0;
+  const paidTotal = Math.round(totalPrice * keepPct(effectiveBorrow));
 
   async function openCase(demo = false) {
     if (spinning || !c) return;
     const n = openCount;
-    const stake = demo ? 0 : c.price * n;
+    const borrow = demo ? 0 : effectiveBorrow;
+    const stake = demo ? 0 : Math.round(c.price * n * keepPct(borrow));
     if (!takeStake(stake, HOUSE_EDGE.cases)) {
-      push(`You need ${formatCash(c.price * n)} to open this case.`, "danger");
+      push(`You need ${formatCash(stake || c.price * n)} to open this case.`, "danger");
       return;
     }
     if (!demo && c.community) {
-      useCommunityCaseStore.getState().accrue(c.id, n);
+      useCommunityCaseStore.getState().accrue(c.id, n * keepPct(borrow));
     }
     demoRoundRef.current = demo;
+    roundBorrowRef.current = borrow;
     setSpinning(true);
     landedRef.current = 0;
     roundCountRef.current = n;
@@ -82,9 +90,12 @@ export function CaseOpenPage() {
     if (!c) return;
     if (isMaxxxWin(item)) useMaxxxWinStore.getState().fire();
     const demo = demoRoundRef.current;
+    const borrow = roundBorrowRef.current;
+    const paidPrice = Math.round(c.price * keepPct(borrow));
+    const paidValue = winPayout(item.value, borrow);
     if (!demo) {
-      credit(item.value);
-      recordRound(c.price, item.value, "cases");
+      credit(paidValue);
+      recordRound(paidPrice, paidValue, "cases");
     } else {
       recordRound(0, 0, "cases");
     }
@@ -92,24 +103,28 @@ export function CaseOpenPage() {
     setHistory((h) => [{ item, id: `${Date.now()}-${h.length}-${item.id}` }, ...h].slice(0, 24));
     landedRef.current += 1;
     if (landedRef.current < roundCountRef.current) return;
-    setSpinning(false);
-    const items = roundItemsRef.current;
-    const totalValue = items.reduce((s, i) => s + i.value, 0);
-    const cost = demo ? 0 : c.price * items.length;
-    const profit = totalValue - cost;
-    const prefix = demo ? "Demo · " : "";
-    if (items.length === 1) {
-      const it = items[0];
-      push(
-        `${prefix}Unboxed ${it.name} worth ${formatCash(it.value)}${demo ? " (no stake)" : "!"}`,
-        profit >= 0 ? "success" : "info",
-      );
-    } else {
-      push(
-        `${prefix}Unboxed ${items.length} items worth ${formatCash(totalValue)}${demo ? " (no stake)" : ` (${profit >= 0 ? "+" : ""}${formatCredits(profit)})`}.`,
-        profit >= 0 ? "success" : "info",
-      );
-    }
+    void (async () => {
+      await waitUntilMaxxxIdle();
+      setSpinning(false);
+      const items = roundItemsRef.current;
+      const totalValue = items.reduce((s, i) => s + i.value, 0);
+      const credited = items.reduce((s, i) => s + winPayout(i.value, borrow), 0);
+      const cost = demo ? 0 : Math.round(c.price * items.length * keepPct(borrow));
+      const profit = credited - cost;
+      const prefix = demo ? "Demo · " : "";
+      if (items.length === 1) {
+        const it = items[0];
+        push(
+          `${prefix}Unboxed ${it.name} worth ${formatCash(it.value)}${demo ? " (no stake)" : "!"}`,
+          profit >= 0 ? "success" : "info",
+        );
+      } else {
+        push(
+          `${prefix}Unboxed ${items.length} items worth ${formatCash(totalValue)}${demo ? " (no stake)" : ` (${profit >= 0 ? "+" : ""}${formatCredits(profit)})`}.`,
+          profit >= 0 ? "success" : "info",
+        );
+      }
+    })();
   }
 
   return (
@@ -167,57 +182,81 @@ export function CaseOpenPage() {
             ))}
           </div>
 
-          <div className="surface flex flex-wrap items-center justify-between gap-3 p-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2 text-sm text-slate-300">
-                <Switch checked={goldSpin} onChange={setGoldSpin} disabled={spinning} color="#fbbf24" />
-                <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
+          <div className="surface space-y-3 p-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <Switch checked={goldSpin} onChange={setGoldSpin} disabled={spinning} color="#fbbf24" />
+                  <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <Switch checked={borrowOn} onChange={setBorrowOn} disabled={spinning} color="#38bdf8" />
+                  <Handshake className="h-4 w-4 text-sky-300" /> Borrow
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Open</span>
+                  {Array.from({ length: MAX_OPENS }, (_, i) => i + 1).map((n) => (
+                    <button
+                      key={n}
+                      type="button"
+                      disabled={spinning}
+                      onClick={() => {
+                        if (spinning) return;
+                        setOpenCount(n);
+                        setPendingResults(Array.from({ length: n }, () => null));
+                        setSpinToken(0);
+                      }}
+                      className={clsx(
+                        "h-8 w-8 rounded-lg text-sm font-bold transition-colors disabled:opacity-40",
+                        openCount === n ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white",
+                      )}
+                    >
+                      {n}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-1">
-                <span className="mr-1 text-[10px] font-semibold uppercase tracking-wide text-slate-500">Open</span>
-                {Array.from({ length: MAX_OPENS }, (_, i) => i + 1).map((n) => (
-                  <button
-                    key={n}
-                    type="button"
-                    disabled={spinning}
-                    onClick={() => {
-                      if (spinning) return;
-                      setOpenCount(n);
-                      setPendingResults(Array.from({ length: n }, () => null));
-                      setSpinToken(0);
-                    }}
-                    className={clsx(
-                      "h-8 w-8 rounded-lg text-sm font-bold transition-colors disabled:opacity-40",
-                      openCount === n ? "bg-white/15 text-white" : "text-slate-400 hover:bg-white/5 hover:text-white",
-                    )}
-                  >
-                    {n}
-                  </button>
-                ))}
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => void openCase(true)}
+                  disabled={spinning}
+                  className="rounded-md border-2 border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-50"
+                  title="Same reel and odds — no SH spent or credited"
+                >
+                  {spinning ? "Opening…" : "Demo spin"}
+                </button>
+                <button
+                  onClick={() => void openCase(false)}
+                  disabled={spinning}
+                  className="btn-primary px-8 py-2.5 disabled:opacity-50"
+                >
+                  {spinning
+                    ? "Opening…"
+                    : openCount === 1
+                      ? `Open · ${formatCash(paidTotal)}`
+                      : `Open ${openCount}× · ${formatCash(paidTotal)}`}
+                </button>
               </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => void openCase(true)}
-                disabled={spinning}
-                className="rounded-md border-2 border-white/10 px-5 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-50"
-                title="Same reel and odds — no SH spent or credited"
-              >
-                {spinning ? "Opening…" : "Demo spin"}
-              </button>
-              <button
-                onClick={() => void openCase(false)}
-                disabled={spinning}
-                className="btn-primary px-8 py-2.5 disabled:opacity-50"
-              >
-                {spinning
-                  ? "Opening…"
-                  : openCount === 1
-                    ? `Open · ${formatCash(c.price)}`
-                    : `Open ${openCount}× · ${formatCash(totalPrice)}`}
-              </button>
-            </div>
+            {borrowOn && (
+              <div className="rounded-xl border border-sky-400/20 bg-sky-500/5 px-3 py-2.5">
+                <input
+                  type="range"
+                  min={5}
+                  max={Math.round(MAX_BORROW_PCT * 100)}
+                  step={5}
+                  value={Math.round(borrowPct * 100)}
+                  disabled={spinning}
+                  onChange={(e) => setBorrowPct(Number(e.target.value) / 100)}
+                  className="w-full accent-sky-400"
+                />
+                <p className="mt-1 text-[11px] text-sky-200">
+                  Borrow {pctLabel(borrowPct)} · you pay {formatCash(paidTotal)} · keep {pctLabel(keepPct(borrowPct))} of
+                  winnings (up to {pctLabel(MAX_BORROW_PCT)})
+                </p>
+              </div>
+            )}
           </div>
 
           {history.length > 0 && (

@@ -17,13 +17,11 @@ export interface BattlePayout {
 
 export function BattleResultOverlay({
   result,
-  recreateCost,
   onClose,
   onRecreate,
   onReplay,
 }: {
   result: BattlePayout;
-  recreateCost: number;
   onClose: () => void;
   onRecreate: () => void;
   onReplay: () => void;
@@ -88,7 +86,7 @@ export function BattleResultOverlay({
           }}
           className="btn-primary mt-5 w-full py-3 text-sm"
         >
-          Recreate {formatCash(recreateCost)}
+          Recreate
         </button>
         <button
           type="button"

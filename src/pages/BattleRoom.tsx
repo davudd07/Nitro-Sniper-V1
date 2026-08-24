@@ -35,7 +35,7 @@ import { coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinfl
 import { saveBattleDraft } from "../lib/battleDraft";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { isMaxxxWin } from "../data/items";
-import { shouldCelebrateMaxxxWin, useMaxxxWinStore } from "../store/maxxxWinStore";
+import { shouldCelebrateMaxxxWin, useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 
 type BattlePlayer = BattleRosterSeat;
 
@@ -342,8 +342,6 @@ export function BattleRoom() {
       const hitter = players.find((p) => p.slotIndex === slotIndex);
       if (
         shouldCelebrateMaxxxWin({
-          crazy: Boolean(battle?.crazy),
-          jackpot: Boolean(battle?.jackpot),
           yourTeamIndex: you?.teamIndex,
           hitterTeamIndex: hitter?.teamIndex,
         })
@@ -386,11 +384,14 @@ export function BattleRoom() {
         }
       }
       setTimeout(() => {
-        if (caseIndex + 1 < caseSequence.length) {
-          setCaseIndex((i) => i + 1);
-        } else {
-          finishBattle();
-        }
+        void (async () => {
+          await waitUntilMaxxxIdle();
+          if (caseIndex + 1 < caseSequence.length) {
+            setCaseIndex((i) => i + 1);
+          } else {
+            finishBattle();
+          }
+        })();
       }, battle?.fastSpin ? 280 : 650);
     }
   }
@@ -1051,7 +1052,6 @@ export function BattleRoom() {
             {resultOpen && payout && (
               <BattleResultOverlay
                 result={payout}
-                recreateCost={battle.costPerPlayer}
                 onClose={() => setResultOpen(false)}
                 onRecreate={recreateBattle}
                 onReplay={replayBattle}

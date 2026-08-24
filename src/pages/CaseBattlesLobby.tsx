@@ -262,7 +262,7 @@ export function CaseBattlesLobby() {
                     </div>
                   </div>
                   <p className="hidden min-w-0 md:block">
-                    {mode ? <ModeGlyph mode={mode} className="flex-wrap" /> : b.modeId}
+                    {mode ? <ModeGlyph mode={mode} hideVs={b.shared} className="flex-wrap" /> : b.modeId}
                   </p>
                   <div className="hidden min-w-0 md:block">
                     {b.status === "finished" ? (

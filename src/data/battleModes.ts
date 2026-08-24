@@ -25,9 +25,14 @@ export function totalPlayers(mode: BattleMode): number {
 export const MAX_BATTLE_PLAYERS = Math.max(...BATTLE_MODES.map(totalPlayers));
 export const MAX_SHARED_PLAYERS = 6;
 
+/** Free-for-all: every seat is its own team (1v1, 1v1v1, …). */
+export function isFfaMode(mode: BattleMode): boolean {
+  return mode.teamSizes.length > 0 && mode.teamSizes.every((n) => n === 1);
+}
+
 export function battleModesFor(shared: boolean): BattleMode[] {
   if (!shared) return BATTLE_MODES;
-  return BATTLE_MODES.filter((m) => totalPlayers(m) <= MAX_SHARED_PLAYERS);
+  return BATTLE_MODES.filter((m) => isFfaMode(m) && totalPlayers(m) <= MAX_SHARED_PLAYERS);
 }
 
 /** Keep the current format when it still fits; otherwise pick the closest seat count ≤ 6. */

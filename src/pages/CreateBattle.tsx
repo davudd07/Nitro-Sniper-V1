@@ -717,7 +717,11 @@ function ModeDropdown({
       >
         <span className="flex min-w-0 items-center">
           {current ? (
-            <ModeGlyph mode={current} iconClass={totalPlayers(current) >= 6 ? "h-3.5 w-3.5" : "h-4 w-4"} />
+            <ModeGlyph
+              mode={current}
+              hideVs={shared}
+              iconClass={totalPlayers(current) >= 6 ? "h-3.5 w-3.5" : "h-4 w-4"}
+            />
           ) : (
             value
           )}
@@ -745,7 +749,7 @@ function ModeDropdown({
                     active ? "bg-[#4af1f1]/20" : "hover:bg-white/5",
                   )}
                 >
-                  <ModeGlyph mode={m} iconClass={crowdedGlyph ? "h-3.5 w-3.5" : "h-4 w-4"} />
+                  <ModeGlyph mode={m} hideVs={shared} iconClass={crowdedGlyph ? "h-3.5 w-3.5" : "h-4 w-4"} />
                 </button>
               </li>
             );

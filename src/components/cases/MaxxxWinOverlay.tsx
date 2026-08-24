@@ -1,12 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { clsx } from "clsx";
-import { useMaxxxWinStore } from "../../store/maxxxWinStore";
+import { MAXXX_FADE_MS, MAXXX_SHOW_MS, useMaxxxWinStore } from "../../store/maxxxWinStore";
 import { sound } from "../../lib/sound";
 
 const COIN_COUNT = 140;
 const SPARK_COUNT = 40;
-const SHOW_MS = 8000;
-const FADE_MS = 1100;
 
 export function MaxxxWinOverlay() {
   const nonce = useMaxxxWinStore((s) => s.nonce);
@@ -18,15 +16,20 @@ export function MaxxxWinOverlay() {
     setBurst(nonce);
     setFading(false);
     sound.maxxxWin();
-    const fade = window.setTimeout(() => setFading(true), SHOW_MS);
+    const fade = window.setTimeout(() => setFading(true), MAXXX_SHOW_MS);
     const hide = window.setTimeout(() => {
       setBurst(0);
       setFading(false);
       sound.stopMaxxxWin();
-    }, SHOW_MS + FADE_MS);
+      useMaxxxWinStore.getState().clear();
+    }, MAXXX_SHOW_MS + MAXXX_FADE_MS);
     return () => {
       window.clearTimeout(fade);
       window.clearTimeout(hide);
+      if (useMaxxxWinStore.getState().nonce === nonce) {
+        useMaxxxWinStore.getState().clear();
+        sound.stopMaxxxWin();
+      }
     };
   }, [nonce]);
 
@@ -37,8 +40,8 @@ export function MaxxxWinOverlay() {
       return {
         id: `${burst}-c-${i}`,
         left: Math.random() * 100,
-        delay: Math.random() * 2.2,
-        duration: 5.6 + Math.random() * 2.4,
+        delay: Math.random() * 0.45,
+        duration: 2.0 + Math.random() * 0.9,
         size: big ? 28 + Math.random() * 22 : 16 + Math.random() * 14,
         spin: 220 + Math.random() * 720,
         drift: (Math.random() - 0.5) * 140,
@@ -56,9 +59,9 @@ export function MaxxxWinOverlay() {
         id: `${burst}-s-${i}`,
         x: 50 + Math.cos(angle) * dist,
         y: 42 + Math.sin(angle) * dist * 0.72,
-        delay: Math.random() * 1.4,
+        delay: Math.random() * 0.35,
         size: 3 + Math.random() * 7,
-        duration: 1.1 + Math.random() * 1.4,
+        duration: 0.7 + Math.random() * 0.5,
       };
     });
   }, [burst]);

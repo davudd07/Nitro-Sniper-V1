@@ -34,7 +34,8 @@ import { computeJackpotWeights } from "../lib/jackpotOdds";
 import { coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
 import { saveBattleDraft } from "../lib/battleDraft";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
-import { useMaxxxWinStore } from "../store/maxxxWinStore";
+import { isMaxxxWin } from "../data/items";
+import { shouldCelebrateMaxxxWin, useMaxxxWinStore } from "../store/maxxxWinStore";
 
 type BattlePlayer = BattleRosterSeat;
 
@@ -335,7 +336,20 @@ export function BattleRoom() {
   }, [phase, caseIndex, caseSequence.length]);
 
   function handleLanded(slotIndex: number, item: CaseOddsEntry["item"]) {
-    if (item.id === "maxxx_win") useMaxxxWinStore.getState().fire();
+    if (isMaxxxWin(item)) {
+      const you = players.find((p) => p.kind === "you");
+      const hitter = players.find((p) => p.slotIndex === slotIndex);
+      if (
+        shouldCelebrateMaxxxWin({
+          crazy: Boolean(battle?.crazy),
+          jackpot: Boolean(battle?.jackpot),
+          yourTeamIndex: you?.teamIndex,
+          hitterTeamIndex: hitter?.teamIndex,
+        })
+      ) {
+        useMaxxxWinStore.getState().fire();
+      }
+    }
     setRoundStates((prev) => {
       const cur = prev[slotIndex] ?? { total: 0, history: [] };
       const next = {

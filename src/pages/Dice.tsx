@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeftRight, Dices, Percent } from "lucide-react";
+import { ArrowLeftRight, Dices, Percent, RefreshCw } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
@@ -354,7 +354,30 @@ export function Dice() {
             )}
           </div>
 
-          <div className="mx-auto grid max-w-3xl gap-2 pt-6 sm:grid-cols-3">
+          <div className="mx-auto flex max-w-3xl justify-center pt-6">
+            <div className="grid grid-cols-2 gap-1 rounded-lg bg-black/35 p-1">
+              {(["under", "over"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  disabled={locked}
+                  onClick={() => {
+                    if (condition === c) return;
+                    swapCondition();
+                  }}
+                  className={clsx(
+                    "inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-1.5 text-xs font-extrabold uppercase tracking-wide disabled:opacity-50",
+                    condition === c ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400 hover:text-white",
+                  )}
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
+                  Roll {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="mx-auto grid max-w-3xl gap-2 pt-3 sm:grid-cols-3">
             <StatField
               label="Multiplier"
               value={formatDiceMulti(multi)}
@@ -365,17 +388,7 @@ export function Dice() {
             <StatField
               label={condition === "under" ? "Roll under" : "Roll over"}
               value={target.toFixed(2)}
-              icon={
-                <button
-                  type="button"
-                  disabled={locked}
-                  onClick={swapCondition}
-                  className="grid h-7 w-7 place-items-center rounded-md text-cyan-200 hover:bg-white/10 disabled:opacity-40"
-                  title="Swap under / over"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                </button>
-              }
+              icon={<RefreshCw className="h-3.5 w-3.5 text-slate-400" />}
               disabled={locked}
               onChange={(raw) => applyTarget(Number(raw))}
             />
@@ -409,9 +422,9 @@ function StatField({
   onChange: (raw: string) => void;
 }) {
   return (
-    <label className="rounded-xl border-2 border-white/10 bg-black/30 px-3 py-2">
-      <span className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</span>
-      <span className="mt-1 flex items-center gap-2">
+    <div className="rounded-xl border-2 border-white/10 bg-black/30 px-3 py-2">
+      <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">{label}</p>
+      <div className="mt-1 flex items-center gap-2">
         <input
           type="text"
           inputMode="decimal"
@@ -421,7 +434,7 @@ function StatField({
           className="min-w-0 flex-1 bg-transparent font-mono text-lg font-bold text-white outline-none disabled:opacity-50"
         />
         {icon}
-      </span>
-    </label>
+      </div>
+    </div>
   );
 }

@@ -11,7 +11,7 @@ import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
 import { formatDropCountdown } from "../lib/xp";
-import { RAKEBACK_EARLY_PCT, useEconomyStore } from "../store/economyStore";
+import { useEconomyStore } from "../store/economyStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { MONTHLY_DROP_SH, useRewardsStore, WEEKLY_DROP_SH } from "../store/rewardsStore";
 import { useToastStore } from "../store/toastStore";
@@ -133,11 +133,9 @@ function DropCard({
 
 export function Rewards() {
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
-  const rakebackMatureAt = useEconomyStore((s) => s.rakebackMatureAt);
   const pendingDailyRakeback = useEconomyStore((s) => s.pendingDailyRakeback);
   const dailyMatureAt = useEconomyStore((s) => s.dailyMatureAt);
   const claimRakeback = useEconomyStore((s) => s.claimRakeback);
-  const claimEarlyRakeback = useEconomyStore((s) => s.claimEarlyRakeback);
   const claimDailyRakeback = useEconomyStore((s) => s.claimDailyRakeback);
   const credit = useEconomyStore((s) => s.credit);
   const weeklyReadyAt = useRewardsStore((s) => s.weeklyReadyAt);
@@ -156,9 +154,7 @@ export function Rewards() {
   }, []);
 
   const pending = pendingRakeback ?? 0;
-  const matureAt = rakebackMatureAt ?? 0;
-  const instantMature = pending > 0 && matureAt <= now;
-  const canClaimEarly = pending > 0 && !instantMature;
+  const canClaimInstant = pending > 0;
   const dailyPending = pendingDailyRakeback ?? 0;
   const dailyAt = dailyMatureAt ?? 0;
   const dailyMature = dailyPending > 0 && dailyAt <= now;
@@ -168,26 +164,11 @@ export function Rewards() {
   function handleClaimInstant() {
     const amt = claimRakeback();
     if (amt <= 0) {
-      push(
-        pending > 0
-          ? "Instant Drop is still maturing — wait for the timer or claim early at 70%."
-          : "Nothing to claim yet — play a real stake first.",
-        "info",
-      );
+      push("Nothing to claim yet — play a real stake first.", "info");
       return;
     }
     sound.win("small");
     push(`Claimed ${formatCash(amt)} rakeback.`, "success");
-  }
-
-  function handleClaimEarly() {
-    const amt = claimEarlyRakeback();
-    if (amt <= 0) {
-      push("Nothing to claim early.", "info");
-      return;
-    }
-    sound.win("small");
-    push(`Claimed ${formatCash(amt)} early (70% of Instant Drop).`, "success");
   }
 
   function handleWeekly() {
@@ -236,23 +217,14 @@ export function Rewards() {
           variant="green"
           art={<CoinStackArt accent="green" />}
           amount={pending > 0 ? `${formatCash(pending)}` : undefined}
-          footer={
-            pending <= 0 ? "Not claimable" : instantMature ? "Claim" : formatDropCountdown(matureAt - now)
-          }
-          footerDisabled={pending <= 0 || !instantMature}
+          footer={pending <= 0 ? "Not claimable" : "Claim"}
+          footerDisabled={!canClaimInstant}
           onFooter={handleClaimInstant}
-          secondary={
-            canClaimEarly
-              ? `Claim early · ${formatCash(pending * RAKEBACK_EARLY_PCT)}`
-              : undefined
-          }
-          onSecondary={handleClaimEarly}
           info={
             <DropInfo title="Instant drop">
               <p>
-                Rakeback from real demo stakes (bet &gt; 0). Wait 24 hours after the first pending accrual to
-                claim 100%. Claim early and you only receive {formatPercent(RAKEBACK_EARLY_PCT)} of that amount —
-                the rest is forfeited.
+                Rakeback from real demo stakes (bet &gt; 0). Instant Drop is claimable as soon as it accrues — no
+                wait. Daily Drop is the 24-hour rakeback.
               </p>
             </DropInfo>
           }
@@ -317,9 +289,8 @@ export function Rewards() {
 
       <p className="text-xs leading-relaxed text-slate-500">
         Instant Drop and Daily Drop each accrue {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real
-        demo stakes (bet &gt; 0), plus your VIP rakeback bonus. Instant: full claim after 24 hours, or claim early for{" "}
-        {formatPercent(RAKEBACK_EARLY_PCT)} of the pending amount. Daily: 24h mature, 100% claim only. Game RTP is
-        unchanged. Chat rain still lives in the chat sidebar.
+        demo stakes (bet &gt; 0), plus your VIP rakeback bonus. Instant Drop is claimable immediately. Daily Drop
+        matures for 24 hours, then pays 100%. Game RTP is unchanged. Chat rain still lives in the chat sidebar.
       </p>
 
       <RankRewardsGrid tiers={tiers} currentId={vip.current.id} lifetimeXp={lifetimeXp} />

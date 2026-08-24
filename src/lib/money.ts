@@ -35,7 +35,7 @@ export const LOCK_META: Record<
     shortName: "World Locks",
     icon: "/images/currency/world-lock.png",
     wlPer: 1,
-    maxFractionDigits: 2,
+    maxFractionDigits: 0,
   },
   dl: {
     id: "dl",
@@ -44,7 +44,7 @@ export const LOCK_META: Record<
     shortName: "Diamond Locks",
     icon: "/images/currency/diamond-lock.png",
     wlPer: WL_PER_DL,
-    maxFractionDigits: 4,
+    maxFractionDigits: 2,
   },
   bgl: {
     id: "bgl",
@@ -53,7 +53,7 @@ export const LOCK_META: Record<
     shortName: "Blue Gem Locks",
     icon: "/images/currency/blue-gem-lock.png",
     wlPer: WL_PER_BGL,
-    maxFractionDigits: 6,
+    maxFractionDigits: 2,
   },
 };
 
@@ -77,12 +77,19 @@ export function roundWl(n: number): number {
   return Math.round(n * 100 + Number.EPSILON * Math.sign(n || 1)) / 100;
 }
 
+/** Always round toward −∞ so display never shows more than the player has. */
+export function floorToDecimals(n: number, digits: number): number {
+  if (!Number.isFinite(n)) return 0;
+  const d = Math.max(0, Math.min(8, digits | 0));
+  if (d === 0) return Math.floor(n + 1e-9);
+  const f = 10 ** d;
+  return Math.floor(n * f + 1e-9) / f;
+}
+
 export function worldLocksToDisplay(wl: number, unit: LockUnit): number {
   if (!Number.isFinite(wl)) return 0;
   const meta = LOCK_META[unit];
-  const raw = wl / meta.wlPer;
-  const f = 10 ** meta.maxFractionDigits;
-  return Math.round((raw + Number.EPSILON * Math.sign(raw || 1)) * f) / f;
+  return floorToDecimals(wl / meta.wlPer, meta.maxFractionDigits);
 }
 
 export function displayToWorldLocks(display: number, unit: LockUnit): number {
@@ -97,13 +104,15 @@ export function parseLockInput(raw: string, unit: LockUnit): number {
 }
 
 export function inputStepFor(unit: LockUnit): string {
-  return unit === "bgl" ? "0.000001" : unit === "dl" ? "0.0001" : "0.01";
+  return unit === "wl" ? "1" : "0.01";
 }
 
 export function formatLockNumber(wl: number, unit: LockUnit): string {
   const n = worldLocksToDisplay(wl, unit);
+  const digits = LOCK_META[unit].maxFractionDigits;
   return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: LOCK_META[unit].maxFractionDigits,
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
   }).format(n);
 }
 

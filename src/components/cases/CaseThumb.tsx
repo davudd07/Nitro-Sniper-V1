@@ -42,10 +42,10 @@ export function CaseThumb({
         color={color}
         stickers={stickers}
         compact={compact}
-        iconSize={density === "list" ? "xs" : density === "cozy" ? "sm" : "md"}
+        iconSize={density === "list" ? "xxs" : density === "cozy" ? "xs" : "sm"}
         className={clsx(
           "relative z-[1] w-auto shrink-0 drop-shadow-lg transition-transform duration-200 group-hover:scale-105",
-          compact ? "h-[92%] max-w-[94%]" : density === "cozy" ? "h-[86%] max-w-[78%]" : "h-[88%] max-w-[72%]",
+          compact ? "h-[96%] max-w-[96%]" : density === "cozy" ? "h-[90%] max-w-[84%]" : "h-[90%] max-w-[78%]",
         )}
       />
     </div>

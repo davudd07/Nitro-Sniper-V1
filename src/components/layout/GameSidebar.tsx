@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, ArrowUpCircle, Hash, ChevronLeft, ChevronRight, PanelLeft, Gift } from "lucide-react";
+import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, ArrowUpCircle, Hash, ChevronLeft, ChevronRight, PanelLeft, Gift, Users } from "lucide-react";
 import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useEconomyStore } from "../../store/economyStore";
@@ -80,6 +80,24 @@ export function GameSidebar() {
                 )}
               />
             )}
+          </NavLink>
+
+          <NavLink
+            to="/affiliate"
+            title="Affiliate"
+            onClick={() => sound.click()}
+            className={({ isActive }) =>
+              clsx(
+                "flex items-center gap-2.5 rounded-md border-2 px-2.5 py-2 text-[13px] font-semibold transition-colors",
+                open ? "justify-start" : "justify-center px-0",
+                isActive
+                  ? "border-cyan-400/50 bg-cyan-400/15 text-white"
+                  : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200",
+              )
+            }
+          >
+            <Users className="h-4 w-4 shrink-0" />
+            {open && <span className="truncate">Affiliate</span>}
           </NavLink>
 
           <p className={clsx("px-1 pt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600", !open && "sr-only")}>

@@ -30,7 +30,7 @@ type Outcome = "win" | "lose" | "push" | "blackjack" | null;
 type ChipDef = { value: number; from: string; to: string; text: string; custom?: boolean };
 
 const CHIPS: ChipDef[] = [
-  { value: 10, from: "#f8fafc", to: "#cbd5e1", text: "#0f172a" },
+  { value: 1, from: "#f8fafc", to: "#cbd5e1", text: "#0f172a" },
   { value: 50, from: "#fda4af", to: "#e11d48", text: "#fff" },
   { value: 100, from: "#93c5fd", to: "#1d4ed8", text: "#fff" },
   { value: 500, from: "#86efac", to: "#15803d", text: "#fff" },
@@ -48,7 +48,7 @@ type UndoEntry =
 function ChipFace({ chip, size }: { chip: ChipDef; size: number }) {
   const unit = useSettingsStore((s) => s.lockUnit);
   const rim = Math.max(2, Math.round(size * 0.07));
-  const label = compactLockLabel(chip.value, unit);
+  const label = chip.custom ? compactLockLabel(chip.value, unit) : String(chip.value);
   return (
     <div
       className="relative grid shrink-0 place-items-center overflow-hidden rounded-full font-black select-none"

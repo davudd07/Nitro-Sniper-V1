@@ -177,6 +177,7 @@ export function CaseReel({
   goldSpinEnabled,
   duration = 6800,
   goldDuration = 3800,
+  goldChargeMs = 900,
   laneSeed = 0,
   size = "md",
   orientation = "horizontal",
@@ -192,6 +193,7 @@ export function CaseReel({
   goldSpinEnabled: boolean;
   duration?: number;
   goldDuration?: number;
+  goldChargeMs?: number;
   laneSeed?: number;
   size?: BattleReelSize;
   orientation?: Orientation;
@@ -338,7 +340,7 @@ export function CaseReel({
       };
       setStrip(goldStrip);
       setPhase("gold");
-    }, 900);
+    }, goldChargeMs);
   }
 
   function confirmGoldSpin() {
@@ -586,7 +588,7 @@ const ReelSlot = memo(function ReelSlot({
             height={iconPx}
             decoding="async"
             draggable={false}
-            className={clsx("shrink-0", maxxx ? "object-contain" : "rounded object-cover")}
+            className={clsx("shrink-0", maxxx || item.icon === "leafboard" ? "pixelated object-contain" : "rounded object-cover")}
             style={{ width: maxxx ? Math.round(iconPx * 1.7) : iconPx, height: iconPx }}
           />
           {maxxx ? (

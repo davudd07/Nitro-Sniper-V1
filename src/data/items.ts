@@ -9,7 +9,7 @@ export type IconKey =
   | "shield" | "sword" | "zap" | "rocket" | "trophy" | "diamond"
   | "feather" | "leaf" | "anchor" | "compass" | "key" | "moon"
   | "sun" | "skull" | "ghost" | "wand" | "orbit" | "atom"
-  | "clover" | "eye" | "hexagon" | "infinity" | "meteor" | "bird" | "maxxx";
+  | "clover" | "eye" | "hexagon" | "infinity" | "meteor" | "bird" | "maxxx" | "leafboard";
 
 export interface CaseItem {
   id: string;
@@ -22,6 +22,7 @@ export interface CaseItem {
 export const ITEMS: Record<string, CaseItem> = {
   // --- Starter Cache pool ---
   pebble_charm: { id: "pebble_charm", name: "Pebble Charm", value: 8, rarity: "common", icon: "leaf" },
+  leafboard: { id: "leafboard", name: "Leafboard", value: 200, rarity: "rare", icon: "leafboard" },
   copper_coil: { id: "copper_coil", name: "Copper Coil", value: 15, rarity: "common", icon: "hexagon" },
   clay_bead: { id: "clay_bead", name: "Clay Bead", value: 21, rarity: "common", icon: "clover" },
   tin_locket: { id: "tin_locket", name: "Tin Locket", value: 30, rarity: "uncommon", icon: "key" },
@@ -139,8 +140,14 @@ export function isMaxxxWin(item: { id: string }): boolean {
   return item.id === "maxxx_win";
 }
 
+export function iconImageSrc(icon: IconKey): string {
+  if (icon === "maxxx") return "/images/items/maxxx.png";
+  if (icon === "leafboard") return "/images/items/leafboard.png";
+  return `/images/items/${icon}.webp`;
+}
+
 export function itemImageSrc(item: { id: string; icon: IconKey }): string {
   if (item.id === "maxxx_win" || item.icon === "maxxx") return "/images/items/maxxx.png";
   if (item.id === "__gold_indicator__") return "/images/items/gold-spin.png";
-  return `/images/items/${item.icon}.webp`;
+  return iconImageSrc(item.icon);
 }

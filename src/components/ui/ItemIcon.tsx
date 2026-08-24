@@ -1,6 +1,6 @@
-import type { IconKey } from "../../data/items";
-import { RARITIES, type RarityId } from "../../data/rarities";
 import { clsx } from "clsx";
+import { iconImageSrc, type IconKey } from "../../data/items";
+import { RARITIES, type RarityId } from "../../data/rarities";
 
 export function ItemIcon({
   icon,
@@ -19,6 +19,7 @@ export function ItemIcon({
   lite?: boolean;
 }) {
   const maxxx = icon === "maxxx";
+  const pixel = icon === "leafboard";
   const r = RARITIES[rarity];
   const dims = maxxx
     ? { xs: "h-4 w-8 p-px", sm: "h-8 w-16 p-0.5", md: "h-12 w-24 p-1", lg: "h-16 w-32 p-1.5", xl: "h-20 w-40 p-2" }[size]
@@ -29,7 +30,7 @@ export function ItemIcon({
     return (
       <div className={clsx("shrink-0", dims, className)}>
         <img
-          src="/images/items/maxxx.png"
+          src={iconImageSrc(icon)}
           alt=""
           loading={lite ? "eager" : "lazy"}
           decoding="async"
@@ -50,11 +51,11 @@ export function ItemIcon({
       }}
     >
       <img
-        src={`/images/items/${icon}.webp`}
+        src={iconImageSrc(icon)}
         alt=""
         loading={lite ? "eager" : "lazy"}
         decoding="async"
-        className="h-full w-full rounded-lg object-cover"
+        className={clsx("h-full w-full rounded-lg", pixel ? "pixelated object-contain" : "object-cover")}
         draggable={false}
       />
     </div>

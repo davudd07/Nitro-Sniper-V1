@@ -34,6 +34,7 @@ function seedRecords(): Partial<Record<WinLeaderGame, WinLeaderRecord>> {
     jackpot: { name: "EmberDrift", multiplier: 6.12, at: SEED_AT },
     coinflip: { name: "GlassWolf", multiplier: 30.72, at: SEED_AT },
     upgrader: { name: "PrismKite", multiplier: 24.5, at: SEED_AT },
+    dice: { name: "RollMint", multiplier: 19.2, at: SEED_AT },
     keno: { name: "NeonWisp", multiplier: 70, at: SEED_AT },
   };
 }
@@ -64,6 +65,7 @@ export function winLeaderGameFromPath(pathname: string): WinLeaderGame | null {
   if (pathname === "/jackpot" || pathname.startsWith("/jackpot/")) return "jackpot";
   if (pathname === "/coinflip" || pathname.startsWith("/coinflip/")) return "coinflip";
   if (pathname === "/upgrader" || pathname.startsWith("/upgrader/")) return "upgrader";
+  if (pathname === "/dice" || pathname.startsWith("/dice/")) return "dice";
   if (pathname === "/keno" || pathname.startsWith("/keno/")) return "keno";
   if (pathname.startsWith("/cases")) return "cases";
   if (pathname.startsWith("/battles")) return "battles";
@@ -78,7 +80,7 @@ export function isBattlesLobbyPath(pathname: string): boolean {
 export function hidesGlobalWinLeader(pathname: string): boolean {
   if (isBattlesLobbyPath(pathname)) return true;
   const game = winLeaderGameFromPath(pathname);
-  return game === "mines" || game === "coinflip" || game === "jackpot" || game === "upgrader";
+  return game === "mines" || game === "coinflip" || game === "jackpot" || game === "upgrader" || game === "dice";
 }
 
 function isWinLeaderGame(value: string): value is WinLeaderGame {

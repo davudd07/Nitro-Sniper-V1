@@ -19,9 +19,10 @@ export const JACKPOT_COLORS = [
 export const JACKPOT_HOUSE_EDGE = 0.09;
 
 export const JACKPOT_POTS = [
-  { id: "small", label: "Small", min: 5, max: 100, blurb: "5–100 SH" },
-  { id: "large", label: "Large", min: 100, max: 10_000, blurb: "100–10,000 SH" },
-  { id: "unlimited", label: "Unlimited", min: 10_000, max: 100_000, blurb: "10,000–100,000 SH" },
+  { id: "small", label: "Small", min: 5, max: 1000, blurb: "5–1,000 WL" },
+  { id: "medium", label: "Medium", min: 1000, max: 10_000, blurb: "1,000–10,000 WL" },
+  { id: "large", label: "Large", min: 10_000, max: 50_000, blurb: "10,000–50,000 WL" },
+  { id: "unlimited", label: "Unlimited", min: 50_000, max: 1_000_000, blurb: "50,000–1,000,000 WL" },
 ] as const;
 
 export type JackpotPotId = (typeof JACKPOT_POTS)[number]["id"];
@@ -78,6 +79,7 @@ export function youEntry(entries: JackpotEntry[]): JackpotEntry | undefined {
 export const useJackpotStore = create<JackpotStore>((set, get) => ({
   pots: {
     small: emptyPot(),
+    medium: emptyPot(),
     large: emptyPot(),
     unlimited: emptyPot(),
   },

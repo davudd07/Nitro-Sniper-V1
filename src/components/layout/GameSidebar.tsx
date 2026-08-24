@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from "react-router-dom";
-import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, ArrowUpCircle, Hash, ChevronLeft, ChevronRight, PanelLeft, Gift, Users } from "lucide-react";
+import { Gem, Bomb, Spade, Package, Swords, Coins, Circle, ArrowUpCircle, Dices, Hash, ChevronLeft, ChevronRight, PanelLeft, Gift, Users } from "lucide-react";
 import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useEconomyStore } from "../../store/economyStore";
@@ -14,6 +14,7 @@ const LINKS = [
   { to: "/jackpot", label: "Jackpot", icon: Coins, end: false },
   { to: "/coinflip", label: "Coin Flip", icon: Circle, end: false },
   { to: "/upgrader", label: "Upgrader", icon: ArrowUpCircle, end: false },
+  { to: "/dice", label: "Dice", icon: Dices, end: false },
 ];
 
 // Mirrored chat chevron: full square tab on the outside of the rail (`left-full`).

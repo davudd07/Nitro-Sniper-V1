@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Handshake, Sparkles } from "lucide-react";
+import { ArrowLeft, Handshake, Sparkles, Zap } from "lucide-react";
 import { clsx } from "clsx";
 import { getCase, rollCaseItem } from "../data/cases";
 import { CaseReel } from "../components/cases/CaseReel";
@@ -28,6 +28,12 @@ import type { CaseOddsEntry } from "../data/cases";
 import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 
 const MAX_OPENS = 4;
+const SOLO_SPIN_MS = 6800;
+const SOLO_GOLD_MS = 3800;
+const SOLO_GOLD_CHARGE_MS = 900;
+const QUICK_SPIN_MS = 1600;
+const QUICK_GOLD_MS = 1100;
+const QUICK_GOLD_CHARGE_MS = 320;
 
 export function CaseOpenPage() {
   const { caseId } = useParams();
@@ -41,6 +47,7 @@ export function CaseOpenPage() {
   const [history, setHistory] = useState<{ item: CaseItem; id: string }[]>([]);
   const [borrowOn, setBorrowOn] = useState(false);
   const [borrowPct, setBorrowPct] = useState(0.5);
+  const [quickSpin, setQuickSpin] = useState(false);
   const landedRef = useRef(0);
   const roundCountRef = useRef(1);
   const roundItemsRef = useRef<CaseItem[]>([]);
@@ -175,6 +182,9 @@ export function CaseOpenPage() {
                 spinToken={spinToken}
                 goldSpinEnabled={goldSpin}
                 requireGoldConfirm
+                duration={quickSpin ? QUICK_SPIN_MS : SOLO_SPIN_MS}
+                goldDuration={quickSpin ? QUICK_GOLD_MS : SOLO_GOLD_MS}
+                goldChargeMs={quickSpin ? QUICK_GOLD_CHARGE_MS : SOLO_GOLD_CHARGE_MS}
                 size={reelSize}
                 orientation="horizontal"
                 laneSeed={i + 1}
@@ -189,6 +199,10 @@ export function CaseOpenPage() {
                 <div className="flex items-center gap-2 text-sm text-slate-300">
                   <Switch checked={goldSpin} onChange={setGoldSpin} disabled={spinning} color="#fbbf24" />
                   <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
+                </div>
+                <div className="flex items-center gap-2 text-sm text-slate-300">
+                  <Switch checked={quickSpin} onChange={setQuickSpin} disabled={spinning} color="#67e8f9" />
+                  <Zap className="h-4 w-4 text-cyan-300" /> Quick spin
                 </div>
                 <div className="flex items-center gap-2 text-sm text-slate-300">
                   <Switch checked={borrowOn} onChange={setBorrowOn} disabled={spinning} color="#38bdf8" />

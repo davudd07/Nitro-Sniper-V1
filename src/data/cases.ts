@@ -68,6 +68,7 @@ const CASE_DEFS: CaseDef[] = [
       ["jade_sprout", 1300],
       ["azure_shard", 700],
       ["storm_feather", 500],
+      ["leafboard", 300],
       ["ember_core", 250],
       ["solar_ingot", 150],
       ["starlit_crown", 100],

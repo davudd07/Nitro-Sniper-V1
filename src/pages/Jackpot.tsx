@@ -30,9 +30,10 @@ import { useIdentityStore } from "../store/identityStore";
 import { PlayerTag } from "../components/identity/PlayerTag";
 
 function jackpotPresets(id: JackpotPotId): number[] {
-  if (id === "small") return [5, 50, 100];
-  if (id === "large") return [100, 500, 1000, 5000, 10_000];
-  return [10_000, 25_000, 50_000, 100_000];
+  if (id === "small") return [5, 50, 100, 250, 500, 1000];
+  if (id === "medium") return [1000, 2500, 5000, 7500, 10_000];
+  if (id === "large") return [10_000, 20_000, 35_000, 50_000];
+  return [50_000, 100_000, 250_000, 500_000, 1_000_000];
 }
 
 export function JackpotPage() {
@@ -203,7 +204,7 @@ export function JackpotPage() {
           <StatRow label="House edge" value={formatPercent(JACKPOT_HOUSE_EDGE)} />
           <StatRow label="Winner payout" value="91% of the pot" />
           <StatRow label="RTP" value={formatPercent(1 - JACKPOT_HOUSE_EDGE)} />
-          <p>Three independent pots. Bots match your exact bet. The circular wheel is weighted by each player’s share of the pot.</p>
+          <p>Four independent pots. Bots match your exact bet. The circular wheel is weighted by each player’s share of the pot.</p>
         </InfoButton>
       </div>
 

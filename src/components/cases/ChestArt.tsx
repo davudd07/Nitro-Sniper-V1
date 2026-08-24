@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react";
 import { clsx } from "clsx";
 import type { CaseItem } from "../../data/items";
-import { ITEMS } from "../../data/items";
+import { ITEMS, itemImageSrc } from "../../data/items";
 import { RARITIES } from "../../data/rarities";
 import { CHEST_ASPECT, compactPileStickers, type ChestSticker } from "../../lib/chest";
 
@@ -69,6 +69,7 @@ export function ChestArt({
         const item = ITEMS[sticker.itemId] as CaseItem | undefined;
         if (!item) return null;
         const maxxx = item.icon === "maxxx";
+        const pixel = item.icon === "leafboard";
         const ring = RARITIES[item.rarity].ring;
         return (
           <div
@@ -86,10 +87,10 @@ export function ChestArt({
             }}
           >
             <img
-              src={maxxx ? "/images/items/maxxx.png" : `/images/items/${item.icon}.webp`}
+              src={itemImageSrc(item)}
               alt=""
               draggable={false}
-              className="h-full w-full object-contain"
+              className={clsx("h-full w-full object-contain", pixel && "pixelated")}
             />
           </div>
         );

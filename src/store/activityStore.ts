@@ -11,6 +11,7 @@ export const ACTIVITY_GAMES = [
   "jackpot",
   "coinflip",
   "upgrader",
+  "dice",
   "keno",
 ] as const;
 
@@ -24,6 +25,7 @@ export const ACTIVITY_GAME_LABELS: Record<ActivityGame, string> = {
   jackpot: "Jackpot",
   coinflip: "Coin Flip",
   upgrader: "Upgrader",
+  dice: "Dice",
   keno: "Keno",
 };
 

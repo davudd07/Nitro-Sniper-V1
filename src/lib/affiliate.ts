@@ -120,7 +120,7 @@ export const DEMO_REFERRALS: AffiliateReferral[] = [
   demoRow("pixelwager", "#a78bfa", 4_780, 63, HOUSE_EDGE.coinflip, "active"),
   demoRow("mossqueen", "#34d399", 3_320, 29, HOUSE_EDGE.battles, "active"),
   demoRow("tidebox", "#38bdf8", 1_540, 17, HOUSE_EDGE.upgrader, "idle"),
-  demoRow("emberlane", "#fb7185", 890, 11, HOUSE_EDGE.keno, "idle"),
+  demoRow("emberlane", "#fb7185", 890, 11, HOUSE_EDGE.dice, "idle"),
 ];
 
 export const DEMO_COMMISSION_TOTAL = DEMO_REFERRALS.reduce((sum, row) => sum + referralCommission(row), 0);

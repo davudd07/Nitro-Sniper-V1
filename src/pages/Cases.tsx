@@ -9,7 +9,8 @@ import { CatalogSwitch, type CaseCatalogKind } from "../components/cases/Catalog
 import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { CommunityEarningsModal } from "../components/cases/CommunityEarningsModal";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
-import { formatCash, formatPercent, formatXp } from "../lib/format";
+import { formatPercent, formatXp } from "../lib/format";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { formatTicketRange } from "../lib/caseTickets";
 import { matchesCaseName } from "../lib/caseSearch";
 import { RARITIES } from "../data/rarities";
@@ -242,7 +243,9 @@ function CommunityCaseCard({
       <div className="flex items-start justify-between gap-2 p-3">
         <div className="min-w-0">
           <p className="truncate font-semibold text-white">{c.name}</p>
-          <p className="font-mono text-sm font-bold text-emerald-200">{formatCash(c.price)}</p>
+          <p className="font-bold text-emerald-200">
+            <CashAmount wl={c.price} className="text-sm" />
+          </p>
           {c.creatorName ? <p className="mt-0.5 truncate text-[11px] text-slate-500">by {c.creatorName}</p> : null}
         </div>
         <button
@@ -255,7 +258,7 @@ function CommunityCaseCard({
         </button>
       </div>
       <p className="sr-only">
-        Creator commission {formatCash(perOpen)} per paid open ({formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of
+        Creator commission <CashAmount wl={perOpen} iconClassName="h-3 w-3" /> per paid open ({formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of
         house edge)
       </p>
     </div>
@@ -272,7 +275,7 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
         <div className="mb-1 flex items-center justify-between gap-2">
           <p className="font-semibold text-white">{c.name}</p>
           <InfoButton title={`${c.name} — Odds & House Edge`}>
-            <StatRow label="Price" value={`${formatCash(c.price)}`} />
+            <StatRow label="Price" value={<CashAmount wl={c.price} />} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
             <p className="pt-1">{c.blurb}</p>
@@ -295,7 +298,7 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
                     >
                       <span style={{ color: RARITIES[o.item.rarity].text }}>{o.item.name}</span>
                       <span className="text-slate-400">
-                        {formatCash(o.item.value)} · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
+                        <CashAmount wl={o.item.value} iconClassName="h-3 w-3" /> · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
                         <span className="ml-1.5 font-mono text-slate-500">#{formatTicketRange(o.ticketStart, o.ticketEnd)}</span>
                         {adminView && o.goldTier ? (
                           <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
@@ -312,7 +315,9 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
         <RiskBadge risk={c.risk} className="mb-2" />
         <p className="mb-3 text-xs text-slate-500">{c.blurb}</p>
         <Link to={`/cases/${c.id}`} className="btn-primary block w-full py-2 text-center text-sm">
-          Open · {formatCash(c.price)}
+          <span className="inline-flex items-center justify-center gap-1">
+            Open · <CashAmount wl={c.price} iconClassName="h-4 w-4" />
+          </span>
         </Link>
       </div>
     </div>

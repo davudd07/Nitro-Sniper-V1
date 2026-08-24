@@ -35,7 +35,7 @@ export function InfoButton({ title, children }: { title: string; children: React
   );
 }
 
-export function StatRow({ label, value }: { label: string; value: string }) {
+export function StatRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-center justify-between border-b border-white/5 py-1.5 last:border-0">
       <span className="text-slate-400">{label}</span>

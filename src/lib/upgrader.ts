@@ -1,6 +1,6 @@
 import { ITEMS, type CaseItem } from "../data/items";
 import { currentLockUnit } from "./format";
-import { displayToWorldLocks, formatLockNumber } from "./money";
+import { displayToWorldLocks, formatLockNumber, worldLocksToDisplay } from "./money";
 import { HOUSE_EDGE } from "./rakeback";
 
 /** 5% Upgrader edge unless VIP admin overrides `upgrader`. */
@@ -95,6 +95,13 @@ export function minTargetForSource(source: number): number {
 
 export function formatUpgraderStake(value: number): string {
   return formatLockNumber(ceilToCents(value), currentLockUnit());
+}
+
+/** Active-unit number for an input box (empty when the stake is 0). */
+export function upgraderInputString(wl: number): string {
+  const n = worldLocksToDisplay(ceilToCents(wl), currentLockUnit());
+  if (!(n > 0)) return "";
+  return String(n);
 }
 
 /** Parse a typed lock amount in the active display unit; empty/invalid → 0 WL. Always ceil-to-cents. */

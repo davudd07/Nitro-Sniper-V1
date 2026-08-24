@@ -4,7 +4,8 @@ import { getCase } from "../../data/cases";
 import { CaseThumb } from "./CaseThumb";
 import { RiskBadge } from "./RiskBadge";
 import { ItemCard } from "../ui/ItemCard";
-import { formatCash, formatPercent } from "../../lib/format";
+import { formatPercent } from "../../lib/format";
+import { CashAmount } from "../ui/CurrencyIcon";
 import { sound } from "../../lib/sound";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../../lib/communityCases";
 
@@ -33,11 +34,17 @@ export function CasePreviewModal({
                 <h3 className="truncate text-lg font-semibold text-white">{c.name}</h3>
                 <RiskBadge risk={c.risk} />
               </div>
-              <p className="text-sm text-slate-400">
-                {formatCash(c.price)} · {formatPercent(c.rtp, 0)} RTP
-                {c.community
-                  ? ` · ${formatCash(communityCommissionPerOpen(c.price, c.houseEdge))} creator (${formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of edge)`
-                  : ""}
+              <p className="flex flex-wrap items-center gap-1 text-sm text-slate-400">
+                <CashAmount wl={c.price} iconClassName="h-3.5 w-3.5" /> · {formatPercent(c.rtp, 0)} RTP
+                {c.community ? (
+                  <>
+                    {" "}
+                    · <CashAmount wl={communityCommissionPerOpen(c.price, c.houseEdge)} iconClassName="h-3 w-3" /> creator
+                    ({formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of edge)
+                  </>
+                ) : (
+                  ""
+                )}
               </p>
               {c.community && c.creatorName ? (
                 <p className="text-[11px] text-slate-500">Community · {c.creatorName}</p>

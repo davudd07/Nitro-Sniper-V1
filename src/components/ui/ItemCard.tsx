@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import type { CaseItem } from "../../data/items";
 import { RARITIES } from "../../data/rarities";
 import { ItemIcon } from "./ItemIcon";
-import { formatCash } from "../../lib/format";
+import { CashAmount } from "./CurrencyIcon";
 
 export function ItemCard({
   item,
@@ -39,7 +39,7 @@ export function ItemCard({
           {item.name}
         </p>
         <p className="text-[13px] font-semibold" style={{ color: r.text }}>
-          {formatCash(item.value)}
+          <CashAmount wl={item.value} className="justify-center" iconClassName="h-3.5 w-3.5" />
         </p>
         {showChance && probability !== undefined && (
           <p className="text-[10px] text-slate-500">{(probability * 100).toFixed(probability < 0.001 ? 4 : 2)}%</p>

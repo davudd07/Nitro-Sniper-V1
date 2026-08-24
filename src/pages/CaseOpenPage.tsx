@@ -19,6 +19,7 @@ import { takeStake } from "../lib/stake";
 import { keepPct, MAX_BORROW_PCT, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatCash, formatPercent } from "../lib/format";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { formatTicketRange } from "../lib/caseTickets";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
 import type { CaseItem } from "../data/items";
@@ -147,7 +148,7 @@ export function CaseOpenPage() {
             ) : null}
           </div>
           <InfoButton title={`${c.name} — Odds & House Edge`}>
-            <StatRow label="Price" value={`${formatCash(c.price)}`} />
+            <StatRow label="Price" value={<CashAmount wl={c.price} />} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
             <StatRow label="Ticket pool" value="1,000,000" />
@@ -231,11 +232,17 @@ export function CaseOpenPage() {
                   disabled={spinning}
                   className="btn-primary px-8 py-2.5 disabled:opacity-50"
                 >
-                  {spinning
-                    ? "Opening…"
-                    : openCount === 1
-                      ? `Open · ${formatCash(paidTotal)}`
-                      : `Open ${openCount}× · ${formatCash(paidTotal)}`}
+                  {spinning ? (
+                    "Opening…"
+                  ) : openCount === 1 ? (
+                    <span className="inline-flex items-center gap-1">
+                      Open · <CashAmount wl={paidTotal} iconClassName="h-4 w-4" />
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1">
+                      Open {openCount}× · <CashAmount wl={paidTotal} iconClassName="h-4 w-4" />
+                    </span>
+                  )}
                 </button>
               </div>
             </div>
@@ -251,9 +258,9 @@ export function CaseOpenPage() {
                   onChange={(e) => setBorrowPct(Number(e.target.value) / 100)}
                   className="w-full accent-sky-400"
                 />
-                <p className="mt-1 text-[11px] text-sky-200">
-                  Borrow {pctLabel(borrowPct)} · you pay {formatCash(paidTotal)} · keep {pctLabel(keepPct(borrowPct))} of
-                  winnings (up to {pctLabel(MAX_BORROW_PCT)})
+                <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-sky-200">
+                  Borrow {pctLabel(borrowPct)} · you pay <CashAmount wl={paidTotal} iconClassName="h-3 w-3" /> · keep{" "}
+                  {pctLabel(keepPct(borrowPct))} of winnings (up to {pctLabel(MAX_BORROW_PCT)})
                 </p>
               </div>
             )}

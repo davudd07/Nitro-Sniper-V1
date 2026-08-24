@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { Coins } from "lucide-react";
 import { clsx } from "clsx";
 import { easeOutQuart } from "../../lib/easing";
-import { formatCash } from "../../lib/format";
+import { CashAmount } from "./CurrencyIcon";
 
 export function AnimatedPot({
   value,
@@ -48,18 +48,18 @@ export function AnimatedPot({
       <p className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
         <Coins className={size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5"} /> {label}
       </p>
-      <motion.p
+      <motion.div
         key={pulse}
         initial={pulse === 0 ? false : { scale: 1.16 }}
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 520, damping: 22 }}
         className={clsx(
-          "inline-block origin-center font-mono font-black tracking-tight tabular-nums text-white drop-shadow-[0_0_16px_rgba(251,191,36,0.35)]",
+          "inline-flex origin-center items-center justify-center font-black tracking-tight text-white drop-shadow-[0_0_16px_rgba(251,191,36,0.35)]",
           size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl",
         )}
       >
-        {formatCash(shown)}
-      </motion.p>
+        <CashAmount wl={shown} iconClassName={size === "lg" ? "h-8 w-8 sm:h-10 sm:w-10" : "h-6 w-6"} />
+      </motion.div>
     </div>
   );
 }

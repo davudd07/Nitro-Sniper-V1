@@ -3,10 +3,10 @@ import { clsx } from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useEconomyStore } from "../../store/economyStore";
 import { useSettingsStore } from "../../store/settingsStore";
-import { formatCash, formatCredits, formatFunCoins, formatShards } from "../../lib/format";
+import { formatCredits, formatFunCoins, formatShards } from "../../lib/format";
 import { LOCK_META, LOCK_UNITS, SHARD_META, type LockUnit } from "../../lib/money";
 import { sound } from "../../lib/sound";
-import { CurrencyIcon } from "../ui/CurrencyIcon";
+import { CashAmount, CurrencyIcon } from "../ui/CurrencyIcon";
 
 export function CurrencySwitcher() {
   const balance = useEconomyStore((s) => s.balance);
@@ -30,7 +30,6 @@ export function CurrencySwitcher() {
   }, [open]);
 
   const showingShards = headerWallet === "shards";
-  const primaryMeta = showingShards ? SHARD_META : LOCK_META[lockUnit];
   const primaryBar = showingShards ? "bg-cyan-400/15 text-white" : "bg-amber-400/12 text-white";
 
   function pickLock(unit: LockUnit) {
@@ -65,7 +64,6 @@ export function CurrencySwitcher() {
         <span className="min-w-0 flex-1 truncate text-left font-mono text-sm font-semibold tabular-nums">
           {showingShards ? formatFunCoins(funCoins ?? 0) : formatCredits(balance)}
         </span>
-        <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">{primaryMeta.ticker}</span>
         <span className="grid h-6 w-6 place-items-center rounded opacity-80">
           <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
         </span>
@@ -93,7 +91,7 @@ export function CurrencySwitcher() {
                 <CurrencyIcon kind={unit} className="h-5 w-5" />
                 <span className="min-w-0 flex-1">
                   <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">{meta.name}</span>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatCash(balance, unit)}</span>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatCredits(balance, unit)}</span>
                 </span>
               </button>
             );
@@ -117,8 +115,9 @@ export function CurrencySwitcher() {
         </div>
       )}
       {(lockedTips ?? 0) > 0 && (
-        <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wide text-amber-300/90">
-          {formatCash(lockedTips)} locked · wager {formatCash(tipWagerLeft ?? 0)} to unlock
+        <p className="mt-1 flex flex-wrap items-center justify-center gap-1 text-center text-[9px] font-semibold uppercase tracking-wide text-amber-300/90">
+          <CashAmount wl={lockedTips} iconClassName="h-3 w-3" /> locked · wager{" "}
+          <CashAmount wl={tipWagerLeft ?? 0} iconClassName="h-3 w-3" /> to unlock
         </p>
       )}
     </div>

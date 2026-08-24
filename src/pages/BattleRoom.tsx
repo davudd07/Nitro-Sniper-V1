@@ -25,6 +25,7 @@ import { randomBotName } from "../data/botNames";
 import { buildBattleRoster, communityPaidOpenCredits } from "../lib/battleSeats";
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { formatCredits, formatCash } from "../lib/format";
 import { creatorCreateCost, fundedSeatCost, humanSeatPaidFraction, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
@@ -42,6 +43,26 @@ type BattlePlayer = BattleRosterSeat;
 interface PlayerRoundState {
   total: number;
   history: { item: CaseOddsEntry["item"]; id: string }[];
+}
+
+function rebuildRoundStates(
+  roster: BattlePlayer[],
+  openings: Record<number, CaseOddsEntry | null>[],
+): Record<number, PlayerRoundState> {
+  const init: Record<number, PlayerRoundState> = {};
+  roster.forEach((p) => {
+    init[p.slotIndex] = { total: 0, history: [] };
+  });
+  openings.forEach((round, ri) => {
+    roster.forEach((p) => {
+      const entry = round[p.slotIndex];
+      if (!entry) return;
+      const cur = init[p.slotIndex]!;
+      cur.total += entry.item.value;
+      cur.history = [{ item: entry.item, id: `${p.slotIndex}-${ri}` }, ...cur.history];
+    });
+  });
+  return init;
 }
 
 type Phase = "filling" | "countdown" | "running" | "jackpot" | "finished";
@@ -152,6 +173,7 @@ export function BattleRoom() {
   const rosterEpochRef = useRef<string>("");
   const lastPayoutRef = useRef<BattlePayout | null>(null);
   const paidOutRef = useRef(false);
+  const hydratedFinishedRef = useRef("");
 
   function teamFromJackpotWinner(winnerId: string | null | undefined): number | null {
     if (!winnerId) return null;
@@ -233,6 +255,7 @@ export function BattleRoom() {
     replayJackpotRef.current = battle.replay?.jackpot ?? null;
     setResultOpen(false);
     setPayout(null);
+    hydratedFinishedRef.current = "";
     setPendingResults({});
     setCaseIndex(-1);
     setJackpotTickets(null);
@@ -267,6 +290,70 @@ export function BattleRoom() {
     }
     setPhase("countdown");
   }, [allFilled, phase, needsJoinGate, battle?.status, wantReplay, players]);
+
+  useEffect(() => {
+    if (!battle || !mode) return;
+    if (battle.status !== "finished" || wantReplay) return;
+    if (players.length === 0) return;
+    if (hydratedFinishedRef.current === battle.id) return;
+    hydratedFinishedRef.current = battle.id;
+
+    const openings = battle.replay?.openings ?? replayLogRef.current;
+    const states = rebuildRoundStates(players, openings);
+    setRoundStates(states);
+    roundStatesRef.current = states;
+    const nCases = openings.length || battle.cases.reduce((s, e) => s + e.count, 0);
+    setCaseIndex(Math.max(0, nCases - 1));
+    setPhase("finished");
+
+    const pot = players.reduce((s, p) => s + (states[p.slotIndex]?.total ?? 0), 0);
+    const jp = battle.replay?.jackpot ?? replayJackpotRef.current;
+    if (jp) {
+      setJackpotTickets(jp.tickets);
+      setJackpotWinnerId(jp.winnerId);
+      setTieBreak(jp.tieBreak);
+      const team = teamFromJackpotWinner(jp.winnerId);
+      if (team !== null) {
+        setWinningTeam(team);
+        settlePayout(team, pot, false);
+        return;
+      }
+    }
+    if (battle.shared) {
+      const n = Math.max(1, players.length);
+      const share = pot / n;
+      const youPlayed = players.some((p) => p.kind === "you");
+      const paid = youPlayed ? winPayout(share, borrowPct) : 0;
+      showResult({
+        shared: true,
+        youWon: youPlayed,
+        pot,
+        share,
+        youPaid: paid,
+        borrowPct,
+        winningTeam: null,
+        winners: players.map((p) => ({
+          name: p.kind === "you" ? "You" : p.name || `Player ${p.slotIndex + 1}`,
+          color: p.color,
+        })),
+      });
+      return;
+    }
+    const decisionValue = (slotIndex: number) => {
+      const state = states[slotIndex];
+      if (!state) return 0;
+      return battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+    };
+    const teamTotals = mode.teamSizes.map((_, teamIdx) =>
+      players.filter((p) => p.teamIndex === teamIdx).reduce((s, p) => s + decisionValue(p.slotIndex), 0),
+    );
+    if (teamTotals.length === 0) return;
+    const best = battle.crazy ? Math.min(...teamTotals) : Math.max(...teamTotals);
+    const tied = teamTotals.reduce<number[]>((acc, v, i) => (v === best ? [...acc, i] : acc), []);
+    const winnerTeam = tied[0] ?? 0;
+    setWinningTeam(winnerTeam);
+    settlePayout(winnerTeam, pot, false);
+  }, [battle, mode, players, wantReplay, borrowPct]);
 
   useEffect(() => {
     if (phase !== "countdown") return;
@@ -1334,7 +1421,7 @@ function PlayerStage({
           ) : (
             <>
               <p className="text-xs text-slate-500">
-                Empty seat · {formatCash(fundedSeatCost(costPerPlayer, fundedPct))} to join
+                Empty seat · <CashAmount wl={fundedSeatCost(costPerPlayer, fundedPct)} iconClassName="h-3 w-3" /> to join
                 {fundedPct > 0 ? ` (${pctLabel(fundedPct)} funded)` : ""}
               </p>
               {canJoinSeat && (

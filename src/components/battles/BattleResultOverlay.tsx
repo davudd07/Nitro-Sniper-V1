@@ -1,8 +1,8 @@
 import { motion } from "framer-motion";
-import { Crown, Gem, RotateCcw, Users, X } from "lucide-react";
-import { formatCredits, formatCash } from "../../lib/format";
+import { Crown, RotateCcw, Users, X } from "lucide-react";
 import { pctLabel } from "../../lib/battleFinance";
 import { sound } from "../../lib/sound";
+import { CashAmount } from "../ui/CurrencyIcon";
 
 export interface BattlePayout {
   shared: boolean;
@@ -63,18 +63,30 @@ export function BattleResultOverlay({
           <p className="mt-1 text-sm text-slate-400">Team {result.winningTeam + 1}</p>
         )}
 
-        <div className="mt-4 flex items-center justify-center gap-2">
-          <Gem className="h-6 w-6 text-cyan-300" />
-          <span className="font-mono text-3xl font-black tabular-nums text-white sm:text-4xl">
-            {formatCredits(result.pot)}
-          </span>
+        <div className="mt-4 flex items-center justify-center">
+          <CashAmount
+            wl={result.pot}
+            className="text-3xl font-black text-white sm:text-4xl"
+            iconClassName="h-7 w-7 sm:h-8 sm:w-8"
+          />
         </div>
-        <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-          {result.shared ? "Pot split equally" : result.youWon ? `You received ${formatCash(shown)}` : `Winners received ${formatCash(shown)} each`}
+        <p className="mt-1 flex flex-wrap items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
+          {result.shared ? (
+            "Pot split equally"
+          ) : result.youWon ? (
+            <>
+              You received <CashAmount wl={shown} iconClassName="h-3.5 w-3.5" />
+            </>
+          ) : (
+            <>
+              Winners received <CashAmount wl={shown} iconClassName="h-3.5 w-3.5" /> each
+            </>
+          )}
         </p>
         {result.youWon && result.borrowPct > 0 && (
-          <p className="mt-2 text-[11px] text-sky-300">
-            After {pctLabel(result.borrowPct)} borrow · full share was {formatCash(result.share)}
+          <p className="mt-2 flex flex-wrap items-center justify-center gap-1 text-[11px] text-sky-300">
+            After {pctLabel(result.borrowPct)} borrow · full share was{" "}
+            <CashAmount wl={result.share} iconClassName="h-3.5 w-3.5" />
           </p>
         )}
 

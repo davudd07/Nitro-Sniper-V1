@@ -5,7 +5,8 @@ import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
 import { CASES } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
-import { formatCash, formatPercent } from "../lib/format";
+import { formatPercent } from "../lib/format";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { GameCard } from "../components/lobby/GameCard";
 import { GameRow } from "../components/lobby/GameRow";
 import { HomeHero } from "../components/lobby/HomeHero";
@@ -120,7 +121,9 @@ export function Home() {
               <div className="-mt-14 relative bg-gradient-to-t from-black via-black/80 to-transparent px-3 pb-3 pt-10">
                 <p className="text-sm font-extrabold uppercase tracking-wide text-white">{c.name}</p>
                 <p className="mt-0.5 font-mono text-[11px] text-white/60">
-                  {formatCash(c.price)} · {formatPercent(c.rtp, 0)} RTP
+                  <span className="flex items-center gap-1 font-mono text-[11px] text-white/60">
+                    <CashAmount wl={c.price} iconClassName="h-3 w-3" /> · {formatPercent(c.rtp, 0)} RTP
+                  </span>
                 </p>
               </div>
             </Link>

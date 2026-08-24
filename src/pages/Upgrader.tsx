@@ -6,9 +6,11 @@ import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { requireAccount, takeStake } from "../lib/stake";
-import { cashTicker, formatCredits, formatCash, formatPercent } from "../lib/format";
+import { formatCash, formatPercent } from "../lib/format";
 import { worldLocksToDisplay } from "../lib/money";
 import { useSettingsStore } from "../store/settingsStore";
+import { CashAmount, CurrencyIcon } from "../components/ui/CurrencyIcon";
+import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { ticketFromRoll } from "../lib/caseTickets";
 import { sound } from "../lib/sound";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
@@ -37,12 +39,12 @@ import {
   filterCatalog,
   formatChancePct,
   formatRollBand,
-  formatUpgraderStake,
   landDegForRoll,
   maxStakeBelowTarget,
   minTargetForSource,
   multiplierFromValues,
   parseUpgraderAmount,
+  upgraderInputString,
   resolveUpgraderHouseEdge,
   settleUpgrade,
   stakeFromChance,
@@ -109,6 +111,7 @@ function SlotCard({
   onClick: () => void;
 }) {
   const rarity = item ? RARITIES[item.rarity] : null;
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
   return (
     <button
       type="button"
@@ -128,17 +131,17 @@ function SlotCard({
             {item.name}
           </p>
           <p className="font-mono text-sm font-bold" style={{ color: rarity?.text }}>
-            {formatUpgraderStake(item.value)} <span className="font-normal text-slate-500">{cashTicker()}</span>
+            <CashAmount wl={item.value} className="justify-center" />
           </p>
         </>
       ) : (
         <>
           <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
-            <span className="pixel-label text-2xl text-lime-200">{cashTicker()}</span>
+            <CurrencyIcon kind={lockUnit} className="h-10 w-10" />
           </div>
           <p className="text-sm font-semibold text-slate-200">{value > 0 ? "Lock wager" : "Select an item"}</p>
           <p className="font-mono text-sm font-bold text-lime-300">
-            {formatUpgraderStake(value)} <span className="font-normal text-slate-500">{cashTicker()}</span>
+            <CashAmount wl={value} className="justify-center text-lime-300" />
           </p>
         </>
       )}
@@ -161,11 +164,12 @@ function CoinAmountCard({
   onText: (raw: string) => void;
   onCommit: (raw: string) => void;
 }) {
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
   return (
     <div className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-[#3a5c5c]/60 bg-black/20 px-3 py-4 text-center">
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
-            <span className="pixel-label text-2xl text-lime-200">{cashTicker()}</span>
+        <CurrencyIcon kind={lockUnit} className="h-10 w-10" />
       </div>
       <label className="flex w-full items-center gap-2 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-2">
         <input
@@ -181,7 +185,7 @@ function CoinAmountCard({
           }}
           className="min-w-0 flex-1 bg-transparent text-center font-mono text-lg font-bold text-lime-300 outline-none disabled:opacity-50"
         />
-        <span className="text-[10px] font-bold text-slate-500">{cashTicker()}</span>
+        <CurrencyIcon kind={lockUnit} className="h-5 w-5" />
       </label>
       <p className="text-xs text-slate-400">{hint}</p>
     </div>
@@ -333,7 +337,7 @@ export function Upgrader() {
     const cap = maxStakeBelowTarget(targetValue);
     if (cap > 0) value = Math.min(cap, value);
     setStake(value);
-    setCoinSourceText(String(value));
+    setCoinSourceText(upgraderInputString(value));
     if (targetValue >= minTargetForSource(value)) {
       setMultiplierText(multiplierFromValues(value, targetValue).toFixed(2));
     }
@@ -346,7 +350,7 @@ export function Upgrader() {
       if (minT > 0) value = Math.max(value, minT);
     }
     setCoinTarget(value);
-    setCoinTargetText(value > 0 ? String(value) : "");
+    setCoinTargetText(upgraderInputString(value));
     if (value > 0) arcTargetRef.current = value;
     if (inputValue > 0 && value >= minTargetForSource(inputValue)) {
       setMultiplierText(multiplierFromValues(inputValue, value).toFixed(2));
@@ -360,7 +364,7 @@ export function Upgrader() {
     arcTargetRef.current = target;
     const value = stakeFromChance(nextChance, target, houseEdge);
     setStake(value);
-    if (coins) setCoinSourceText(value > 0 ? String(value) : "");
+    if (coins) setCoinSourceText(upgraderInputString(value));
     if (inputItem && inputItem.value !== value) setInputItem(null);
     setMultiplierText(value > 0 ? multiplierFromValues(value, target).toFixed(2) : "2.00");
   }
@@ -387,10 +391,10 @@ export function Upgrader() {
     const cap = maxStakeBelowTarget(tgt);
     if (cap > 0) value = Math.min(cap, value);
     setCoinTarget(tgt);
-    setCoinTargetText(tgt > 0 ? String(tgt) : "");
+    setCoinTargetText(upgraderInputString(tgt));
     arcTargetRef.current = tgt;
     setStake(value);
-    setCoinSourceText(value > 0 ? String(value) : "");
+    setCoinSourceText(upgraderInputString(value));
     if (value > 0 && tgt >= minTargetForSource(value)) {
       setMultiplierText(multiplierFromValues(value, tgt).toFixed(2));
     }
@@ -563,7 +567,7 @@ export function Upgrader() {
             {coins ? (
               <CoinAmountCard
                 label="Wager"
-                hint={`Source ${cashTicker()}`}
+                hint="Source amount"
                 text={coinSourceText}
                 disabled={spinning}
                 onText={setCoinSourceText}
@@ -583,28 +587,19 @@ export function Upgrader() {
               />
             )}
             <div className="space-y-2 rounded-xl border-2 border-[#3a5c5c]/60 bg-black/20 p-2.5">
-              <label className="flex items-center gap-2 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-1.5">
+              <div className="flex items-center gap-2 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-1.5">
                 <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Bet</span>
-                <input
-                  type="number"
-                  min={0}
-                  step={0.01}
+                <LockAmountInput
+                  valueWl={stake}
+                  onChangeWl={(wl) => {
+                    if (coins) applyCoinSource(wl);
+                    else applyStake(wl);
+                  }}
                   disabled={spinning}
-                  value={coins ? coinSourceText : stake}
-                  onChange={(e) => {
-                    if (coins) {
-                      setCoinSourceText(e.target.value);
-                      return;
-                    }
-                    applyStake(Number(e.target.value) || 0);
-                  }}
-                  onBlur={(e) => {
-                    if (coins) applyCoinSource(parseUpgraderAmount(e.target.value));
-                  }}
-                  className="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
+                  className="min-w-0 flex-1"
+                  inputClassName="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
                 />
-                <span className="text-[10px] font-bold text-slate-500">{cashTicker()}</span>
-              </label>
+              </div>
               <div className="grid grid-cols-4 gap-1.5">
                 {betRunners.map((btn) => (
                   <button
@@ -646,7 +641,7 @@ export function Upgrader() {
             {coins ? (
               <CoinAmountCard
                 label="Payout"
-                hint={`Target ${cashTicker()}`}
+                hint="Target amount"
                 text={coinTargetText}
                 disabled={spinning}
                 onText={setCoinTargetText}
@@ -703,9 +698,13 @@ export function Upgrader() {
                   Fast
                 </button>
               </div>
-              <p className="px-0.5 font-mono text-[11px] tabular-nums text-slate-500">
-                {formatUpgraderStake(inputValue)} → {formatCash(targetValue)} · {displayedMulti.toFixed(2)}× ·{" "}
-                {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
+              <p className="flex flex-wrap items-center gap-1 px-0.5 text-[11px] tabular-nums text-slate-500">
+                <CashAmount wl={inputValue} iconClassName="h-3 w-3" />
+                <span>→</span>
+                <CashAmount wl={targetValue} iconClassName="h-3 w-3" />
+                <span>
+                  · {displayedMulti.toFixed(2)}× · {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
+                </span>
               </p>
             </div>
           </div>
@@ -842,7 +841,7 @@ export function Upgrader() {
                     {item.name}
                   </p>
                   <p className="text-[11px] font-semibold" style={{ color: r.text }}>
-                    {formatCredits(item.value)} <span className="font-normal text-slate-500">{cashTicker()}</span>
+                    <CashAmount wl={item.value} className="justify-center text-[11px]" iconClassName="h-3 w-3" />
                   </p>
                 </button>
               );

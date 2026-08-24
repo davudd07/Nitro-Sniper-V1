@@ -7,19 +7,20 @@ import { useBattleStore, type BattleConfig } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { BATTLE_MODES } from "../data/battleModes";
-import { ModeGlyph } from "../components/battles/ModeGlyph";
+import { ModeGlyph, SeatStrip } from "../components/battles/ModeGlyph";
 import { getCase } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
-import { formatCredits, formatCash } from "../lib/format";
+import { formatCash } from "../lib/format";
 import { matchesCaseName } from "../lib/caseSearch";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
 import { requireAccount } from "../lib/stake";
 import { BattleCost, BorrowBadge, FinishedBattleCostPaid } from "../components/battles/BattleCost";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { WinLeaderBadge } from "../components/layout/WinLeaderBadge";
 
 const FILTERS = [
@@ -84,7 +85,7 @@ export function CaseBattlesLobby() {
   function openJoin(b: BattleConfig) {
     sound.click();
     if (b.status === "finished") {
-      navigate(`/battles/${b.id}?replay=1`);
+      navigate(`/battles/${b.id}`);
       return;
     }
     if (b.source === "you") {
@@ -193,7 +194,7 @@ export function CaseBattlesLobby() {
                   onClick={() => {
                     if (b.status === "finished") {
                       sound.click();
-                      navigate(`/battles/${b.id}?replay=1`);
+                      navigate(`/battles/${b.id}`);
                       return;
                     }
                     if (b.source === "you") {
@@ -208,7 +209,7 @@ export function CaseBattlesLobby() {
                       e.preventDefault();
                       if (b.status === "finished") {
                         sound.click();
-                        navigate(`/battles/${b.id}?replay=1`);
+                        navigate(`/battles/${b.id}`);
                         return;
                       }
                       if (b.source === "you") {
@@ -255,7 +256,8 @@ export function CaseBattlesLobby() {
                         {b.status === "finished" && (
                           <>
                             {" "}
-                            · cost {formatCredits(b.costPerPlayer * seats)} · paid {formatCredits(b.payout ?? 0)}
+                            · cost <CashAmount wl={b.costPerPlayer * seats} iconClassName="h-3 w-3" /> · paid{" "}
+                            <CashAmount wl={b.payout ?? 0} iconClassName="h-3 w-3" />
                           </>
                         )}
                       </p>
@@ -274,32 +276,20 @@ export function CaseBattlesLobby() {
                     ) : b.source === "you" ? (
                       <BattleCost costPerPlayer={b.costPerPlayer} borrowPct={b.creatorBorrowPct} align="left" compact />
                     ) : b.fundedPct > 0 ? (
-                      <p className="font-mono text-sm font-semibold text-amber-200">
-                        <span className="mr-1 text-[11px] font-normal text-slate-500 line-through">
-                          {formatCredits(b.costPerPlayer)}
+                      <p className="flex flex-wrap items-center gap-1.5 font-semibold text-amber-200">
+                        <span className="text-[11px] font-normal text-slate-500 line-through">
+                          <CashAmount wl={b.costPerPlayer} iconClassName="h-3 w-3" />
                         </span>
-                        {formatCredits(joinerPrice)}
+                        <CashAmount wl={joinerPrice} iconClassName="h-3.5 w-3.5" />
                       </p>
                     ) : (
-                      <p className="font-mono text-sm font-semibold text-amber-200">{formatCredits(b.costPerPlayer)}</p>
+                      <p className="font-semibold text-amber-200">
+                        <CashAmount wl={b.costPerPlayer} iconClassName="h-3.5 w-3.5" />
+                      </p>
                     )}
                   </div>
-                  <div className="hidden flex-wrap items-center gap-1 md:flex">
-                    {flags.map((taken, i) => (
-                      <span
-                        key={i}
-                        className={clsx(
-                          "grid place-items-center rounded-full text-[10px] font-bold",
-                          seats > 6 ? "h-5 w-5" : "h-6 w-6",
-                          taken ? "bg-white/15 text-white" : "border border-dashed border-white/20 text-slate-600",
-                        )}
-                      >
-                        {taken ? <Users className={seats > 6 ? "h-2.5 w-2.5" : "h-3 w-3"} /> : ""}
-                      </span>
-                    ))}
-                    <span className="text-[11px] text-slate-500">
-                      {filled}/{seats}
-                    </span>
+                  <div className="hidden min-w-0 md:block">
+                    <SeatStrip flags={flags} teamSizes={mode?.teamSizes ?? []} hideVs={b.shared} />
                   </div>
                   <div className="hidden flex-wrap gap-1 md:flex">
                     {b.coinflip && (
@@ -375,7 +365,7 @@ export function CaseBattlesLobby() {
                             : "border border-white/15 text-white hover:bg-white/5",
                       )}
                     >
-                      {b.status === "finished" ? "Replay" : b.source === "you" ? "Open" : waiting ? "Join" : "Watch"}
+                      {b.status === "finished" ? "View" : b.source === "you" ? "Open" : waiting ? "Join" : "Watch"}
                     </button>
                   </div>
                 </div>

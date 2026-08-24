@@ -1,7 +1,7 @@
 import { Handshake } from "lucide-react";
 import { clsx } from "clsx";
-import { formatCredits, formatCash } from "../../lib/format";
 import { pctLabel } from "../../lib/battleFinance";
+import { CashAmount } from "../ui/CurrencyIcon";
 
 /** Seat / case-list cost, with the pre-borrow amount struck through when borrowed. */
 export function BattleCost({
@@ -25,21 +25,15 @@ export function BattleCost({
       )}
       <div className="flex flex-wrap items-center gap-1.5">
         {borrowed && (
-          <span
-            className="font-mono text-sm text-slate-500 line-through decoration-slate-500/80 decoration-2"
-            title="Full case cost before borrow"
-          >
-            {formatCredits(costPerPlayer)}
+          <span className="text-slate-500 line-through decoration-slate-500/80 decoration-2" title="Full case cost before borrow">
+            <CashAmount wl={costPerPlayer} className="text-sm" iconClassName="h-3 w-3" />
           </span>
         )}
-        <span
-          className={clsx(
-            "font-mono font-semibold tabular-nums text-amber-300",
-            compact ? "text-sm" : "text-base",
-          )}
-        >
-          {formatCash(paid)}
-        </span>
+        <CashAmount
+          wl={paid}
+          className={clsx("font-semibold text-amber-300", compact ? "text-sm" : "text-base")}
+          iconClassName={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+        />
         {borrowed && (
           <span
             className="inline-flex items-center gap-1 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-sky-300"
@@ -70,19 +64,15 @@ export function FinishedBattleCostPaid({
     <div className="flex items-start gap-4">
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cost</p>
-        <p
-          className="font-mono text-sm font-semibold tabular-nums text-amber-200"
-          title={`${formatCash(costPerPlayer)} per seat`}
-        >
-          {formatCredits(entryPot)}
-        </p>
-        <p className="text-[10px] text-slate-500">
-          {formatCredits(costPerPlayer)} / seat · {n} {n === 1 ? "seat" : "seats"}
+        <CashAmount wl={entryPot} className="text-sm font-semibold text-amber-200" iconClassName="h-3.5 w-3.5" />
+        <p className="mt-0.5 flex flex-wrap items-center gap-1 text-[10px] text-slate-500">
+          <CashAmount wl={costPerPlayer} iconClassName="h-3 w-3" />
+          <span>/ seat · {n} {n === 1 ? "seat" : "seats"}</span>
         </p>
       </div>
       <div className="min-w-0">
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Paid</p>
-        <p className="font-mono text-sm font-semibold tabular-nums text-emerald-300">{formatCredits(payout)}</p>
+        <CashAmount wl={payout} className="text-sm font-semibold text-emerald-300" iconClassName="h-3.5 w-3.5" />
         <p className="text-[10px] text-slate-500">payout</p>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { MAXXX_WIN, isMaxxxWin, itemImageSrc } from "../../data/items";
 import { GOLD_INDICATOR, isGoldIndicator } from "../../data/goldItem";
 import { RARITIES } from "../../data/rarities";
 import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
-import { formatCash } from "../../lib/format";
+import { CashAmount } from "../ui/CurrencyIcon";
 import { useSettingsStore } from "../../store/settingsStore";
 import { sound } from "../../lib/sound";
 
@@ -432,7 +432,7 @@ export function CaseReel({
         ref={containerRef}
         className={clsx(
           "relative w-full max-w-full overflow-hidden border-2 bg-black/50 isolate",
-          isGoldPhase ? "border-amber-400/70 shadow-[0_0_30px_rgba(251,191,36,0.35)]" : "border-white/20 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)]",
+          isGoldPhase ? "border-sky-400/70 shadow-[0_0_30px_rgba(56,189,248,0.35)]" : "border-white/20 shadow-[inset_0_0_18px_rgba(0,0,0,0.6)]",
         )}
         style={{ height: cfg.boxSize, transform: "translateZ(0)" }}
       >
@@ -456,15 +456,15 @@ export function CaseReel({
             <button
               type="button"
               onClick={confirmGoldSpin}
-              className="gold-pulse inline-flex items-center gap-1.5 rounded-full border border-amber-300/80 bg-amber-400 px-4 py-2 text-xs font-bold uppercase tracking-widest text-bg-950 shadow-[0_8px_28px_rgba(251,191,36,0.55)] transition-transform hover:scale-105 active:scale-95"
+              className="gold-pulse inline-flex items-center gap-1.5 rounded-full border border-sky-300/80 bg-sky-400 px-4 py-2 text-xs font-bold uppercase tracking-widest text-bg-950 shadow-[0_8px_28px_rgba(56,189,248,0.55)] transition-transform hover:scale-105 active:scale-95"
             >
               Spin for Gold
             </button>
           </div>
         )}
         {phase === "charge" && (
-          <div className="gold-pulse absolute inset-0 z-20 flex items-center justify-center bg-amber-400/10">
-            <span className="text-xs font-bold uppercase tracking-widest text-amber-300">Gold Spin!</span>
+          <div className="gold-pulse absolute inset-0 z-20 flex items-center justify-center bg-sky-400/10">
+            <span className="text-xs font-bold uppercase tracking-widest text-sky-200">Gold Spin!</span>
           </div>
         )}
         <div
@@ -519,7 +519,7 @@ const ReelSlot = memo(function ReelSlot({
   const goldChrome = isIndicator || goldBait;
   const iconPx = ICON_PX[iconSize];
   const isHorizontal = orientation === "horizontal";
-  const ring = goldChrome ? "#fbbf24" : maxxx ? "#fbbf24" : r.ring;
+  const ring = goldChrome ? "#38bdf8" : maxxx ? "#38bdf8" : r.ring;
   const cubePx = Math.round(Math.min(itemSize * 0.78, iconPx * 1.85));
 
   return (
@@ -543,12 +543,12 @@ const ReelSlot = memo(function ReelSlot({
         left: isHorizontal ? index * itemSize : 0,
         background: isIndicator
           ? isHorizontal
-            ? "linear-gradient(165deg, #3f2d0a, #120c04)"
-            : "linear-gradient(90deg, #3f2d0a, #120c04cc)"
+            ? "linear-gradient(165deg, #0b3a4a, #041016)"
+            : "linear-gradient(90deg, #0b3a4a, #041016cc)"
           : goldChrome
             ? isHorizontal
-              ? `linear-gradient(165deg, #fbbf2466, ${r.to})`
-              : `linear-gradient(90deg, #fbbf2455, ${r.to}cc)`
+              ? `linear-gradient(165deg, #38bdf866, ${r.to})`
+              : `linear-gradient(90deg, #38bdf855, ${r.to}cc)`
           : maxxx
             ? isHorizontal
               ? "linear-gradient(165deg, rgba(251,191,36,0.2), #1c1003)"
@@ -556,7 +556,7 @@ const ReelSlot = memo(function ReelSlot({
           : isHorizontal
             ? `linear-gradient(165deg, ${r.from}66, ${r.to})`
             : `linear-gradient(90deg, ${r.from}55, ${r.to}cc)`,
-        boxShadow: goldChrome || maxxx ? "0 0 22px rgba(251,191,36,0.7)" : undefined,
+        boxShadow: goldChrome || maxxx ? "0 0 22px rgba(56,189,248,0.7)" : undefined,
         borderRight: isHorizontal ? `2px solid ${ring}` : undefined,
         borderBottom: isHorizontal ? undefined : `2px solid ${ring}`,
       }}
@@ -570,11 +570,11 @@ const ReelSlot = memo(function ReelSlot({
             height={cubePx}
             decoding="async"
             draggable={false}
-            className="pixelated shrink-0 object-contain drop-shadow-[0_0_16px_rgba(251,191,36,0.8)]"
+            className="pixelated shrink-0 object-contain drop-shadow-[0_0_16px_rgba(56,189,248,0.85)]"
             style={{ width: cubePx, height: cubePx }}
           />
           {!(isHorizontal || iconSize === "sm") && (
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">Gold Spin</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-200">Gold Spin</p>
           )}
         </>
       ) : (
@@ -593,22 +593,26 @@ const ReelSlot = memo(function ReelSlot({
             isHorizontal || iconSize === "sm" ? null : (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-amber-200">{item.name}</p>
-                <p className="text-[11px] text-slate-300">{formatCash(item.value)}</p>
+                <p className="text-[11px] text-slate-300">
+                  <CashAmount wl={item.value} iconClassName="h-3 w-3" />
+                </p>
               </div>
             )
           ) : isHorizontal || iconSize === "sm" ? (
             <span
               className={clsx("max-w-[92%] truncate px-0.5 font-bold", iconSize === "sm" ? "text-[9px]" : "text-[10px]")}
-              style={{ color: goldChrome ? "#fbbf24" : r.text }}
+              style={{ color: goldChrome ? "#7dd3fc" : r.text }}
             >
               {item.name}
             </span>
           ) : (
             <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold" style={{ color: goldChrome ? "#fbbf24" : r.text }}>
+              <p className="truncate text-xs font-bold" style={{ color: goldChrome ? "#7dd3fc" : r.text }}>
                 {item.name}
               </p>
-              <p className="text-[11px] text-slate-300">{formatCash(item.value)}</p>
+              <p className="text-[11px] text-slate-300">
+                <CashAmount wl={item.value} iconClassName="h-3 w-3" />
+              </p>
             </div>
           )}
         </>

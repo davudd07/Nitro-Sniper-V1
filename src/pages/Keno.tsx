@@ -8,6 +8,7 @@ import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { LockAmountInput } from "../components/ui/LockAmountInput";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
@@ -225,7 +226,13 @@ export function Keno() {
           </div>
 
           <button onClick={() => void playRound()} disabled={drawing || spots < 1} className="btn-primary w-full py-3 disabled:opacity-50">
-            {drawing ? "Drawing…" : `Play · ${formatCash(stake)}`}
+            {drawing ? (
+              "Drawing…"
+            ) : (
+              <span className="inline-flex items-center justify-center gap-1">
+                Play · <CashAmount wl={stake} iconClassName="h-4 w-4" />
+              </span>
+            )}
           </button>
 
           <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">

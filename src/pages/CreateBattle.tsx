@@ -19,7 +19,6 @@ import {
   Users,
   Circle,
   ArrowDownUp,
-  Gem,
   ChevronDown,
 } from "lucide-react";
 import { clsx } from "clsx";
@@ -35,7 +34,8 @@ import type { BattleCaseEntry } from "../store/battleStore";
 import { useBattleStore } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { formatCredits, formatCash } from "../lib/format";
+import { formatCash } from "../lib/format";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
 import { consumeBattleDraft } from "../lib/battleDraft";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
@@ -333,7 +333,7 @@ export function CreateBattle() {
                       <span className="cursor-grab text-slate-500 active:cursor-grabbing" title="Drag to reorder">
                         <GripVertical className="h-3.5 w-3.5" />
                       </span>
-                      <span className="font-mono text-[10px] text-slate-500">{formatCredits(c.price)}</span>
+                      <CashAmount wl={c.price} className="text-[10px] text-slate-500" iconClassName="h-3 w-3" />
                     </div>
                     <button
                       type="button"
@@ -392,10 +392,11 @@ export function CreateBattle() {
             <span className="text-[13px] font-extrabold uppercase tracking-[0.12em]">Create Battle</span>
             <span className="inline-flex items-center gap-2 font-mono text-sm">
               {effectiveBorrow > 0 && (
-                <span className="text-bg-950/50 line-through decoration-2">{formatCredits(fullPay)}</span>
+                <span className="text-bg-950/50 line-through decoration-2">
+                  <CashAmount wl={fullPay} iconClassName="h-3.5 w-3.5" />
+                </span>
               )}
-              <Gem className="h-4 w-4" />
-              {formatCredits(youPay)}
+              <CashAmount wl={youPay} iconClassName="h-4 w-4" />
               {effectiveBorrow > 0 && <Handshake className="h-3.5 w-3.5" />}
             </span>
           </button>
@@ -611,8 +612,8 @@ export function CreateBattle() {
                     onChange={(e) => setFundedPct(Number(e.target.value) / 100)}
                     className="w-full accent-emerald-400"
                   />
-                  <p className="text-[11px] text-emerald-200">
-                    {pctLabel(fundedPct)} funded · joiners pay {formatCash(joinerPay)}
+                  <p className="flex flex-wrap items-center gap-1 text-[11px] text-emerald-200">
+                    {pctLabel(fundedPct)} funded · joiners pay <CashAmount wl={joinerPay} iconClassName="h-3 w-3" />
                   </p>
                 </div>
               )}
@@ -640,9 +641,10 @@ export function CreateBattle() {
                     onChange={(e) => setBorrowPct(Number(e.target.value) / 100)}
                     className="w-full accent-sky-400"
                   />
-                  <p className="text-[11px] text-sky-200">
-                    Borrow {pctLabel(borrowPct)} · you pay {formatCash(Math.round(costPerPlayer * (1 - borrowPct)))} ·
-                    keep {pctLabel(1 - borrowPct)} of winnings
+                  <p className="flex flex-wrap items-center gap-1 text-[11px] text-sky-200">
+                    Borrow {pctLabel(borrowPct)} · you pay{" "}
+                    <CashAmount wl={Math.round(costPerPlayer * (1 - borrowPct))} iconClassName="h-3 w-3" /> · keep{" "}
+                    {pctLabel(1 - borrowPct)} of winnings
                   </p>
                 </div>
               )}
@@ -659,11 +661,11 @@ export function CreateBattle() {
             </div>
           </div>
 
-          <p className="px-1 text-center text-[11px] text-slate-500">
-            Seat {formatCash(costPerPlayer)}
+          <p className="flex flex-wrap items-center justify-center gap-1 px-1 text-center text-[11px] text-slate-500">
+            Seat <CashAmount wl={costPerPlayer} iconClassName="h-3 w-3" />
             {effectiveBorrow > 0 ? ` · borrow ${pctLabel(effectiveBorrow)}` : ""}
             {effectiveFund > 0 ? ` · you sponsor ${pctLabel(effectiveFund)}` : ""}
-            . Your total {formatCash(youPay)}.
+            . Your total <CashAmount wl={youPay} iconClassName="h-3 w-3" />.
           </p>
         </aside>
       </div>

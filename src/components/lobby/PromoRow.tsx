@@ -55,7 +55,7 @@ export function PromoRow() {
       <PromoCard
         kicker="Play-money only"
         title="Affiliate"
-        body="Share a demo invite. Earn a Shard cut of referred play-money wager — never real cash, never a payout."
+        body="Share a demo invite. Earn a World Lock cut of referred play-money wager — never real cash, never a payout."
         cta="Start earning →"
         to="/affiliate"
         accent="linear-gradient(160deg, #155e75 0%, #083344 100%)"

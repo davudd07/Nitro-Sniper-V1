@@ -112,6 +112,9 @@ export const useAuthStore = create<AuthState>()(
           session: session && session.toLowerCase() === acc.username.toLowerCase() ? next : session,
         });
         if (session && session.toLowerCase() === acc.username.toLowerCase()) applySessionName(next);
+        void import("./affiliateStore").then((mod) => {
+          mod.rebindAffiliateOwner(acc.username, next);
+        });
         return null;
       },
       setAccountPassword: async (username, nextPassword) => {

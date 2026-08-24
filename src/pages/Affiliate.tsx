@@ -1,10 +1,11 @@
-import { useMemo, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import {
   Check,
   ChevronLeft,
   ChevronRight,
   Copy,
+  Lock,
   Plus,
   Share2,
   Trophy,
@@ -13,18 +14,19 @@ import {
 } from "lucide-react";
 import { clsx } from "clsx";
 import { PlayerAvatar } from "../components/identity/PlayerAvatar";
-import { CashAmount, CurrencyIcon } from "../components/ui/CurrencyIcon";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import {
+  AFFILIATE_CODE_MAX,
+  AFFILIATE_CODE_MIN,
   AFFILIATE_PAGE_SIZE,
   AFFILIATE_SHARE,
   COMMISSION_EXAMPLE,
   DEMO_BOARD,
-  makeAffiliateCode,
   PROGRAM_STATS,
   referralCommission,
   referralStatusAt,
 } from "../lib/affiliate";
-import { formatFunCoins, formatPercent } from "../lib/format";
+import { formatCash, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
 import {
   affiliateAvailable,
@@ -33,25 +35,7 @@ import {
   useAffiliateStore,
 } from "../store/affiliateStore";
 import { useAuthStore } from "../store/authStore";
-import { useDemoProfileStore } from "../store/demoProfileStore";
 import { useToastStore } from "../store/toastStore";
-
-function ShardAmount({
-  value,
-  className,
-  iconClassName = "h-5 w-5",
-}: {
-  value: number;
-  className?: string;
-  iconClassName?: string;
-}) {
-  return (
-    <span className={clsx("inline-flex items-center gap-1.5", className)}>
-      <span className="font-mono tabular-nums">{formatFunCoins(value)}</span>
-      <CurrencyIcon kind="shards" className={iconClassName} />
-    </span>
-  );
-}
 
 function FormulaChip({ label, accent }: { label: string; accent: "cyan" | "slate" | "emerald" }) {
   const tone =
@@ -73,13 +57,16 @@ function FormulaChip({ label, accent }: { label: string; accent: "cyan" | "slate
 }
 
 export function Affiliate() {
-  const displayName = useDemoProfileStore((s) => s.displayName);
   const session = useAuthStore((s) => s.session);
-  const code = useMemo(() => makeAffiliateCode(session || displayName), [session, displayName]);
+  const openGate = useAuthStore((s) => s.openGate);
+  const ownerId = session?.trim().toLowerCase() ?? "";
+  const myCodes = useAffiliateStore((s) => s.myCodes);
+  const code = ownerId ? myCodes[ownerId] ?? "" : "";
   const push = useToastStore((s) => s.push);
   const ledgers = useAffiliateStore((s) => s.ledgers);
   const attributedCode = useAffiliateStore((s) => s.attributedCode);
   const applyCode = useAffiliateStore((s) => s.applyCode);
+  const claimCustomCode = useAffiliateStore((s) => s.claimCustomCode);
   const claim = useAffiliateStore((s) => s.claim);
   const boardCreated = useAffiliateStore((s) => s.boardCreated);
   const createBoard = useAffiliateStore((s) => s.createBoard);
@@ -90,13 +77,14 @@ export function Affiliate() {
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [page, setPage] = useState(0);
   const [codeInput, setCodeInput] = useState("");
+  const [pickInput, setPickInput] = useState("");
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const link = `${origin}/?ref=${encodeURIComponent(code)}`;
+  const link = code ? `${origin}/?ref=${encodeURIComponent(code)}` : "";
   const pages = Math.max(1, Math.ceil(referrals.length / AFFILIATE_PAGE_SIZE));
   const safePage = Math.min(page, pages - 1);
   const rows = referrals.slice(safePage * AFFILIATE_PAGE_SIZE, (safePage + 1) * AFFILIATE_PAGE_SIZE);
-  const usingOwnCode = Boolean(attributedCode && attributedCode === code);
+  const usingOwnCode = Boolean(attributedCode && code && attributedCode === code);
   const example = COMMISSION_EXAMPLE;
 
   async function copyText(kind: "code" | "link", value: string) {
@@ -113,11 +101,12 @@ export function Affiliate() {
 
   async function shareLink() {
     sound.click();
+    if (!link) return;
     if (typeof navigator.share === "function") {
       try {
         await navigator.share({
           title: "SeedBET affiliate",
-          text: "Play-money vault invite — Shards only, no cash.",
+          text: "Play-money vault invite — World Locks, no cash.",
           url: link,
         });
         return;
@@ -132,25 +121,44 @@ export function Affiliate() {
     sound.click();
     const amt = claim();
     if (amt <= 0) {
-      push("Nothing to claim yet.", "info");
+      push(code ? "Nothing to claim yet." : "Lock your affiliate code before claiming.", "info");
       return;
     }
-    push(`Claimed ${formatFunCoins(amt)} Shards from affiliate cut.`, "success");
+    push(`Claimed ${formatCash(amt)} from affiliate cut.`, "success");
   }
 
   function handleApplyCode() {
     sound.click();
-    const ok = applyCode(codeInput);
-    if (!ok) {
-      if (attributedCode) {
-        push(`Already attributed to ${attributedCode} (first touch).`, "info");
-      } else {
-        push("Enter a valid affiliate code.", "warning");
-      }
+    const result = applyCode(codeInput);
+    if (result === "ok") {
+      push("Affiliate code saved. Real World Lock bets will pay that code.", "success");
+      setCodeInput("");
       return;
     }
-    push("Affiliate code saved. Real World Lock bets will pay that code.", "success");
-    setCodeInput("");
+    if (result === "already") {
+      push(`Already attributed to ${attributedCode} (first touch).`, "info");
+      return;
+    }
+    if (result === "unknown") {
+      push("No affiliate owns that code.", "warning");
+      return;
+    }
+    push(`Enter a valid affiliate code (${AFFILIATE_CODE_MIN}–${AFFILIATE_CODE_MAX} letters or numbers).`, "warning");
+  }
+
+  function handlePickCode() {
+    sound.click();
+    if (!session) {
+      openGate();
+      return;
+    }
+    const err = claimCustomCode(pickInput);
+    if (err) {
+      push(err, "warning");
+      return;
+    }
+    push("Affiliate code locked. It cannot be changed.", "success");
+    setPickInput("");
   }
 
   return (
@@ -162,7 +170,7 @@ export function Affiliate() {
           Invite your friends. Earn <span className="text-cyan-300">rewards</span>.
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
-          Join the SeedBET affiliate program and get a Shard cut every time your friends play. Play-money only —
+          Join the SeedBET affiliate program and get a World Lock cut every time your friends play. Play-money only —
           no cash, no withdrawals, no real-money payouts.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -173,7 +181,7 @@ export function Affiliate() {
             label="Referred players all time"
           />
           <HeroStat
-            value={<ShardAmount value={PROGRAM_STATS.earnedAllTimeShards} iconClassName="h-5 w-5" />}
+            value={<CashAmount wl={PROGRAM_STATS.earnedAllTimeWl} iconClassName="h-5 w-5" />}
             label="Total earned all time"
           />
         </div>
@@ -184,7 +192,7 @@ export function Affiliate() {
         <div className="surface flex flex-col p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Available to claim</p>
           <p className="mt-3 text-3xl font-black text-white">
-            <ShardAmount value={available} iconClassName="h-7 w-7" />
+            <CashAmount wl={available} iconClassName="h-7 w-7" />
           </p>
           <button
             type="button"
@@ -194,12 +202,12 @@ export function Affiliate() {
           >
             Claim now
           </button>
-          <p className="mt-2 text-[11px] text-slate-500">Credits Shards immediately, like Instant Drop.</p>
+          <p className="mt-2 text-[11px] text-slate-500">Credits World Locks to your balance immediately.</p>
         </div>
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Total earnings</p>
           <p className="mt-3 text-3xl font-black text-white">
-            <ShardAmount value={lifetime} iconClassName="h-7 w-7" />
+            <CashAmount wl={lifetime} iconClassName="h-7 w-7" />
           </p>
           <p className="mt-3 text-xs text-slate-400">All-time commissions on this browser</p>
         </div>
@@ -210,40 +218,90 @@ export function Affiliate() {
         </div>
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Affiliate code</p>
-          <p className="mt-3 font-mono text-2xl font-black tracking-wide text-cyan-200">{code}</p>
-          <button
-            type="button"
-            onClick={() => void copyText("code", code)}
-            className="mt-3 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-cyan-300 hover:text-cyan-100"
-          >
-            {copied === "code" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-            {copied === "code" ? "Copied" : "Share this code"}
-          </button>
+          {code ? (
+            <>
+              <p className="mt-3 font-mono text-2xl font-black tracking-wide text-cyan-200">{code}</p>
+              <p className="mt-1 inline-flex items-center gap-1 text-[11px] text-slate-500">
+                <Lock className="h-3 w-3" />
+                Locked forever — cannot be changed
+              </p>
+              <button
+                type="button"
+                onClick={() => void copyText("code", code)}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-bold uppercase tracking-wide text-cyan-300 hover:text-cyan-100"
+              >
+                {copied === "code" ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied === "code" ? "Copied" : "Share this code"}
+              </button>
+            </>
+          ) : !session ? (
+            <>
+              <p className="mt-3 text-sm leading-relaxed text-slate-300">
+                Pick a custom code once. After you lock it, it can never be changed.
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  sound.click();
+                  openGate();
+                }}
+                className="btn-cyan mt-4 w-full py-2.5 text-sm"
+              >
+                Sign in to pick a code
+              </button>
+            </>
+          ) : (
+            <form
+              className="mt-3 space-y-2"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handlePickCode();
+              }}
+            >
+              <input
+                value={pickInput}
+                onChange={(e) => setPickInput(e.target.value)}
+                placeholder="e.g. zapp"
+                maxLength={AFFILIATE_CODE_MAX}
+                className="w-full rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-sm text-slate-200 outline-none"
+              />
+              <button type="submit" className="btn-cyan w-full py-2.5 text-sm">
+                Lock this code
+              </button>
+              <p className="text-[11px] leading-relaxed text-slate-500">
+                {AFFILIATE_CODE_MIN}–{AFFILIATE_CODE_MAX} letters or numbers. One chance — locked forever.
+              </p>
+            </form>
+          )}
         </div>
       </section>
 
       <section className="grid gap-3 lg:grid-cols-2">
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Your affiliate link</p>
-          <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-            <input
-              readOnly
-              value={link}
-              className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-slate-200 outline-none"
-            />
-            <button type="button" onClick={() => void copyText("link", link)} className="btn-cyan shrink-0 gap-1.5 px-3 py-2 text-sm">
-              {copied === "link" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied === "link" ? "Copied" : "Copy link"}
-            </button>
-            <button
-              type="button"
-              onClick={() => void shareLink()}
-              className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border-2 border-white/15 px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/5"
-            >
-              <Share2 className="h-4 w-4" />
-              Share
-            </button>
-          </div>
+          {code ? (
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                readOnly
+                value={link}
+                className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-slate-200 outline-none"
+              />
+              <button type="button" onClick={() => void copyText("link", link)} className="btn-cyan shrink-0 gap-1.5 px-3 py-2 text-sm">
+                {copied === "link" ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied === "link" ? "Copied" : "Copy link"}
+              </button>
+              <button
+                type="button"
+                onClick={() => void shareLink()}
+                className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-md border-2 border-white/15 px-3 py-2 text-sm font-bold text-slate-200 hover:bg-white/5"
+              >
+                <Share2 className="h-4 w-4" />
+                Share
+              </button>
+            </div>
+          ) : (
+            <p className="mt-3 text-sm text-slate-400">Lock your affiliate code first to get a shareable link.</p>
+          )}
           <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Have a code?</p>
           {attributedCode ? (
             <p className="mt-2 text-sm text-slate-300">
@@ -275,11 +333,11 @@ export function Affiliate() {
           <p className="mt-3 text-sm leading-relaxed text-slate-300">
             Commission = Your Share % × Total Bets by Referrals × House Edge of the Game. This pays on the{" "}
             <span className="font-semibold text-white">theoretical house edge</span> of every real bet (bet &gt; 0), not
-            actual player losses. Demo / 0 bets do not count. Paid in Shards.
+            actual player losses. Demo / 0 bets do not count. Paid in World Locks.
           </p>
           <p className="mt-3 font-mono text-sm text-cyan-100">
             Example: {formatPercent(example.share, 0)} × {example.wagerWl.toLocaleString("en-US")} WL bets ×{" "}
-            {formatPercent(example.houseEdge, 0)} edge = {example.payout.toLocaleString("en-US")} (paid in Shards).
+            {formatPercent(example.houseEdge, 0)} edge = {example.payout.toLocaleString("en-US")} WL.
           </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <FormulaChip label={`${formatPercent(AFFILIATE_SHARE, 0)} your share`} accent="cyan" />
@@ -336,7 +394,7 @@ export function Affiliate() {
                       </td>
                       <td className="px-3 py-3 font-mono text-slate-300">{row.bets.toLocaleString("en-US")}</td>
                       <td className="px-3 py-3 text-emerald-200">
-                        <ShardAmount value={referralCommission(row)} iconClassName="h-4 w-4" />
+                        <CashAmount wl={referralCommission(row)} iconClassName="h-4 w-4" />
                       </td>
                       <td className="px-5 py-3">
                         <span
@@ -384,7 +442,7 @@ export function Affiliate() {
           <div className="min-w-0 flex-1">
             <h2 className="pixel-label text-xl font-extrabold uppercase text-white">Leaderboard</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-              Showcase race for this demo. Offer Shard prizes to the top of the board — still play-money, still local.
+              Showcase race for this demo. Offer World Lock prizes to the top of the board — still play-money, still local.
             </p>
             {boardCreated ? (
               <div className="mt-4 overflow-x-auto">
@@ -411,7 +469,7 @@ export function Affiliate() {
                           <CashAmount wl={row.wagerWl} />
                         </td>
                         <td className="py-2.5 text-amber-200">
-                          <ShardAmount value={row.prizeShards} iconClassName="h-4 w-4" />
+                          <CashAmount wl={row.prizeWl} iconClassName="h-4 w-4" />
                         </td>
                       </tr>
                     ))}
@@ -437,7 +495,7 @@ export function Affiliate() {
 
       <p className="text-xs leading-relaxed text-slate-500">
         Personal available / lifetime / referral rows are live demo data on this browser. Program totals and the
-        leaderboard are labeled showcase figures. Claiming credits Shards here only. SeedBET never pays cash and never
+        leaderboard are labeled showcase figures. Claiming credits World Locks here only. SeedBET never pays cash and never
         tracks real affiliate traffic.
       </p>
 

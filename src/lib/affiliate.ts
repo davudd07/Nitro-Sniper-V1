@@ -1,7 +1,10 @@
 import { HOUSE_EDGE } from "./rakeback";
 
-/** Affiliate cut of the house-edge slice from referred World Lock wagers. Paid as Shards. */
+/** Affiliate cut of the house-edge slice from referred World Lock wagers. Paid as World Locks. */
 export const AFFILIATE_SHARE = 0.1;
+
+export const AFFILIATE_CODE_MIN = 3;
+export const AFFILIATE_CODE_MAX = 14;
 
 /** Idle if a referred player has not placed a real stake in this window. */
 export const REFERRAL_IDLE_MS = 24 * 60 * 60 * 1000;
@@ -21,7 +24,7 @@ export interface AffiliateReferral {
   color: string;
   wagerWl: number;
   bets: number;
-  /** Running Shard commission from theoretical house edge, not player losses. */
+  /** Running World Lock commission from theoretical house edge, not player losses. */
   commission: number;
   status: ReferralStatus;
   lastBetAt: number;
@@ -29,12 +32,44 @@ export interface AffiliateReferral {
 
 const NAME_COLORS = ["#22d3ee", "#67e8f9", "#2dd4bf", "#a78bfa", "#34d399", "#38bdf8", "#fb7185", "#fbbf24"];
 
+const RESERVED_AFFILIATE_CODES = new Set([
+  "seedbet",
+  "admin",
+  "house",
+  "support",
+  "staff",
+  "official",
+  "affiliate",
+  "nitro",
+  "prism",
+  "vault",
+  "demo",
+  "test",
+  "system",
+  "null",
+  "undefined",
+  "mod",
+  "moderator",
+  "help",
+  "owner",
+]);
+
 export function normalizeAffiliateCode(raw: string): string {
-  return raw.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, 14);
+  return raw.replace(/[^a-zA-Z0-9]/g, "").toLowerCase().slice(0, AFFILIATE_CODE_MAX);
 }
 
-export function makeAffiliateCode(name: string): string {
-  return normalizeAffiliateCode(name) || "vaultbound";
+/** Custom referral codes are player-chosen, unique, and immutable after claim. */
+export function affiliateCodeIssue(raw: string): string | null {
+  const stripped = raw.replace(/[^a-zA-Z0-9]/g, "");
+  if (stripped.length > AFFILIATE_CODE_MAX) {
+    return `Use ${AFFILIATE_CODE_MIN}–${AFFILIATE_CODE_MAX} letters or numbers.`;
+  }
+  const code = normalizeAffiliateCode(raw);
+  if (code.length < AFFILIATE_CODE_MIN) {
+    return `Use ${AFFILIATE_CODE_MIN}–${AFFILIATE_CODE_MAX} letters or numbers.`;
+  }
+  if (RESERVED_AFFILIATE_CODES.has(code)) return "That code is reserved.";
+  return null;
 }
 
 export function colorForName(name: string): string {
@@ -92,7 +127,7 @@ export const DEMO_COMMISSION_TOTAL = DEMO_REFERRALS.reduce((sum, row) => sum + r
 
 export const PROGRAM_STATS = {
   referredPlayersAllTime: 18_420,
-  earnedAllTimeShards: 26_041.8,
+  earnedAllTimeWl: 26_041.8,
 } as const;
 
 export interface AffiliateBoardRow {
@@ -100,13 +135,13 @@ export interface AffiliateBoardRow {
   color: string;
   wagerWl: number;
   place: number;
-  prizeShards: number;
+  prizeWl: number;
 }
 
 export const DEMO_BOARD: AffiliateBoardRow[] = [
-  { name: "reefpilot", color: "#22d3ee", wagerWl: 12_200, place: 1, prizeShards: 250 },
-  { name: "frostbyte", color: "#67e8f9", wagerWl: 8_040, place: 2, prizeShards: 120 },
-  { name: "mossqueen", color: "#34d399", wagerWl: 5_510, place: 3, prizeShards: 50 },
+  { name: "reefpilot", color: "#22d3ee", wagerWl: 12_200, place: 1, prizeWl: 250 },
+  { name: "frostbyte", color: "#67e8f9", wagerWl: 8_040, place: 2, prizeWl: 120 },
+  { name: "mossqueen", color: "#34d399", wagerWl: 5_510, place: 3, prizeWl: 50 },
 ];
 
 export const AFFILIATE_PAGE_SIZE = 5;

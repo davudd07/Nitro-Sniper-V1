@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, UserPlus, Swords, Flag, Link2, Handshake, Banknote, Eye, Circle } from "lucide-react";
+import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, Swords, Flag, Link2, Handshake, Banknote, Eye, Circle } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore, type BattleReplay, type BattleRosterSeat } from "../store/battleStore";
 import { BATTLE_MODES, TEAM_COLORS, totalPlayers } from "../data/battleModes";
@@ -845,23 +845,6 @@ export function BattleRoom() {
     freezeRoster(next);
   }
 
-  function simulateJoin(slotIndex: number) {
-    setPlayers((prev) => prev.map((p) => (p.slotIndex === slotIndex ? { ...p, kind: "joining" } : p)));
-    const delay = 1400 + Math.random() * 2200;
-    setTimeout(() => {
-      setPlayers((prev) => {
-        const usedNames = new Set(prev.filter((p) => p.name).map((p) => p.name));
-        const next = prev.map((p) =>
-          p.slotIndex === slotIndex
-            ? { ...p, kind: "player" as const, name: `Guest_${randomBotName(usedNames).slice(0, 5)}${Math.floor(Math.random() * 90 + 10)}` }
-            : p,
-        );
-        queueMicrotask(() => freezeRoster(next));
-        return next;
-      });
-    }, delay);
-  }
-
   if (!battleId || !battle || !mode) return <Navigate to="/battles" replace />;
 
   const currentCaseId = caseIndex >= 0 ? caseSequence[caseIndex] : undefined;
@@ -1193,7 +1176,6 @@ export function BattleRoom() {
                               canJoinSeat={spectating && phase === "filling" && battle.status !== "finished" && !wantReplay}
                               onLanded={(item) => handleLanded(p.slotIndex, item)}
                               onCallBot={() => callBot(p.slotIndex)}
-                              onSimulateJoin={() => simulateJoin(p.slotIndex)}
                               onJoinBattle={() => {
                                 sound.click();
                                 payAndJoin(p.slotIndex, 0);
@@ -1383,7 +1365,6 @@ function PlayerStage({
   canJoinSeat = false,
   onLanded,
   onCallBot,
-  onSimulateJoin,
   onJoinBattle,
   onBorrowJoin,
 }: {
@@ -1404,7 +1385,6 @@ function PlayerStage({
   canJoinSeat?: boolean;
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
-  onSimulateJoin: () => void;
   onJoinBattle?: () => void;
   onBorrowJoin?: () => void;
 }) {
@@ -1447,26 +1427,16 @@ function PlayerStage({
                 </div>
               )}
               {canManageSeats && (
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => {
-                      sound.click();
-                      onCallBot();
-                    }}
-                    className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
-                  >
-                    <Bot className="h-3.5 w-3.5" /> Call Bot
-                  </button>
-                  <button
-                    onClick={() => {
-                      sound.click();
-                      onSimulateJoin();
-                    }}
-                    className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" /> Simulate Join
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.click();
+                    onCallBot();
+                  }}
+                  className="flex items-center gap-1 rounded-lg border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white transition-all duration-150 hover:-translate-y-0.5 hover:bg-white/5 active:scale-95"
+                >
+                  <Bot className="h-3.5 w-3.5" /> Call Bot
+                </button>
               )}
             </>
           )}

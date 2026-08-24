@@ -118,7 +118,13 @@ function sprinkleGoldBaits(strip: CaseItem[], hasGold: boolean, rand: () => numb
   }
 }
 
-function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number): void {
+/**
+ * Extra fly-bys of MAXXX WIN — but if MAXXX sits in the gold-spin pool, those
+ * slots show GOLD SPIN instead. Gold-pool prizes are never used as bait.
+ * Never writes LAND_INDEX.
+ */
+function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number, goldIds: Set<string>): void {
+  const bait = goldIds.has(MAXXX_WIN.id) ? GOLD_INDICATOR : MAXXX_WIN;
   const travel: number[] = [];
   for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
   shuffleInPlace(travel, rand);
@@ -126,7 +132,7 @@ function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number): void {
   for (let n = 0; n < placeCount; n++) {
     const slot = travel[n];
     if (slot === undefined || slot === LAND_INDEX) continue;
-    strip[slot] = MAXXX_WIN;
+    strip[slot] = bait;
   }
 }
 
@@ -137,15 +143,15 @@ function buildStrip(
   baits: CaseItem[] = [],
   baitMaxxx = false,
 ): CaseItem[] {
-  const baitIds = new Set(baits.map((item) => item.id));
-  const filler = baitIds.size ? pool.filter((item) => !baitIds.has(item.id)) : pool;
+  const goldIds = new Set(baits.map((item) => item.id));
+  const filler = goldIds.size ? pool.filter((item) => !goldIds.has(item.id)) : pool;
   const fillerPool = filler.length ? filler : pool;
   const strip: CaseItem[] = [];
   for (let i = 0; i < REEL_LENGTH; i++) {
     strip.push(i === LAND_INDEX ? landing : pickFrom(fillerPool, rand));
   }
   if (baits.length) sprinkleGoldBaits(strip, true, rand);
-  if (baitMaxxx) sprinkleMaxxxBaits(strip, rand);
+  if (baitMaxxx) sprinkleMaxxxBaits(strip, rand, goldIds);
   strip[LAND_INDEX] = landing;
   return strip;
 }
@@ -317,9 +323,9 @@ export function CaseReel({
     onGoldTriggered?.();
     timeoutRef.current = setTimeout(() => {
       const goldRand = mulberry32(seedBase * 104729 + 3);
-      // Gold reel: real gold-pool items can land. No GOLD SPIN indicator baits.
-      // MAXXX WIN still flies past visually and never overwrites LAND_INDEX.
-      const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand, [], true);
+      // Gold reel: real gold-pool items can land. No GOLD SPIN baits and no
+      // extra MAXXX baits — those belong on the main reel as GOLD SPIN.
+      const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand, [], false);
       pendingSpinRef.current = {
         seed: seedBase + 1,
         duration: goldDuration,
@@ -363,8 +369,8 @@ export function CaseReel({
     const rand = mulberry32(seedBase);
     const goesGold = goldSpinEnabled && result.goldTier;
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
-    // Normal reel: GOLD SPIN indicator flies past as bait. Landing stays the real result
-    // (or the GOLD SPIN indicator). The gold-spin reel below keeps the gold-only pool.
+    // Normal reel: GOLD SPIN flies past as bait (including when MAXXX is in the
+    // gold pool). Landing stays the real result (or the GOLD SPIN indicator).
     const mainStrip = buildStrip(pool, targetForMain, rand, goldPool, true);
     pendingSpinRef.current = {
       seed: seedBase,

@@ -164,6 +164,7 @@ class SoundEngine {
       this.maxxxAudio = new Audio("/sounds/maxxx-win.mp3");
       this.maxxxAudio.volume = 0.88;
     }
+    this.maxxxAudio.pause();
     this.maxxxAudio.currentTime = 0;
     void this.maxxxAudio.play().catch(() => {});
   }

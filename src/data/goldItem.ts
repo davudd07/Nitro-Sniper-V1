@@ -7,3 +7,7 @@ export const GOLD_INDICATOR: CaseItem = {
   rarity: "mythic",
   icon: "sparkles",
 };
+
+export function isGoldIndicator(item: { id: string }): boolean {
+  return item.id === GOLD_INDICATOR.id;
+}

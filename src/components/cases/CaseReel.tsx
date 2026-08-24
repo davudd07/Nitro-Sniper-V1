@@ -3,7 +3,7 @@ import { clsx } from "clsx";
 import type { CaseOddsEntry } from "../../data/cases";
 import type { CaseItem } from "../../data/items";
 import { MAXXX_WIN, isMaxxxWin, itemImageSrc } from "../../data/items";
-import { GOLD_INDICATOR } from "../../data/goldItem";
+import { GOLD_INDICATOR, isGoldIndicator } from "../../data/goldItem";
 import { RARITIES } from "../../data/rarities";
 import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
 import { formatCredits } from "../../lib/format";
@@ -484,7 +484,7 @@ export function CaseReel({
               itemSize={cfg.itemSize}
               iconSize={SIZE_CONFIG[size].icon}
               orientation={orientation}
-              pulse={item.id === GOLD_INDICATOR.id && !spinning}
+              pulse={isGoldIndicator(item) && !spinning}
               goldBait={!isGoldPhase && goldIdSet.has(item.id)}
             />
           ))}
@@ -512,12 +512,13 @@ const ReelSlot = memo(function ReelSlot({
   goldBait: boolean;
 }) {
   const r = RARITIES[item.rarity];
-  const isIndicator = item.id === GOLD_INDICATOR.id;
+  const isIndicator = isGoldIndicator(item);
   const maxxx = isMaxxxWin(item);
   const goldChrome = isIndicator || goldBait;
   const iconPx = ICON_PX[iconSize];
   const isHorizontal = orientation === "horizontal";
   const ring = goldChrome ? "#fbbf24" : maxxx ? "#fbbf24" : r.ring;
+  const cubePx = Math.round(Math.min(itemSize * 0.78, iconPx * 1.85));
 
   return (
     <div
@@ -528,7 +529,9 @@ const ReelSlot = memo(function ReelSlot({
           ? "h-full flex-col items-center justify-center gap-0.5"
           : iconSize === "sm"
             ? "w-full flex-col items-center justify-center gap-0.5 px-1"
-            : "w-full items-center gap-2.5 px-2",
+            : isIndicator
+              ? "w-full flex-col items-center justify-center gap-1 px-2"
+              : "w-full items-center gap-2.5 px-2",
       )}
       style={{
         contain: "layout paint",
@@ -536,10 +539,14 @@ const ReelSlot = memo(function ReelSlot({
         height: isHorizontal ? "100%" : itemSize,
         top: isHorizontal ? 0 : index * itemSize,
         left: isHorizontal ? index * itemSize : 0,
-        background: goldChrome
+        background: isIndicator
           ? isHorizontal
-            ? `linear-gradient(165deg, #fbbf2466, ${r.to})`
-            : `linear-gradient(90deg, #fbbf2455, ${r.to}cc)`
+            ? "linear-gradient(165deg, #3f2d0a, #120c04)"
+            : "linear-gradient(90deg, #3f2d0a, #120c04cc)"
+          : goldChrome
+            ? isHorizontal
+              ? `linear-gradient(165deg, #fbbf2466, ${r.to})`
+              : `linear-gradient(90deg, #fbbf2455, ${r.to}cc)`
           : maxxx
             ? isHorizontal
               ? "linear-gradient(165deg, rgba(251,191,36,0.2), #1c1003)"
@@ -552,37 +559,57 @@ const ReelSlot = memo(function ReelSlot({
         borderBottom: isHorizontal ? undefined : `2px solid ${ring}`,
       }}
     >
-      <img
-        src={itemImageSrc(item)}
-        alt=""
-        width={maxxx ? Math.round(iconPx * 1.7) : iconPx}
-        height={iconPx}
-        decoding="async"
-        draggable={false}
-        className={clsx("shrink-0", maxxx ? "object-contain" : "rounded object-cover")}
-        style={{ width: maxxx ? Math.round(iconPx * 1.7) : iconPx, height: iconPx }}
-      />
-      {maxxx ? (
-        isHorizontal || iconSize === "sm" ? null : (
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-bold text-amber-200">{item.name}</p>
-            <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>
-          </div>
-        )
-      ) : isHorizontal || iconSize === "sm" ? (
-        <span
-          className={clsx("max-w-[92%] truncate px-0.5 font-bold", iconSize === "sm" ? "text-[9px]" : "text-[10px]")}
-          style={{ color: goldChrome ? "#fbbf24" : r.text }}
-        >
-          {item.name}
-        </span>
+      {isIndicator ? (
+        <>
+          <img
+            src={itemImageSrc(item)}
+            alt=""
+            width={cubePx}
+            height={cubePx}
+            decoding="async"
+            draggable={false}
+            className="pixelated shrink-0 object-contain drop-shadow-[0_0_16px_rgba(251,191,36,0.8)]"
+            style={{ width: cubePx, height: cubePx }}
+          />
+          {!(isHorizontal || iconSize === "sm") && (
+            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-amber-200">Gold Spin</p>
+          )}
+        </>
       ) : (
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-xs font-bold" style={{ color: goldChrome ? "#fbbf24" : r.text }}>
-            {item.name}
-          </p>
-          {!isIndicator && <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>}
-        </div>
+        <>
+          <img
+            src={itemImageSrc(item)}
+            alt=""
+            width={maxxx ? Math.round(iconPx * 1.7) : iconPx}
+            height={iconPx}
+            decoding="async"
+            draggable={false}
+            className={clsx("shrink-0", maxxx ? "object-contain" : "rounded object-cover")}
+            style={{ width: maxxx ? Math.round(iconPx * 1.7) : iconPx, height: iconPx }}
+          />
+          {maxxx ? (
+            isHorizontal || iconSize === "sm" ? null : (
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-bold text-amber-200">{item.name}</p>
+                <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>
+              </div>
+            )
+          ) : isHorizontal || iconSize === "sm" ? (
+            <span
+              className={clsx("max-w-[92%] truncate px-0.5 font-bold", iconSize === "sm" ? "text-[9px]" : "text-[10px]")}
+              style={{ color: goldChrome ? "#fbbf24" : r.text }}
+            >
+              {item.name}
+            </span>
+          ) : (
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold" style={{ color: goldChrome ? "#fbbf24" : r.text }}>
+                {item.name}
+              </p>
+              <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

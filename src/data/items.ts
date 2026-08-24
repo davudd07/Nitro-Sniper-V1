@@ -141,5 +141,6 @@ export function isMaxxxWin(item: { id: string }): boolean {
 
 export function itemImageSrc(item: { id: string; icon: IconKey }): string {
   if (item.id === "maxxx_win" || item.icon === "maxxx") return "/images/items/maxxx.png";
+  if (item.id === "__gold_indicator__") return "/images/items/gold-spin.png";
   return `/images/items/${item.icon}.webp`;
 }

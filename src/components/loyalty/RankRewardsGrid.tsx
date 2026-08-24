@@ -1,6 +1,6 @@
 import { Crown, Lock, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
-import { formatCredits, formatPercent, formatXp } from "../../lib/format";
+import { formatCash, formatPercent, formatXp } from "../../lib/format";
 import { sortedTiers, type VipTier } from "../../lib/loyalty";
 
 export function RankRewardsGrid({
@@ -62,7 +62,7 @@ export function RankRewardsGrid({
                 {tier.rankDropSh > 0 ? (
                   <li>
                     One-time rank drop:{" "}
-                    <span className="font-semibold text-cyan-200">{formatCredits(tier.rankDropSh)} SH</span>
+                    <span className="font-semibold text-cyan-200">{formatCash(tier.rankDropSh)}</span>
                   </li>
                 ) : (
                   <li className="text-slate-500">No rank Shard drop at this step.</li>

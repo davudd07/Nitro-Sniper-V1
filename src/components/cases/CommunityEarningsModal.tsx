@@ -1,6 +1,6 @@
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
-import { formatCredits, formatPercent, formatRakeback } from "../../lib/format";
+import { formatCredits, formatCash, formatPercent } from "../../lib/format";
 import { COMMUNITY_COMMISSION_OF_EDGE } from "../../lib/communityCases";
 import { requireAccount } from "../../lib/stake";
 import { sound } from "../../lib/sound";
@@ -31,7 +31,7 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
       return;
     }
     sound.win("small");
-    push(`Claimed ${formatRakeback(amt)} SH community case earnings.`, "success");
+    push(`Claimed ${formatCash(amt)} community case earnings.`, "success");
   }
 
   return createPortal(
@@ -66,7 +66,7 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
         <div className="mt-4 grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-[#3a5c5c]/60 bg-black/30 px-3 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Total Earned</p>
-            <p className="mt-1 font-mono text-lg font-bold text-white">{formatRakeback(total)} SH</p>
+            <p className="mt-1 font-mono text-lg font-bold text-white">{formatCash(total)}</p>
           </div>
           <div className="rounded-xl border border-[#3a5c5c]/60 bg-black/30 px-3 py-3">
             <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Your Cases Opened</p>
@@ -77,7 +77,7 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
         <div className="mt-3 flex items-center justify-between gap-3 rounded-xl border border-emerald-400/30 bg-emerald-500/10 px-3 py-3">
           <div>
             <p className="text-[10px] font-bold uppercase tracking-wide text-emerald-300/80">Claimable Earnings</p>
-            <p className="mt-1 font-mono text-xl font-bold text-emerald-100">{formatRakeback(claimable)} SH</p>
+            <p className="mt-1 font-mono text-xl font-bold text-emerald-100">{formatCash(claimable)}</p>
           </div>
           <button
             type="button"

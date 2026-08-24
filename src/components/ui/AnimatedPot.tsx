@@ -3,18 +3,16 @@ import { motion } from "framer-motion";
 import { Coins } from "lucide-react";
 import { clsx } from "clsx";
 import { easeOutQuart } from "../../lib/easing";
-import { formatCredits } from "../../lib/format";
+import { formatCash } from "../../lib/format";
 
 export function AnimatedPot({
   value,
   label = "Jackpot pot",
   size = "md",
-  suffix = "SH",
 }: {
   value: number;
   label?: string;
   size?: "md" | "lg";
-  suffix?: string;
 }) {
   const [shown, setShown] = useState(value);
   const [pulse, setPulse] = useState(0);
@@ -60,10 +58,7 @@ export function AnimatedPot({
           size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl",
         )}
       >
-        {formatCredits(shown)}
-        <span className={clsx("ml-1.5 font-semibold text-amber-200/80", size === "lg" ? "text-base" : "text-sm")}>
-          {suffix}
-        </span>
+        {formatCash(shown)}
       </motion.p>
     </div>
   );

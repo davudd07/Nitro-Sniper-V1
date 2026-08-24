@@ -10,7 +10,7 @@ import { useLoyaltyStore } from "../../store/loyaltyStore";
 import { useAuthStore } from "../../store/authStore";
 import { useToastStore } from "../../store/toastStore";
 import { requireAccount } from "../../lib/stake";
-import { formatCredits, formatPercent, formatRakeback, formatXp } from "../../lib/format";
+import { formatCash, formatPercent, formatXp } from "../../lib/format";
 import { sound } from "../../lib/sound";
 import {
   CASE_COLOR_PRESETS,
@@ -246,7 +246,7 @@ export function CreateCommunityCaseForm({
                         <ItemIcon icon={item.icon} rarity={item.rarity} size="sm" lite />
                         <span className="min-w-0">
                           <span className="block truncate text-xs font-semibold text-white">{item.name}</span>
-                          <span className="block font-mono text-[11px] text-slate-400">{formatCredits(item.value)} SH</span>
+                          <span className="block font-mono text-[11px] text-slate-400">{formatCash(item.value)}</span>
                         </span>
                       </button>
                     );
@@ -287,7 +287,7 @@ export function CreateCommunityCaseForm({
                       </button>
                       <ItemIcon icon={item.icon} rarity={item.rarity} size="sm" lite />
                       <span className="min-w-0 flex-1 truncate text-sm text-white">{item.name}</span>
-                      <span className="hidden font-mono text-xs text-slate-400 sm:inline">{formatCredits(item.value)} SH</span>
+                      <span className="hidden font-mono text-xs text-slate-400 sm:inline">{formatCash(item.value)}</span>
                       <label className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-500">
                         Chance %
                         <input
@@ -379,17 +379,17 @@ export function CreateCommunityCaseForm({
             <div className="mt-5 space-y-3 border-t border-white/8 pt-4">
               <div className="grid gap-2 text-sm text-slate-400 sm:grid-cols-2">
                 <p>
-                  Item EV <span className="font-mono text-white">{formatCredits(ev)} SH</span>
+                  Item EV <span className="font-mono text-white">{formatCash(ev)}</span>
                 </p>
                 <p>
                   House edge <span className="font-mono text-white">{formatPercent(houseEdge)}</span>
                 </p>
                 <p>
-                  House take <span className="font-mono text-white">{formatRakeback(houseTake)} SH</span>
+                  House take <span className="font-mono text-white">{formatCash(houseTake)}</span>
                 </p>
                 <p>
                   Your commission ({formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of edge){" "}
-                  <span className="font-mono text-emerald-200">{formatRakeback(commission)} SH / paid open</span>
+                  <span className="font-mono text-emerald-200">{formatCash(commission)} / paid open</span>
                 </p>
               </div>
               <p className="text-xs text-slate-500">
@@ -399,7 +399,7 @@ export function CreateCommunityCaseForm({
               </p>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-lg font-bold text-white">
-                  Price: {price > 0 ? `${formatCredits(price)} SH` : "—"}
+                  Price: {price > 0 ? `${formatCash(price)}` : "—"}
                 </p>
                 <button
                   type="button"

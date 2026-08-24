@@ -9,6 +9,7 @@ import { GameSidebar } from "./components/layout/GameSidebar";
 import { ChatSidebar } from "./components/layout/ChatSidebar";
 import { Toasts } from "./components/ui/Toasts";
 import { useEconomyStore } from "./store/economyStore";
+import { useSettingsStore } from "./store/settingsStore";
 import { useToastStore } from "./store/toastStore";
 import { Home } from "./pages/Home";
 import { Mines } from "./pages/Mines";
@@ -46,13 +47,15 @@ function BattleRoomRoute() {
 export default function App() {
   const balance = useEconomyStore((s) => s.balance);
   const maybeTopUp = useEconomyStore((s) => s.maybeTopUp);
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
   const push = useToastStore((s) => s.push);
   const location = useLocation();
+  void lockUnit;
   const isBattleRoom = /^\/battles\/(?!create$)[^/]+$/.test(location.pathname);
 
   useEffect(() => {
     if (maybeTopUp()) {
-      push("Balance was running low — 10,000 demo Shards added automatically.", "success");
+      push("Balance was running low — 10,000 demo World Locks added automatically.", "success");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [balance]);

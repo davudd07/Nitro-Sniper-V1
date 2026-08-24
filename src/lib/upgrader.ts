@@ -1,4 +1,6 @@
 import { ITEMS, type CaseItem } from "../data/items";
+import { currentLockUnit } from "./format";
+import { displayToWorldLocks, formatLockNumber } from "./money";
 import { HOUSE_EDGE } from "./rakeback";
 
 /** 5% Upgrader edge unless VIP admin overrides `upgrader`. */
@@ -92,17 +94,14 @@ export function minTargetForSource(source: number): number {
 }
 
 export function formatUpgraderStake(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(ceilToCents(value));
+  return formatLockNumber(ceilToCents(value), currentLockUnit());
 }
 
-/** Parse a typed SH amount; empty/invalid → 0. Always ceil-to-cents. */
+/** Parse a typed lock amount in the active display unit; empty/invalid → 0 WL. Always ceil-to-cents. */
 export function parseUpgraderAmount(raw: string): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  return ceilToCents(n);
+  return ceilToCents(displayToWorldLocks(n, currentLockUnit()));
 }
 
 /**

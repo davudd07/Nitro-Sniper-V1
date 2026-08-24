@@ -1,6 +1,6 @@
 import { Handshake } from "lucide-react";
 import { clsx } from "clsx";
-import { formatCredits } from "../../lib/format";
+import { formatCredits, formatCash } from "../../lib/format";
 import { pctLabel } from "../../lib/battleFinance";
 
 /** Seat / case-list cost, with the pre-borrow amount struck through when borrowed. */
@@ -38,8 +38,7 @@ export function BattleCost({
             compact ? "text-sm" : "text-base",
           )}
         >
-          {formatCredits(paid)}
-          <span className={clsx("ml-0.5 font-medium text-amber-300/70", compact ? "text-[10px]" : "text-xs")}>SH</span>
+          {formatCash(paid)}
         </span>
         {borrowed && (
           <span
@@ -73,7 +72,7 @@ export function FinishedBattleCostPaid({
         <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Cost</p>
         <p
           className="font-mono text-sm font-semibold tabular-nums text-amber-200"
-          title={`${formatCredits(costPerPlayer)} SH per seat`}
+          title={`${formatCash(costPerPlayer)} per seat`}
         >
           {formatCredits(entryPot)}
         </p>

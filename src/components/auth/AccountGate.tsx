@@ -54,7 +54,7 @@ export function AccountGate() {
           </div>
         </div>
         <p className="mb-4 text-xs leading-relaxed text-slate-400">
-          Create a username before demo or Shard bets. Play-money only — this login stays on this browser.
+          Create a username before demo or World Lock bets. Play-money only — this login stays on this browser.
         </p>
         <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Username</label>
         <input

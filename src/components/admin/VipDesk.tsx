@@ -43,7 +43,7 @@ export function VipDesk() {
           <Crown className="h-3.5 w-3.5" /> XP calculation
         </p>
         <p className="mb-4 text-xs text-slate-500">
-          Shard wagers only. Fun Coins and demo (0) stakes never grant XP. Switch modes without touching lifetime totals.
+          World Lock wagers only. Shards and demo (0) stakes never grant XP. Switch modes without touching lifetime totals.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <span className={clsx("text-sm font-semibold", !houseEdgeMode ? "text-white" : "text-slate-500")}>

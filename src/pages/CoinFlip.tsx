@@ -6,7 +6,8 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
-import { formatCredits, formatPercent } from "../lib/format";
+import { formatCredits, formatCash, formatPercent } from "../lib/format";
+import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
@@ -242,7 +243,7 @@ export function CoinFlip() {
     winsRef.current = 0;
     phaseRef.current = "idle";
     sound.win(payout > bet * 4 ? "big" : "small");
-    push(`Cashed out ${formatCredits(payout)} SH.`, "success");
+    push(`Cashed out ${formatCash(payout)}.`, "success");
     void revealRemainder(streak);
   }
 
@@ -288,7 +289,7 @@ export function CoinFlip() {
       phaseRef.current = "lost";
       recordRound(bet, 0, "coinflip");
       sound.lose();
-      push(`${landed === "heads" ? "Heads" : "Tails"} — lost ${formatCredits(bet)} SH.`, "danger");
+      push(`${landed === "heads" ? "Heads" : "Tails"} — lost ${formatCash(bet)}.`, "danger");
       if (leftover > 0) {
         const extra = await play(leftover);
         setGhostRun(
@@ -316,7 +317,7 @@ export function CoinFlip() {
       setPhase("maxed");
       phaseRef.current = "maxed";
       sound.win("big");
-      push(`Ten in a row — auto cash out ${formatCredits(payout)} SH at ${COIN_MAX_MULT.toFixed(2)}x.`, "success");
+      push(`Ten in a row — auto cash out ${formatCash(payout)} at ${COIN_MAX_MULT.toFixed(2)}x.`, "success");
       return "maxed";
     }
 
@@ -414,13 +415,12 @@ export function CoinFlip() {
 
           <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Bet amount</label>
           <div className="mb-3 flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              value={bet}
+            <LockAmountInput
+              valueWl={bet}
+              onChangeWl={(wl) => setBet(Math.max(0, wl))}
               disabled={phase === "flipping" || phase === "won" || autoRunning}
-              onChange={(e) => setBet(Math.max(0, Number(e.target.value) || 0))}
-              className="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40 disabled:opacity-50"
+              className="min-w-0 flex-1"
+              inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40 disabled:opacity-50"
             />
             <button
               type="button"
@@ -480,7 +480,7 @@ export function CoinFlip() {
             disabled={phase !== "won" || autoRunning}
             className="mt-2 w-full rounded-xl bg-emerald-500 py-3 font-bold text-bg-950 transition-transform hover:brightness-110 disabled:opacity-40"
           >
-            Cash Out{phase === "won" ? ` · ${formatCredits(payoutFor(bet, wins))} SH` : ""}
+            Cash Out{phase === "won" ? ` · ${formatCash(payoutFor(bet, wins))}` : ""}
           </button>
 
           <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
@@ -494,7 +494,7 @@ export function CoinFlip() {
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Potential</p>
-              <p className="font-mono text-base font-bold text-white">{formatCredits(wins > 0 ? potential : nextPayout)} SH</p>
+              <p className="font-mono text-base font-bold text-white">{formatCash(wins > 0 ? potential : nextPayout)}</p>
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Balance</p>
@@ -508,12 +508,12 @@ export function CoinFlip() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400">
             <span>{status}</span>
             <span>
-              Last win <span className="font-mono text-slate-200">{formatCredits(lastWin)} SH</span>
+              Last win <span className="font-mono text-slate-200">{formatCash(lastWin)}</span>
               <span className="mx-2 text-white/20">·</span>
               Session{" "}
               <span className={clsx("font-mono", session >= 0 ? "text-emerald-300" : "text-rose-300")}>
                 {session >= 0 ? "+" : ""}
-                {formatCredits(session)} SH
+                {formatCash(session)}
               </span>
             </span>
           </div>

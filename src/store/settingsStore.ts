@@ -1,21 +1,26 @@
 import { persist } from "zustand/middleware";
 import { create } from "zustand";
 import { sound } from "../lib/sound";
-
-export type DisplayCurrency = "shards" | "funcoins";
+import { isLockUnit, type HeaderWallet, type LockUnit } from "../lib/money";
 
 interface SettingsState {
   soundOn: boolean;
   leftNavOpen: boolean;
   chatOpen: boolean;
-  displayCurrency: DisplayCurrency;
+  /** Display unit for the play-money World Lock ledger. Does not change stored balances. */
+  lockUnit: LockUnit;
+  /** Header shows lock balance or the Shards (ex–Fun Coins) wallet. */
+  headerWallet: HeaderWallet;
   toggleSound: () => void;
   toggleLeftNav: () => void;
   toggleChat: () => void;
   setLeftNav: (open: boolean) => void;
   setChat: (open: boolean) => void;
-  setDisplayCurrency: (currency: DisplayCurrency) => void;
+  setLockUnit: (unit: LockUnit) => void;
+  setHeaderWallet: (wallet: HeaderWallet) => void;
 }
+
+type PersistedSettings = Partial<SettingsState> & { displayCurrency?: string };
 
 export const useSettingsStore = create<SettingsState>()(
   persist(
@@ -23,7 +28,8 @@ export const useSettingsStore = create<SettingsState>()(
       soundOn: true,
       leftNavOpen: true,
       chatOpen: true,
-      displayCurrency: "shards",
+      lockUnit: "wl",
+      headerWallet: "locks",
       toggleSound: () => {
         const next = !get().soundOn;
         sound.setMuted(!next);
@@ -33,10 +39,27 @@ export const useSettingsStore = create<SettingsState>()(
       toggleChat: () => set((s) => ({ chatOpen: !s.chatOpen })),
       setLeftNav: (open) => set({ leftNavOpen: open }),
       setChat: (open) => set({ chatOpen: open }),
-      setDisplayCurrency: (currency) => set({ displayCurrency: currency }),
+      setLockUnit: (unit) => set({ lockUnit: unit, headerWallet: "locks" }),
+      setHeaderWallet: (wallet) => set({ headerWallet: wallet }),
     }),
     {
       name: "prism-vault-settings",
+      version: 2,
+      migrate: (persisted, version) => {
+        const p = (persisted ?? {}) as PersistedSettings;
+        if (version >= 2) {
+          return {
+            ...p,
+            lockUnit: isLockUnit(p.lockUnit) ? p.lockUnit : "wl",
+            headerWallet: p.headerWallet === "shards" ? "shards" : "locks",
+          };
+        }
+        return {
+          ...p,
+          lockUnit: "wl" as LockUnit,
+          headerWallet: (p.displayCurrency === "funcoins" ? "shards" : "locks") as HeaderWallet,
+        };
+      },
       onRehydrateStorage: () => (state) => {
         if (state) sound.setMuted(!state.soundOn);
       },

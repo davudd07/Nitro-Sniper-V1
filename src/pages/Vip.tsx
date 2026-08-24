@@ -17,10 +17,10 @@ export function Vip() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-white">VIP & XP</h1>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-          Lifetime XP from Shard wagers only — never Fun Coins, never demo (0) stakes, never wins or losses.
+          Lifetime XP from World Lock wagers only — never Shards, never demo (0) stakes, never wins or losses.
           Current mode:{" "}
           <span className="font-semibold text-emerald-200">
-            {mode === "flat" ? `flat ${originalsRate} XP / 1 SH on originals` : "house-edge × 100 × category"}
+            {mode === "flat" ? `flat ${originalsRate} XP / 1 WL on originals` : "house-edge × 100 × category"}
           </span>
           . Instant Drop and Daily Drop rakeback can gain a VIP bonus. Rank order: Unranked → Silver 1–3 → Gold 1–3 →
           Diamond 1–3 → Emerald → Sapphire → Ruby → Elite → Grandmaster → Obsidian → Emperor.

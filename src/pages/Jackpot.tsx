@@ -20,7 +20,8 @@ import { considerWinLeader } from "../store/winLeaderStore";
 import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
-import { formatCredits, formatPercent } from "../lib/format";
+import { formatCredits, formatCash, formatPercent } from "../lib/format";
+import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
@@ -84,7 +85,7 @@ export function JackpotPage() {
   function handleJoin() {
     const bet = Math.round(amount);
     if (bet < def.min || bet > def.max) {
-      push(`Bet must be ${formatCredits(def.min)}–${formatCredits(def.max)} SH in this pot.`, "warning");
+      push(`Bet must be ${formatCredits(def.min)}–${formatCash(def.max)} in this pot.`, "warning");
       return;
     }
     if (!requireAccount()) return;
@@ -99,7 +100,7 @@ export function JackpotPage() {
     }
     awardRakeback(bet, HOUSE_EDGE.jackpot);
     sound.chip();
-    push(`Joined ${def.label} jackpot with ${formatCredits(bet)} SH.`, "success");
+    push(`Joined ${def.label} jackpot with ${formatCash(bet)}.`, "success");
   }
 
   const botCount = pot.entries.filter((e) => e.kind === "bot").length;
@@ -115,7 +116,7 @@ export function JackpotPage() {
       push(reason, "warning");
       return;
     }
-    push(`Bot joined with ${formatCredits(you!.amount)} SH.`, "info");
+    push(`Bot joined with ${formatCash(you!.amount)}.`, "info");
   }
 
   async function handleSpin() {
@@ -180,10 +181,10 @@ export function JackpotPage() {
     if (winner.kind === "you") {
       credit(livePayout);
       recordRound(me.amount, livePayout, "jackpot");
-      push(`You won the jackpot! +${formatCredits(livePayout)} SH after 9% house edge.`, "success");
+      push(`You won the jackpot! +${formatCash(livePayout)} after 9% house edge.`, "success");
     } else {
       recordRound(me.amount, 0, "jackpot");
-      push(`${winner.name} took the pot. House kept ${formatCredits(liveTotal - livePayout)} SH.`, "info");
+      push(`${winner.name} took the pot. House kept ${formatCash(liveTotal - livePayout)}.`, "info");
     }
   }
 
@@ -231,7 +232,7 @@ export function JackpotPage() {
           <WinLeaderStageMark game="jackpot" />
           <div className="relative">
             <AnimatedPot value={total} label={`${def.label} pot`} size="lg" />
-            <p className="mt-1 text-center text-xs text-slate-500">Pays {formatCredits(payout)} SH after house edge</p>
+            <p className="mt-1 text-center text-xs text-slate-500">Pays {formatCash(payout)} after house edge</p>
             {countdownLeft != null && pot.phase === "open" && (
               <div className="absolute right-0 top-0 text-right">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-300">Starts in</p>
@@ -282,13 +283,12 @@ export function JackpotPage() {
               <>
                 <label className="block">
                   <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your bet</span>
-                  <input
-                    type="number"
-                    min={def.min}
-                    max={def.max}
-                    value={amount}
-                    onChange={(e) => setAmount(Number(e.target.value))}
-                    className="mt-1.5 w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-white outline-none focus:border-amber-400/50"
+                  <LockAmountInput
+                    valueWl={amount}
+                    onChangeWl={(wl) => setAmount(Math.min(def.max, Math.max(def.min, wl)))}
+                    minWl={def.min}
+                    className="mt-1.5"
+                    inputClassName="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-white outline-none focus:border-amber-400/50"
                   />
                 </label>
                 <input
@@ -315,7 +315,7 @@ export function JackpotPage() {
                   ))}
                 </div>
                 <button type="button" onClick={handleJoin} className="btn-primary w-full py-2.5">
-                  Join · {formatCredits(Math.round(amount))} SH
+                  Join · {formatCash(Math.round(amount))}
                 </button>
               </>
             )}
@@ -323,7 +323,7 @@ export function JackpotPage() {
             {pot.phase === "open" && you && (
               <>
                 <p className="text-sm text-slate-300">
-                  You’re in for <span className="font-mono font-semibold text-white">{formatCredits(you.amount)} SH</span>.
+                  You’re in for <span className="font-mono font-semibold text-white">{formatCash(you.amount)}</span>.
                   Call up to {JACKPOT_MAX_BOTS} bots — they’ll match that exact bet.
                 </p>
                 <button
@@ -332,7 +332,7 @@ export function JackpotPage() {
                   disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
                   className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white hover:bg-white/5 disabled:opacity-40"
                 >
-                  <Bot className="h-4 w-4" /> Call Bot · {formatCredits(you.amount)} SH
+                  <Bot className="h-4 w-4" /> Call Bot · {formatCash(you.amount)}
                   <span className="text-xs font-medium text-slate-400">
                     ({botCount}/{JACKPOT_MAX_BOTS})
                   </span>

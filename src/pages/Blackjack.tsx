@@ -13,7 +13,9 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
-import { formatCredits, formatPercent } from "../lib/format";
+import { formatCash, formatPercent } from "../lib/format";
+import { compactLockLabel, displayToWorldLocks, inputStepFor } from "../lib/money";
+import { useSettingsStore } from "../store/settingsStore";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { HOUSE_EDGE, rakebackAmount } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
@@ -44,11 +46,9 @@ type UndoEntry =
   | { kind: "double"; player: Card[]; deck: Card[]; extraStake: number };
 
 function ChipFace({ chip, size }: { chip: ChipDef; size: number }) {
+  const unit = useSettingsStore((s) => s.lockUnit);
   const rim = Math.max(2, Math.round(size * 0.07));
-  const label =
-    chip.value >= 1000
-      ? `${chip.value % 1000 === 0 ? chip.value / 1000 : (chip.value / 1000).toFixed(1)}k`
-      : String(chip.value);
+  const label = compactLockLabel(chip.value, unit);
   return (
     <div
       className="relative grid shrink-0 place-items-center overflow-hidden rounded-full font-black select-none"
@@ -170,7 +170,7 @@ function BetSpot({
       <div className="text-center">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-100/90">{label}</p>
         {hint && <p className="text-[9px] text-emerald-200/50">{hint}</p>}
-        <p className="mt-0.5 font-mono text-xs font-bold text-white">{formatCredits(amount)} SH</p>
+        <p className="mt-0.5 font-mono text-xs font-bold text-white">{formatCash(amount)}</p>
       </div>
       <button
         disabled={disabled || amount === 0}
@@ -217,7 +217,8 @@ export function Blackjack() {
   betsRef.current = { main: bet, pairs: perfectPairsBet, plus3: twentyOnePlusThreeBet };
   undoStackRef.current = undoStack;
 
-  const customBetValue = Math.max(1, Math.round(Number(customBetInput)) || 1);
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
+  const customBetValue = Math.max(1, Math.round(displayToWorldLocks(Number(customBetInput) || 0, lockUnit)) || 1);
   const customChip: ChipDef = { value: customBetValue, ...CUSTOM_CHIP_STYLE, custom: true };
 
   const credit = useEconomyStore((s) => s.credit);
@@ -349,7 +350,7 @@ export function Blackjack() {
       if (pp.tier !== "none") {
         const winnings = perfectPairsBet * (pp.multiplier + 1);
         totalWinnings += winnings;
-        messages.push(`Perfect Pairs (${pp.tier}): +${formatCredits(winnings)} SH`);
+        messages.push(`Perfect Pairs (${pp.tier}): +${formatCash(winnings)}`);
       } else {
         messages.push(`Perfect Pairs: no pair.`);
       }
@@ -360,7 +361,7 @@ export function Blackjack() {
       if (combo.tier !== "none") {
         const winnings = twentyOnePlusThreeBet * (combo.multiplier + 1);
         totalWinnings += winnings;
-        messages.push(`21+3 (${combo.tier}): +${formatCredits(winnings)} SH`);
+        messages.push(`21+3 (${combo.tier}): +${formatCash(winnings)}`);
       } else {
         messages.push(`21+3: no hand.`);
       }
@@ -486,8 +487,8 @@ export function Blackjack() {
     recordRound(finalBet, winnings, "blackjack");
 
     const msgMap: Record<Exclude<Outcome, null>, string> = {
-      blackjack: `Blackjack! Won ${formatCredits(winnings)} SH.`,
-      win: dealerBust ? `Dealer busts! Won ${formatCredits(winnings)} SH.` : `You win ${formatCredits(winnings)} SH.`,
+      blackjack: `Blackjack! Won ${formatCash(winnings)}.`,
+      win: dealerBust ? `Dealer busts! Won ${formatCash(winnings)}.` : `You win ${formatCash(winnings)}.`,
       lose: playerBust ? "Busted." : "Dealer wins.",
       push: "Push — bet returned.",
     };
@@ -883,8 +884,8 @@ export function Blackjack() {
               <span className="text-[9px] font-bold uppercase tracking-wider text-emerald-200/50">Custom</span>
               <input
                 type="number"
-                min={1}
-                step={1}
+                min={0}
+                step={inputStepFor(lockUnit)}
                 disabled={bettingLocked}
                 value={customBetInput}
                 onChange={(e) => setCustomBetInput(e.target.value)}

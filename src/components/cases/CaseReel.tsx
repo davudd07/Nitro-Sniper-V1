@@ -6,7 +6,8 @@ import { MAXXX_WIN, isMaxxxWin, itemImageSrc } from "../../data/items";
 import { GOLD_INDICATOR, isGoldIndicator } from "../../data/goldItem";
 import { RARITIES } from "../../data/rarities";
 import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
-import { formatCredits } from "../../lib/format";
+import { formatCash } from "../../lib/format";
+import { useSettingsStore } from "../../store/settingsStore";
 import { sound } from "../../lib/sound";
 
 // Travel distance stays long (same land index) so the spin still flies past a
@@ -511,6 +512,7 @@ const ReelSlot = memo(function ReelSlot({
   pulse: boolean;
   goldBait: boolean;
 }) {
+  useSettingsStore((s) => s.lockUnit);
   const r = RARITIES[item.rarity];
   const isIndicator = isGoldIndicator(item);
   const maxxx = isMaxxxWin(item);
@@ -591,7 +593,7 @@ const ReelSlot = memo(function ReelSlot({
             isHorizontal || iconSize === "sm" ? null : (
               <div className="min-w-0 flex-1">
                 <p className="truncate text-xs font-bold text-amber-200">{item.name}</p>
-                <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>
+                <p className="text-[11px] text-slate-300">{formatCash(item.value)}</p>
               </div>
             )
           ) : isHorizontal || iconSize === "sm" ? (
@@ -606,7 +608,7 @@ const ReelSlot = memo(function ReelSlot({
               <p className="truncate text-xs font-bold" style={{ color: goldChrome ? "#fbbf24" : r.text }}>
                 {item.name}
               </p>
-              <p className="text-[11px] text-slate-300">{formatCredits(item.value)} SH</p>
+              <p className="text-[11px] text-slate-300">{formatCash(item.value)}</p>
             </div>
           )}
         </>

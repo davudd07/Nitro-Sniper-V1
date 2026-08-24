@@ -86,7 +86,7 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
           <button
             onClick={() => {
               reset();
-              push("Balances reset. 10,000 demo Shards, Fun Coins cleared.", "success");
+              push("Balances reset. 10,000 demo World Locks, Shards cleared.", "success");
             }}
             className="hidden items-center gap-1.5 rounded-md border-2 border-white/10 px-3 py-1.5 text-xs font-medium text-slate-300 transition-colors hover:bg-white/5 sm:flex"
             title="Reset demo balances"

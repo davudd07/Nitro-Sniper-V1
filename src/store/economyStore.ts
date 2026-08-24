@@ -59,6 +59,7 @@ export const useEconomyStore = create<EconomyState>()(
       lockedTips: 0,
       tipWagerLeft: 0,
       roundsPlayed: 0,
+      // `amount` is always World Locks. Never pass Diamond / Blue Gem Lock display units.
       spend: (amount) => {
         const { balance } = get();
         if (amount <= 0) return true;

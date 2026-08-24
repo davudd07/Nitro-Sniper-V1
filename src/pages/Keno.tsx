@@ -6,7 +6,8 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
-import { formatCredits, formatPercent } from "../lib/format";
+import { formatCredits, formatCash, formatPercent } from "../lib/format";
+import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
@@ -125,7 +126,7 @@ export function Keno() {
       credit(payout);
       setSession((s) => s + payout);
       sound.win(payout >= stake * 10 ? "big" : "small");
-      push(`Caught ${catches}/${spots} — won ${formatCredits(payout)} SH.`, "success");
+      push(`Caught ${catches}/${spots} — won ${formatCash(payout)}.`, "success");
     } else {
       sound.lose();
       push(`Caught ${catches}/${spots} — no payout.`, "danger");
@@ -178,7 +179,7 @@ export function Keno() {
                     : "text-slate-400 ring-white/10 hover:bg-white/5",
                 )}
               >
-                {n}
+                {formatCredits(n)}
               </button>
             ))}
             <button
@@ -196,13 +197,13 @@ export function Keno() {
             </button>
           </div>
           {usingCustom && (
-            <input
-              type="number"
-              min={1}
-              value={customBet}
+            <LockAmountInput
+              valueWl={customBet}
+              onChangeWl={setCustomBet}
               disabled={drawing}
-              onChange={(e) => setCustomBet(Number(e.target.value) || 0)}
-              className="mb-4 w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40 disabled:opacity-50"
+              minWl={1}
+              className="mb-4"
+              inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40 disabled:opacity-50"
             />
           )}
 
@@ -224,7 +225,7 @@ export function Keno() {
           </div>
 
           <button onClick={() => void playRound()} disabled={drawing || spots < 1} className="btn-primary w-full py-3 disabled:opacity-50">
-            {drawing ? "Drawing…" : `Play · ${formatCredits(stake)} SH`}
+            {drawing ? "Drawing…" : `Play · ${formatCash(stake)}`}
           </button>
 
           <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
@@ -240,7 +241,7 @@ export function Keno() {
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Last win</p>
-              <p className="font-mono text-base font-bold text-emerald-300">{formatCredits(lastWin)} SH</p>
+              <p className="font-mono text-base font-bold text-emerald-300">{formatCash(lastWin)}</p>
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Session</p>
@@ -292,7 +293,7 @@ export function Keno() {
                 ? `Caught ${lastCatches} of ${spots}`
                 : "Pick 1–10 numbers, then play"}
           </span>
-          <span className="font-mono text-slate-300">Bet {formatCredits(stake)} SH</span>
+          <span className="font-mono text-slate-300">Bet {formatCash(stake)}</span>
         </div>
 
         <div className="mb-5 flex min-h-[44px] flex-wrap gap-1.5">

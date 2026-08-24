@@ -8,7 +8,7 @@ import { CasePreviewModal } from "../cases/CasePreviewModal";
 import { RiskBadge } from "../cases/RiskBadge";
 import { CatalogSwitch, type CaseCatalogKind } from "../cases/CatalogSwitch";
 import { CaseSearchInput } from "../cases/CaseSearchInput";
-import { formatCredits } from "../../lib/format";
+import { formatCash } from "../../lib/format";
 import { matchesCaseName } from "../../lib/caseSearch";
 import type { BattleCaseEntry } from "../../store/battleStore";
 import { listHydratedCommunityCases, useCommunityCaseStore } from "../../store/communityCaseStore";
@@ -126,7 +126,7 @@ export function AddCasesModal({
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white">{c.name}</p>
-                    <p className="text-xs text-slate-500">{formatCredits(c.price)} SH each</p>
+                    <p className="text-xs text-slate-500">{formatCash(c.price)} each</p>
                     <RiskBadge risk={c.risk} className="mt-1" />
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -159,7 +159,7 @@ export function AddCasesModal({
         <div className="mt-5 flex items-center justify-between gap-3">
           <p className="text-sm text-slate-400">
             Total cost per player:{" "}
-            <span className="font-semibold text-white">{formatCredits(perPlayer)} SH</span>
+            <span className="font-semibold text-white">{formatCash(perPlayer)}</span>
           </p>
           <button
             onClick={() => {

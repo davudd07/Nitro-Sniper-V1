@@ -4,7 +4,9 @@ import { LOCAL_PLAYER } from "../../store/moderationStore";
 import { useChatStore } from "../../store/chatStore";
 import { useEconomyStore } from "../../store/economyStore";
 import { useToastStore } from "../../store/toastStore";
-import { formatCredits } from "../../lib/format";
+import { formatCash } from "../../lib/format";
+import { parseLockInput } from "../../lib/money";
+import { useSettingsStore } from "../../store/settingsStore";
 import { sound } from "../../lib/sound";
 
 const PRESETS = [10, 25, 50, 100];
@@ -25,7 +27,7 @@ export function PlayerTipButton({ name }: { name: string }) {
       return;
     }
     if (!spend(n)) {
-      push(`You need ${formatCredits(n)} SH to send that tip.`, "danger");
+      push(`You need ${formatCash(n)} to send that tip.`, "danger");
       return;
     }
     sound.click();
@@ -34,9 +36,9 @@ export function PlayerTipButton({ name }: { name: string }) {
       you: true,
       tip: true,
       color: "#d946ef",
-      text: `Tipped ${name} ${formatCredits(n)} SH — they must wager ${formatCredits(n)} SH to unlock it.`,
+      text: `Tipped ${name} ${formatCash(n)} — they must wager ${formatCash(n)} to unlock it.`,
     });
-    push(`Tipped ${name} ${formatCredits(n)} SH.`, "success");
+    push(`Tipped ${name} ${formatCash(n)}.`, "success");
     setOpen(false);
   }
 
@@ -78,7 +80,7 @@ export function PlayerTipButton({ name }: { name: string }) {
             />
             <button
               type="button"
-              onClick={() => send(Number(custom) || 0)}
+              onClick={() => send(parseLockInput(custom, useSettingsStore.getState().lockUnit))}
               className="rounded bg-emerald-500 px-2 text-[10px] font-extrabold text-bg-950"
             >
               Send
@@ -99,6 +101,6 @@ export function receiveIncomingTip(from: string, amount: number) {
     name: from,
     tip: true,
     color: "#34d399",
-    text: `Tipped you ${n} SH. Wager ${n} SH once to unlock it.`,
+    text: `Tipped you ${formatCash(n)}. Wager ${formatCash(n)} once to unlock it.`,
   });
 }

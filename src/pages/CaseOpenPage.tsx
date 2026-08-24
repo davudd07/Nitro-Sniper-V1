@@ -17,7 +17,7 @@ import { useAdminViewStore } from "../store/adminViewStore";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { takeStake } from "../lib/stake";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
+import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { formatTicketRange } from "../lib/caseTickets";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
 import type { CaseItem } from "../data/items";
@@ -62,7 +62,7 @@ export function CaseOpenPage() {
     const n = openCount;
     const stake = demo ? 0 : c.price * n;
     if (!takeStake(stake, HOUSE_EDGE.cases)) {
-      push(`You need ${formatCredits(c.price * n)} SH to open this case.`, "danger");
+      push(`You need ${formatCash(c.price * n)} to open this case.`, "danger");
       return;
     }
     if (!demo && c.community) {
@@ -101,12 +101,12 @@ export function CaseOpenPage() {
     if (items.length === 1) {
       const it = items[0];
       push(
-        `${prefix}Unboxed ${it.name} worth ${formatCredits(it.value)} SH${demo ? " (no stake)" : "!"}`,
+        `${prefix}Unboxed ${it.name} worth ${formatCash(it.value)}${demo ? " (no stake)" : "!"}`,
         profit >= 0 ? "success" : "info",
       );
     } else {
       push(
-        `${prefix}Unboxed ${items.length} items worth ${formatCredits(totalValue)} SH${demo ? " (no stake)" : ` (${profit >= 0 ? "+" : ""}${formatCredits(profit)})`}.`,
+        `${prefix}Unboxed ${items.length} items worth ${formatCash(totalValue)}${demo ? " (no stake)" : ` (${profit >= 0 ? "+" : ""}${formatCredits(profit)})`}.`,
         profit >= 0 ? "success" : "info",
       );
     }
@@ -132,7 +132,7 @@ export function CaseOpenPage() {
             ) : null}
           </div>
           <InfoButton title={`${c.name} — Odds & House Edge`}>
-            <StatRow label="Price" value={`${formatCredits(c.price)} SH`} />
+            <StatRow label="Price" value={`${formatCash(c.price)}`} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
             <StatRow label="Ticket pool" value="1,000,000" />
@@ -140,7 +140,7 @@ export function CaseOpenPage() {
             {c.community && (
               <StatRow
                 label="Creator commission"
-                value={`${formatRakeback(communityCommissionPerOpen(c.price, c.houseEdge))} SH/open · ${formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of house edge to ${c.creatorName ?? "creator"}`}
+                value={`${formatCash(communityCommissionPerOpen(c.price, c.houseEdge))}/open · ${formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of house edge to ${c.creatorName ?? "creator"}`}
               />
             )}
           </InfoButton>
@@ -214,8 +214,8 @@ export function CaseOpenPage() {
                 {spinning
                   ? "Opening…"
                   : openCount === 1
-                    ? `Open · ${formatCredits(c.price)} SH`
-                    : `Open ${openCount}× · ${formatCredits(totalPrice)} SH`}
+                    ? `Open · ${formatCash(c.price)}`
+                    : `Open ${openCount}× · ${formatCash(totalPrice)}`}
               </button>
             </div>
           </div>

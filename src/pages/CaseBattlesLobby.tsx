@@ -13,7 +13,7 @@ import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
-import { formatCredits } from "../lib/format";
+import { formatCredits, formatCash } from "../lib/format";
 import { matchesCaseName } from "../lib/caseSearch";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
@@ -105,7 +105,7 @@ export function CaseBattlesLobby() {
     if (!requireAccount()) return;
     const cost = joinCost(b.costPerPlayer, b.fundedPct, b.fundedPct > 0 ? 0 : borrowPct);
     if (!spend(cost)) {
-      push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
+      push(`You need ${formatCash(cost)} to join that battle.`, "danger");
       return;
     }
     if (cost > 0) applyTipWager(cost);

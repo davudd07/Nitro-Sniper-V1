@@ -10,7 +10,7 @@ import {
   keepPct,
   pctLabel,
 } from "../../lib/battleFinance";
-import { formatCredits } from "../../lib/format";
+import { formatCash } from "../../lib/format";
 import { sound } from "../../lib/sound";
 
 export function JoinBattleModal({
@@ -42,7 +42,7 @@ export function JoinBattleModal({
           <div>
             <h3 className="text-lg font-semibold text-white">{heading}</h3>
             <p className="text-sm text-slate-400">
-              {mode?.label ?? "Battle"} · {seats} seats · {formatCredits(battle.costPerPlayer)} SH / seat
+              {mode?.label ?? "Battle"} · {seats} seats · {formatCash(battle.costPerPlayer)} / seat
             </p>
           </div>
           <button
@@ -63,7 +63,7 @@ export function JoinBattleModal({
               <Banknote className="h-4 w-4" /> Creator funded {pctLabel(battle.fundedPct)}
             </p>
             <p className="mt-1 text-xs text-emerald-200/80">
-              You pay {formatCredits(seatAfterFund)} SH instead of {formatCredits(battle.costPerPlayer)} SH.
+              You pay {formatCash(seatAfterFund)} instead of {formatCash(battle.costPerPlayer)}.
               Borrow is disabled on funded battles.
             </p>
           </div>
@@ -94,7 +94,7 @@ export function JoinBattleModal({
 
         <div className="rounded-xl bg-black/30 px-3 py-2.5 text-center">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">You pay</p>
-          <p className="font-mono text-2xl font-black text-amber-200">{formatCredits(pay)} SH</p>
+          <p className="font-mono text-2xl font-black text-amber-200">{formatCash(pay)}</p>
         </div>
 
         <div className="flex gap-2">
@@ -116,7 +116,7 @@ export function JoinBattleModal({
             }}
             className="btn-primary flex-1 py-2.5"
           >
-            Join{pay > 0 ? ` · ${formatCredits(pay)} SH` : " free"}
+            Join{pay > 0 ? ` · ${formatCash(pay)}` : " free"}
           </button>
         </div>
       </div>

@@ -19,7 +19,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { ACTIVITY_GAMES, ACTIVITY_GAME_LABELS, useActivityStore, type ActivityGame } from "../store/activityStore";
 import { useChatStore } from "../store/chatStore";
 import { useSupportStore, type SupportTicket } from "../store/supportStore";
-import { formatCredits, formatFunCoins, formatRakeback, formatXp } from "../lib/format";
+import { formatCredits, formatCash, formatFunCoins, formatRakeback, formatXp } from "../lib/format";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
 import { useAuthStore } from "../store/authStore";
@@ -375,14 +375,14 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
             )}
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-              <Stat label="Your Shards" value={formatCredits(balance)} />
-              <Stat label="Fun Coins" value={formatFunCoins(funCoins)} />
+              <Stat label="Your World Locks" value={formatCredits(balance)} />
+              <Stat label="Shards" value={formatFunCoins(funCoins)} />
               <Stat label="Pending Instant" value={formatRakeback(pendingRakeback ?? 0)} />
               <Stat label="Pending Daily" value={formatRakeback(pendingDailyRakeback ?? 0)} />
               <Stat label="Wagered / rounds" value={`${formatCredits(totalWagered)} · ${roundsPlayed}`} />
             </div>
             <p className="text-xs text-slate-500">
-              Local economy: won {formatCredits(totalWon)} SH across {roundsPlayed} recorded rounds. Bots have no live
+              Local economy: won {formatCash(totalWon)} across {roundsPlayed} recorded rounds. Bots have no live
               wallet unless you top them up here.
             </p>
 
@@ -428,8 +428,8 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 ) : null}
               </p>
               <div className="mb-4 grid gap-2 sm:grid-cols-4">
-                <Mini label="Shards" value={formatCredits(snap.shards)} />
-                <Mini label="Fun Coins" value={formatFunCoins(snap.funCoins)} />
+                <Mini label="World Locks" value={formatCredits(snap.shards)} />
+                <Mini label="Shards" value={formatFunCoins(snap.funCoins)} />
                 <Mini label="Wagered" value={formatCredits(ecoWagered)} />
                 <Mini
                   label="Profit / loss"
@@ -439,7 +439,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 <Mini label="VIP" value={vip.current.name} />
               </div>
               <p className="mb-4 text-xs text-slate-500">
-                Won {formatCredits(ecoWon)} SH across {selected === LOCAL_PLAYER ? roundsPlayed : activityTotals.rounds} recorded
+                Won {formatCash(ecoWon)} across {selected === LOCAL_PLAYER ? roundsPlayed : activityTotals.rounds} recorded
                 rounds. P/L is winnings minus wagered.
               </p>
 
@@ -473,11 +473,11 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 className="mb-3 w-full max-w-xs rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-white outline-none focus:border-cyan-400/40"
               />
               <div className="flex flex-wrap gap-2">
-                <button type="button" className="btn-primary inline-flex gap-1.5 px-3 py-2 text-xs" onClick={() => act(`+${amount} SH → ${selected}`, () => topUpShards(selected, amount))}>
-                  <Wallet className="h-3.5 w-3.5" /> Top up SH
+                <button type="button" className="btn-primary inline-flex gap-1.5 px-3 py-2 text-xs" onClick={() => act(`+${amount} WL → ${selected}`, () => topUpShards(selected, amount))}>
+                  <Wallet className="h-3.5 w-3.5" /> Top up WL
                 </button>
-                <button type="button" className="inline-flex items-center gap-1.5 rounded-md border-2 border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs font-bold uppercase text-amber-100" onClick={() => act(`+${amount} Fun Coins → ${selected}`, () => grantFunCoins(selected, amount))}>
-                  <Coins className="h-3.5 w-3.5" /> Grant Fun Coins
+                <button type="button" className="inline-flex items-center gap-1.5 rounded-md border-2 border-amber-400/40 bg-amber-400/10 px-3 py-2 text-xs font-bold uppercase text-amber-100" onClick={() => act(`+${amount} Shards → ${selected}`, () => grantFunCoins(selected, amount))}>
+                  <Coins className="h-3.5 w-3.5" /> Grant Shards
                 </button>
                 <button type="button" className="inline-flex items-center gap-1.5 rounded-md border-2 border-cyan-400/40 bg-cyan-400/10 px-3 py-2 text-xs font-bold uppercase text-cyan-100" onClick={() => act(`+${amount} pending rakeback → ${selected}`, () => grantPendingRakeback(selected, amount))}>
                   <Gift className="h-3.5 w-3.5" /> Grant rakeback

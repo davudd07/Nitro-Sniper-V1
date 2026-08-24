@@ -4,7 +4,7 @@ import { getCase } from "../../data/cases";
 import { CaseThumb } from "./CaseThumb";
 import { RiskBadge } from "./RiskBadge";
 import { ItemCard } from "../ui/ItemCard";
-import { formatCredits, formatPercent, formatRakeback } from "../../lib/format";
+import { formatCash, formatPercent } from "../../lib/format";
 import { sound } from "../../lib/sound";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../../lib/communityCases";
 
@@ -34,9 +34,9 @@ export function CasePreviewModal({
                 <RiskBadge risk={c.risk} />
               </div>
               <p className="text-sm text-slate-400">
-                {formatCredits(c.price)} SH · {formatPercent(c.rtp, 0)} RTP
+                {formatCash(c.price)} · {formatPercent(c.rtp, 0)} RTP
                 {c.community
-                  ? ` · ${formatRakeback(communityCommissionPerOpen(c.price, c.houseEdge))} SH creator (${formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of edge)`
+                  ? ` · ${formatCash(communityCommissionPerOpen(c.price, c.houseEdge))} creator (${formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of edge)`
                   : ""}
               </p>
               {c.community && c.creatorName ? (

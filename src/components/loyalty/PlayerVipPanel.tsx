@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Crown, Flame, Sparkles } from "lucide-react";
 import { clsx } from "clsx";
-import { formatCredits, formatXp } from "../../lib/format";
+import { formatCredits, formatCash, formatXp } from "../../lib/format";
 import { ACTIVITY_GAME_LABELS, type ActivityGame } from "../../store/activityStore";
 import { useLoyaltyStore } from "../../store/loyaltyStore";
 import { XP_CATEGORY_LABELS, type XpSource } from "../../lib/loyalty";
@@ -89,7 +89,7 @@ export function PlayerVipPanel({ compact = false }: { compact?: boolean }) {
                     <div className="h-full rounded-full bg-amber-400/80" style={{ width: `${pct}%` }} />
                   </div>
                   <p className="mt-1 font-mono text-[11px] text-slate-500">
-                    {formatCredits(Math.min(progress.progress, mission.target))} / {formatCredits(mission.target)} SH
+                    {formatCredits(Math.min(progress.progress, mission.target))} / {formatCash(mission.target)}
                     {progress.completed ? " · claimed" : ` · +${formatXp(mission.bonusXp)} XP`}
                   </p>
                 </article>
@@ -100,7 +100,7 @@ export function PlayerVipPanel({ compact = false }: { compact?: boolean }) {
           <section className="surface p-5">
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">XP history</p>
             {history.length === 0 ? (
-              <p className="text-sm text-slate-500">No XP yet. Place a Shard bet (not Fun Coins, not demo 0) to start.</p>
+              <p className="text-sm text-slate-500">No XP yet. Place a World Lock bet (not Shards, not demo 0) to start.</p>
             ) : (
               <ul className="max-h-80 space-y-1.5 overflow-y-auto text-xs">
                 {history.slice(0, 80).map((row) => (

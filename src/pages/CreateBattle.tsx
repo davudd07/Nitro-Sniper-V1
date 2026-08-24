@@ -35,7 +35,7 @@ import type { BattleCaseEntry } from "../store/battleStore";
 import { useBattleStore } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { formatCredits } from "../lib/format";
+import { formatCredits, formatCash } from "../lib/format";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
 import { consumeBattleDraft } from "../lib/battleDraft";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
@@ -225,7 +225,7 @@ export function CreateBattle() {
     }
     if (!requireAccount()) return;
     if (!spend(youPay)) {
-      push(`You need ${formatCredits(youPay)} SH to create this battle.`, "danger");
+      push(`You need ${formatCash(youPay)} to create this battle.`, "danger");
       return;
     }
     if (youPay > 0) applyTipWager(youPay);
@@ -612,7 +612,7 @@ export function CreateBattle() {
                     className="w-full accent-emerald-400"
                   />
                   <p className="text-[11px] text-emerald-200">
-                    {pctLabel(fundedPct)} funded · joiners pay {formatCredits(joinerPay)} SH
+                    {pctLabel(fundedPct)} funded · joiners pay {formatCash(joinerPay)}
                   </p>
                 </div>
               )}
@@ -641,8 +641,8 @@ export function CreateBattle() {
                     className="w-full accent-sky-400"
                   />
                   <p className="text-[11px] text-sky-200">
-                    Borrow {pctLabel(borrowPct)} · you pay {formatCredits(Math.round(costPerPlayer * (1 - borrowPct)))}{" "}
-                    SH · keep {pctLabel(1 - borrowPct)} of winnings
+                    Borrow {pctLabel(borrowPct)} · you pay {formatCash(Math.round(costPerPlayer * (1 - borrowPct)))} ·
+                    keep {pctLabel(1 - borrowPct)} of winnings
                   </p>
                 </div>
               )}
@@ -660,10 +660,10 @@ export function CreateBattle() {
           </div>
 
           <p className="px-1 text-center text-[11px] text-slate-500">
-            Seat {formatCredits(costPerPlayer)} SH
+            Seat {formatCash(costPerPlayer)}
             {effectiveBorrow > 0 ? ` · borrow ${pctLabel(effectiveBorrow)}` : ""}
             {effectiveFund > 0 ? ` · you sponsor ${pctLabel(effectiveFund)}` : ""}
-            . Your total {formatCredits(youPay)} SH.
+            . Your total {formatCash(youPay)}.
           </p>
         </aside>
       </div>

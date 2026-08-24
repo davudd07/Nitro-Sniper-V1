@@ -6,7 +6,9 @@ import {
   CHAT_RAIN_BASE_POT,
 } from "../../store/chatStore";
 import { sound } from "../../lib/sound";
-import { formatCredits } from "../../lib/format";
+import { formatCredits, formatCash } from "../../lib/format";
+import { parseLockInput } from "../../lib/money";
+import { useSettingsStore } from "../../store/settingsStore";
 import { useEconomyStore } from "../../store/economyStore";
 import { useToastStore } from "../../store/toastStore";
 import { useEffect, useState } from "react";
@@ -55,12 +57,12 @@ export function ChatRainBanner() {
       return;
     }
     if (!spend(n)) {
-      push(`You need ${formatCredits(n)} SH to tip the rain.`, "danger");
+      push(`You need ${formatCash(n)} to tip the rain.`, "danger");
       return;
     }
     if (tipRain(n)) {
       sound.click();
-      push(`Tipped rain ${formatCredits(n)} SH. Pot is ${formatCredits(pot + n)} SH.`, "success");
+      push(`Tipped rain ${formatCash(n)}. Pot is ${formatCash(pot + n)}.`, "success");
       setTipOpen(false);
     }
   }
@@ -137,7 +139,7 @@ export function ChatRainBanner() {
           />
           <button
             type="button"
-            onClick={() => sendTip(Number(custom) || 0)}
+            onClick={() => sendTip(parseLockInput(custom, useSettingsStore.getState().lockUnit))}
             className="rounded-md bg-emerald-500 px-2 py-1 text-[10px] font-extrabold text-bg-950"
           >
             Tip

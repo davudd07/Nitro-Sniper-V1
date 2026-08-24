@@ -1,18 +1,22 @@
-import { ChevronDown, Coins, Gem } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import { clsx } from "clsx";
 import { useEffect, useRef, useState } from "react";
 import { useEconomyStore } from "../../store/economyStore";
-import { useSettingsStore, type DisplayCurrency } from "../../store/settingsStore";
-import { formatCredits, formatFunCoins } from "../../lib/format";
+import { useSettingsStore } from "../../store/settingsStore";
+import { formatCash, formatCredits, formatFunCoins, formatShards } from "../../lib/format";
+import { LOCK_META, LOCK_UNITS, SHARD_META, type LockUnit } from "../../lib/money";
 import { sound } from "../../lib/sound";
+import { CurrencyIcon } from "../ui/CurrencyIcon";
 
 export function CurrencySwitcher() {
   const balance = useEconomyStore((s) => s.balance);
   const funCoins = useEconomyStore((s) => s.funCoins);
   const lockedTips = useEconomyStore((s) => s.lockedTips);
   const tipWagerLeft = useEconomyStore((s) => s.tipWagerLeft);
-  const selected = useSettingsStore((s) => s.displayCurrency) === "funcoins" ? "funcoins" : "shards";
-  const setDisplayCurrency = useSettingsStore((s) => s.setDisplayCurrency);
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
+  const headerWallet = useSettingsStore((s) => s.headerWallet);
+  const setLockUnit = useSettingsStore((s) => s.setLockUnit);
+  const setHeaderWallet = useSettingsStore((s) => s.setHeaderWallet);
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -25,37 +29,24 @@ export function CurrencySwitcher() {
     return () => document.removeEventListener("mousedown", onDoc);
   }, [open]);
 
-  const shards = {
-    id: "shards" as const,
-    icon: Gem,
-    value: formatCredits(balance),
-    suffix: "SH",
-    bar: "bg-cyan-400/15 text-white",
-    iconClass: "text-cyan-300",
-    suffixClass: "text-cyan-200/70",
-  };
-  const fun = {
-    id: "funcoins" as const,
-    icon: Coins,
-    value: formatFunCoins(funCoins ?? 0),
-    suffix: "FC",
-    bar: "bg-amber-400/15 text-amber-50",
-    iconClass: "text-amber-300",
-    suffixClass: "text-amber-400/70",
-  };
+  const showingShards = headerWallet === "shards";
+  const primaryMeta = showingShards ? SHARD_META : LOCK_META[lockUnit];
+  const primaryBar = showingShards ? "bg-cyan-400/15 text-white" : "bg-amber-400/12 text-white";
 
-  const primary = selected === "funcoins" ? fun : shards;
-  const secondary = selected === "funcoins" ? shards : fun;
-  const PrimaryIcon = primary.icon;
-  const SecondaryIcon = secondary.icon;
-
-  function pick(id: DisplayCurrency) {
+  function pickLock(unit: LockUnit) {
     sound.click();
-    setDisplayCurrency(id);
+    setLockUnit(unit);
+    setOpen(false);
+  }
+
+  function pickShards() {
+    sound.click();
+    setHeaderWallet("shards");
+    setOpen(false);
   }
 
   return (
-    <div ref={rootRef} className="relative z-[60] min-w-[168px]">
+    <div ref={rootRef} className="relative z-[60] min-w-[196px]">
       <button
         type="button"
         onClick={() => {
@@ -64,34 +55,70 @@ export function CurrencySwitcher() {
         }}
         className={clsx(
           "flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a4040] px-2 py-1.5 shadow-[3px_3px_0_#050808]",
-          primary.bar,
+          primaryBar,
         )}
-        title={open ? "Hide other currency" : "Show other currency"}
+        title="Switch currency display"
         aria-expanded={open}
         aria-haspopup="listbox"
       >
-        <PrimaryIcon className={clsx("h-3.5 w-3.5", primary.iconClass)} />
-        <span className="font-mono text-sm font-semibold tabular-nums">{primary.value}</span>
-        <span className={clsx("text-[10px] font-bold uppercase tracking-wider", primary.suffixClass)}>{primary.suffix}</span>
-        <span className="ml-auto grid h-6 w-6 place-items-center rounded opacity-80">
+        <CurrencyIcon kind={showingShards ? "shards" : lockUnit} className="h-5 w-5" />
+        <span className="min-w-0 flex-1 truncate text-left font-mono text-sm font-semibold tabular-nums">
+          {showingShards ? formatFunCoins(funCoins ?? 0) : formatCredits(balance)}
+        </span>
+        <span className="text-[10px] font-bold uppercase tracking-wider text-white/70">{primaryMeta.ticker}</span>
+        <span className="grid h-6 w-6 place-items-center rounded opacity-80">
           <ChevronDown className={clsx("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
         </span>
       </button>
       {open && (
-        <button
-          type="button"
-          onClick={() => pick(secondary.id)}
-          className="absolute left-0 right-0 top-full z-[70] mt-1 flex w-full items-center gap-1.5 rounded-md border-2 border-[#2a4040] bg-[#0c1414] px-2 py-1.5 text-left shadow-[3px_3px_0_#050808] hover:bg-[#173030]"
-          title={`Switch to ${secondary.suffix}`}
+        <div
+          role="listbox"
+          className="absolute left-0 right-0 top-full z-[70] mt-1 overflow-hidden rounded-md border-2 border-[#2a4040] bg-[#0c1414] shadow-[3px_3px_0_#050808]"
         >
-          <SecondaryIcon className={clsx("h-3.5 w-3.5", secondary.iconClass)} />
-          <span className="font-mono text-sm font-semibold tabular-nums text-white">{secondary.value}</span>
-          <span className={clsx("text-[10px] font-bold uppercase tracking-wider", secondary.suffixClass)}>{secondary.suffix}</span>
-        </button>
+          {LOCK_UNITS.map((unit) => {
+            const meta = LOCK_META[unit];
+            const active = !showingShards && lockUnit === unit;
+            return (
+              <button
+                key={unit}
+                type="button"
+                role="option"
+                aria-selected={active}
+                onClick={() => pickLock(unit)}
+                className={clsx(
+                  "flex w-full items-center gap-2 px-2 py-1.5 text-left hover:bg-[#173030]",
+                  active && "bg-amber-400/10",
+                )}
+              >
+                <CurrencyIcon kind={unit} className="h-5 w-5" />
+                <span className="min-w-0 flex-1">
+                  <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">{meta.name}</span>
+                  <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatCash(balance, unit)}</span>
+                </span>
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            role="option"
+            aria-selected={showingShards}
+            onClick={pickShards}
+            className={clsx(
+              "flex w-full items-center gap-2 border-t border-[#2a4040] px-2 py-1.5 text-left hover:bg-[#173030]",
+              showingShards && "bg-cyan-400/10",
+            )}
+          >
+            <CurrencyIcon kind="shards" className="h-5 w-5" />
+            <span className="min-w-0 flex-1">
+              <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">{SHARD_META.name}</span>
+              <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatShards(funCoins ?? 0)}</span>
+            </span>
+          </button>
+        </div>
       )}
       {(lockedTips ?? 0) > 0 && (
         <p className="mt-1 text-center text-[9px] font-semibold uppercase tracking-wide text-amber-300/90">
-          {formatCredits(lockedTips)} SH locked · wager {formatCredits(tipWagerLeft ?? 0)} to unlock
+          {formatCash(lockedTips)} locked · wager {formatCash(tipWagerLeft ?? 0)} to unlock
         </p>
       )}
     </div>

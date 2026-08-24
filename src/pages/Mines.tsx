@@ -6,7 +6,8 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
-import { formatCredits, formatPercent } from "../lib/format";
+import { formatCash, formatPercent } from "../lib/format";
+import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { DemoBetBadge } from "../components/ui/DemoBetBadge";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
@@ -77,7 +78,7 @@ export function Mines() {
       setPhase("busted");
       sound.lose();
       recordRound(bet, 0, "mines");
-      push(`Boom! Hit a mine. Lost ${formatCredits(bet)} SH.`, "danger");
+      push(`Boom! Hit a mine. Lost ${formatCash(bet)}.`, "danger");
       return;
     }
     next[idx] = "safe";
@@ -92,7 +93,7 @@ export function Mines() {
       recordRound(bet, winnings, "mines");
       setPhase("cashed");
       sound.win("big");
-      push(`Cleared the board! Won ${formatCredits(winnings)} SH.`, "success");
+      push(`Cleared the board! Won ${formatCash(winnings)}.`, "success");
     }
   }
 
@@ -103,7 +104,7 @@ export function Mines() {
     recordRound(bet, winnings, "mines");
     setPhase("cashed");
     sound.win(winnings > bet * 2 ? "big" : "small");
-    push(`Cashed out ${formatCredits(winnings)} SH.`, "success");
+    push(`Cashed out ${formatCash(winnings)}.`, "success");
   }
 
   const revealAllMines = phase === "busted" || phase === "cashed";
@@ -134,13 +135,12 @@ export function Mines() {
             Bet
           </label>
           <div className="mb-5 flex items-center gap-2">
-            <input
-              type="number"
-              min={0}
-              value={bet}
+            <LockAmountInput
+              valueWl={bet}
+              onChangeWl={(wl) => setBet(Math.max(0, wl))}
               disabled={phase === "playing"}
-              onChange={(e) => setBet(Math.max(0, Number(e.target.value) || 0))}
-              className="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/40 disabled:opacity-50"
+              className="min-w-0 flex-1"
+              inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-emerald-400/40 disabled:opacity-50"
             />
             <button
               disabled={phase === "playing"}
@@ -196,7 +196,7 @@ export function Mines() {
               disabled={reveals === 0}
               className="w-full rounded-xl bg-emerald-500 py-3 font-bold text-bg-950 transition-transform hover:brightness-110 disabled:opacity-40"
             >
-              Cash Out {reveals > 0 ? `· ${formatCredits(potentialWin)} SH` : ""}
+              Cash Out {reveals > 0 ? `· ${formatCash(potentialWin)}` : ""}
             </button>
           )}
 

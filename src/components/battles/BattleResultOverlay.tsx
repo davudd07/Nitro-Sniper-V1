@@ -1,6 +1,6 @@
 import { motion } from "framer-motion";
 import { Crown, Gem, RotateCcw, Users, X } from "lucide-react";
-import { formatCredits } from "../../lib/format";
+import { formatCredits, formatCash } from "../../lib/format";
 import { pctLabel } from "../../lib/battleFinance";
 import { sound } from "../../lib/sound";
 
@@ -72,11 +72,11 @@ export function BattleResultOverlay({
           </span>
         </div>
         <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-          {result.shared ? "Pot split equally" : result.youWon ? `You received ${formatCredits(shown)} SH` : `Winners received ${formatCredits(shown)} SH each`}
+          {result.shared ? "Pot split equally" : result.youWon ? `You received ${formatCash(shown)}` : `Winners received ${formatCash(shown)} each`}
         </p>
         {result.youWon && result.borrowPct > 0 && (
           <p className="mt-2 text-[11px] text-sky-300">
-            After {pctLabel(result.borrowPct)} borrow · full share was {formatCredits(result.share)} SH
+            After {pctLabel(result.borrowPct)} borrow · full share was {formatCash(result.share)}
           </p>
         )}
 
@@ -88,7 +88,7 @@ export function BattleResultOverlay({
           }}
           className="btn-primary mt-5 w-full py-3 text-sm"
         >
-          Recreate {formatCredits(recreateCost)} SH
+          Recreate {formatCash(recreateCost)}
         </button>
         <button
           type="button"

@@ -25,7 +25,7 @@ import { randomBotName } from "../data/botNames";
 import { buildBattleRoster, communityPaidOpenCredits } from "../lib/battleSeats";
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
-import { formatCredits } from "../lib/format";
+import { formatCredits, formatCash } from "../lib/format";
 import { creatorCreateCost, fundedSeatCost, humanSeatPaidFraction, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
@@ -124,7 +124,7 @@ export function BattleRoom() {
     if (!requireAccount()) return false;
     const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
     if (!spend(cost)) {
-      push(`You need ${formatCredits(cost)} SH to join that battle.`, "danger");
+      push(`You need ${formatCash(cost)} to join that battle.`, "danger");
       return false;
     }
     if (cost > 0) applyTipWager(cost);
@@ -1334,7 +1334,7 @@ function PlayerStage({
           ) : (
             <>
               <p className="text-xs text-slate-500">
-                Empty seat · {formatCredits(fundedSeatCost(costPerPlayer, fundedPct))} SH to join
+                Empty seat · {formatCash(fundedSeatCost(costPerPlayer, fundedPct))} to join
                 {fundedPct > 0 ? ` (${pctLabel(fundedPct)} funded)` : ""}
               </p>
               {canJoinSeat && (

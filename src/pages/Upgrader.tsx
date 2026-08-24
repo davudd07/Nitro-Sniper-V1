@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpCircle, Coins, Package, Search, Zap } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../store/economyStore";
@@ -6,7 +6,9 @@ import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { requireAccount, takeStake } from "../lib/stake";
-import { formatCredits, formatPercent } from "../lib/format";
+import { cashTicker, formatCredits, formatCash, formatPercent } from "../lib/format";
+import { worldLocksToDisplay } from "../lib/money";
+import { useSettingsStore } from "../store/settingsStore";
 import { ticketFromRoll } from "../lib/caseTickets";
 import { sound } from "../lib/sound";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
@@ -126,17 +128,17 @@ function SlotCard({
             {item.name}
           </p>
           <p className="font-mono text-sm font-bold" style={{ color: rarity?.text }}>
-            {formatUpgraderStake(item.value)} <span className="font-normal text-slate-500">SH</span>
+            {formatUpgraderStake(item.value)} <span className="font-normal text-slate-500">{cashTicker()}</span>
           </p>
         </>
       ) : (
         <>
           <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
-            <span className="pixel-label text-2xl text-lime-200">SH</span>
+            <span className="pixel-label text-2xl text-lime-200">{cashTicker()}</span>
           </div>
-          <p className="text-sm font-semibold text-slate-200">{value > 0 ? "Shard wager" : "Select an item"}</p>
+          <p className="text-sm font-semibold text-slate-200">{value > 0 ? "Lock wager" : "Select an item"}</p>
           <p className="font-mono text-sm font-bold text-lime-300">
-            {formatUpgraderStake(value)} <span className="font-normal text-slate-500">SH</span>
+            {formatUpgraderStake(value)} <span className="font-normal text-slate-500">{cashTicker()}</span>
           </p>
         </>
       )}
@@ -163,7 +165,7 @@ function CoinAmountCard({
     <div className="flex min-h-[220px] w-full flex-col items-center justify-center gap-2 rounded-xl border-2 border-[#3a5c5c]/60 bg-black/20 px-3 py-4 text-center">
       <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">{label}</p>
       <div className="grid h-20 w-20 place-items-center rounded-xl border border-dashed border-emerald-400/35 bg-gradient-to-br from-lime-400/15 to-emerald-950/80">
-        <span className="pixel-label text-2xl text-lime-200">SH</span>
+            <span className="pixel-label text-2xl text-lime-200">{cashTicker()}</span>
       </div>
       <label className="flex w-full items-center gap-2 rounded-md border-2 border-[#3a5c5c]/70 bg-black/30 px-2.5 py-2">
         <input
@@ -179,7 +181,7 @@ function CoinAmountCard({
           }}
           className="min-w-0 flex-1 bg-transparent text-center font-mono text-lg font-bold text-lime-300 outline-none disabled:opacity-50"
         />
-        <span className="text-[10px] font-bold text-slate-500">SH</span>
+        <span className="text-[10px] font-bold text-slate-500">{cashTicker()}</span>
       </label>
       <p className="text-xs text-slate-400">{hint}</p>
     </div>
@@ -253,6 +255,13 @@ export function Upgrader() {
   const houseEdge = resolveUpgraderHouseEdge(houseEdges);
   const maxChance = upgraderMaxChance(houseEdge);
   const coins = wagerKind === "coins";
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
+
+  useEffect(() => {
+    if (!coins) return;
+    setCoinSourceText(String(worldLocksToDisplay(stake, lockUnit)));
+    setCoinTargetText(String(worldLocksToDisplay(coinTarget, lockUnit)));
+  }, [lockUnit]);
 
   const inputValue = ceilToCents(stake);
   const targetValue = coins
@@ -471,7 +480,7 @@ export function Upgrader() {
     pendingRef.current = {
       input: inputValue,
       target: targetValue,
-      name: coins ? `${formatUpgraderStake(targetValue)} SH` : (targetItem?.name ?? `${formatUpgraderStake(targetValue)} SH`),
+      name: coins ? `${formatCash(targetValue)}` : (targetItem?.name ?? `${formatCash(targetValue)}`),
       hit,
     };
     setWon(hit);
@@ -489,12 +498,12 @@ export function Upgrader() {
       recordRound(pending.input, pending.target, "upgrader");
       setPhase("win");
       sound.win(pending.target > pending.input * 4 ? "big" : "small");
-      push(`Upgraded to ${pending.name} · +${formatUpgraderStake(pending.target)} SH.`, "success");
+      push(`Upgraded to ${pending.name} · +${formatCash(pending.target)}.`, "success");
     } else {
       recordRound(pending.input, 0, "upgrader");
       setPhase("lose");
       sound.lose();
-      push(`Missed the upgrade. Lost ${formatUpgraderStake(pending.input)} SH.`, "danger");
+      push(`Missed the upgrade. Lost ${formatCash(pending.input)}.`, "danger");
     }
     settleLock.current = false;
   }
@@ -537,11 +546,11 @@ export function Upgrader() {
               Win chance is the green slice over 360°, equal to{" "}
               <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>. Default house edge is 5% (never
               +EV). The target must be at least 1.20× the source — a 500 → 500 spin is not an upgrade. Items mode uses
-              the catalog; Coins mode types a source SH and a higher target SH (e.g. 5 → 485 ≈ 0.98%). Drag a thick
+              the catalog; Coins mode types a source amount and a higher target (e.g. 5 → 485 WL ≈ 0.98%). Drag a thick
               end-cap to resize that slice — longer green is a higher chance and a higher source stake (
               <span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents, capped
               at 1.20×). Drag the green stroke to rotate the slice without changing odds. The arrow spins and lands; a
-              hit inside your placed slice credits the target SH value. A miss consumes the source stake. Fair rolls use{" "}
+              hit inside your placed slice credits the target World Lock value. A miss consumes the source stake. Fair rolls use{" "}
               {formatRollBand(chance)}.
             </p>
           </InfoButton>
@@ -554,7 +563,7 @@ export function Upgrader() {
             {coins ? (
               <CoinAmountCard
                 label="Wager"
-                hint="Source SH"
+                hint={`Source ${cashTicker()}`}
                 text={coinSourceText}
                 disabled={spinning}
                 onText={setCoinSourceText}
@@ -594,7 +603,7 @@ export function Upgrader() {
                   }}
                   className="min-w-0 flex-1 bg-transparent font-mono text-sm text-white outline-none disabled:opacity-50"
                 />
-                <span className="text-[10px] font-bold text-slate-500">SH</span>
+                <span className="text-[10px] font-bold text-slate-500">{cashTicker()}</span>
               </label>
               <div className="grid grid-cols-4 gap-1.5">
                 {betRunners.map((btn) => (
@@ -637,7 +646,7 @@ export function Upgrader() {
             {coins ? (
               <CoinAmountCard
                 label="Payout"
-                hint="Target SH"
+                hint={`Target ${cashTicker()}`}
                 text={coinTargetText}
                 disabled={spinning}
                 onText={setCoinTargetText}
@@ -695,7 +704,7 @@ export function Upgrader() {
                 </button>
               </div>
               <p className="px-0.5 font-mono text-[11px] tabular-nums text-slate-500">
-                {formatUpgraderStake(inputValue)} → {formatUpgraderStake(targetValue)} SH · {displayedMulti.toFixed(2)}× ·{" "}
+                {formatUpgraderStake(inputValue)} → {formatCash(targetValue)} · {displayedMulti.toFixed(2)}× ·{" "}
                 {formatChancePct(chance)} · house {formatPercent(houseEdge, 0)}
               </p>
             </div>
@@ -758,7 +767,7 @@ export function Upgrader() {
             </div>
           </div>
           <p className="text-[11px] text-slate-500">
-            Target must be at least 1.20× the source (500 SH upgrades to 600 SH, not 500). Typed 5 → 485 is about 0.98%
+            Target must be at least 1.20× the source (500 upgrades to 600, not 500). Typed 5 → 485 is about 0.98%
             at a 5% house edge. Dragging an arc end-cap updates the stake to{" "}
             <span className="font-mono text-slate-400">chance × target / 0.95</span> (ceil to cents, never above the
             1.20× cap).
@@ -810,7 +819,7 @@ export function Upgrader() {
           </div>
           <p className="text-[11px] text-slate-500">
             Click an item to fill the {slot === "input" ? "source" : "target"} slot.
-            {slot === "input" ? " Stake becomes that item’s SH value." : " Chance uses its catalog price."}
+            {slot === "input" ? " Stake becomes that item’s World Lock value." : " Chance uses its catalog price."}
           </p>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8">
             {catalog.map((item) => {
@@ -833,7 +842,7 @@ export function Upgrader() {
                     {item.name}
                   </p>
                   <p className="text-[11px] font-semibold" style={{ color: r.text }}>
-                    {formatCredits(item.value)} <span className="font-normal text-slate-500">SH</span>
+                    {formatCredits(item.value)} <span className="font-normal text-slate-500">{cashTicker()}</span>
                   </p>
                 </button>
               );

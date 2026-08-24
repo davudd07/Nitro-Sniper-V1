@@ -6,7 +6,7 @@ import { X } from "lucide-react";
 import { CoinStackArt, TreasureChestArt } from "../components/rewards/DropArt";
 import { PlayerVipPanel } from "../components/loyalty/PlayerVipPanel";
 import { RankRewardsGrid } from "../components/loyalty/RankRewardsGrid";
-import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
+import { formatCash, formatPercent } from "../lib/format";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
@@ -177,7 +177,7 @@ export function Rewards() {
       return;
     }
     sound.win("small");
-    push(`Claimed ${formatRakeback(amt)} SH rakeback.`, "success");
+    push(`Claimed ${formatCash(amt)} rakeback.`, "success");
   }
 
   function handleClaimEarly() {
@@ -187,7 +187,7 @@ export function Rewards() {
       return;
     }
     sound.win("small");
-    push(`Claimed ${formatRakeback(amt)} SH early (70% of Instant Drop).`, "success");
+    push(`Claimed ${formatCash(amt)} early (70% of Instant Drop).`, "success");
   }
 
   function handleWeekly() {
@@ -195,7 +195,7 @@ export function Rewards() {
     if (amt <= 0) return;
     credit(amt);
     sound.win("small");
-    push(`Claimed weekly drop: ${formatCredits(amt)} SH.`, "success");
+    push(`Claimed weekly drop: ${formatCash(amt)}.`, "success");
   }
 
   function handleMonthly() {
@@ -203,7 +203,7 @@ export function Rewards() {
     if (amt <= 0) return;
     credit(amt);
     sound.win("big");
-    push(`Claimed monthly drop: ${formatCredits(amt)} SH.`, "success");
+    push(`Claimed monthly drop: ${formatCash(amt)}.`, "success");
   }
 
   function handleDaily() {
@@ -218,7 +218,7 @@ export function Rewards() {
       return;
     }
     sound.win("small");
-    push(`Claimed ${formatRakeback(amt)} SH daily rakeback.`, "success");
+    push(`Claimed ${formatCash(amt)} daily rakeback.`, "success");
   }
 
   return (
@@ -235,7 +235,7 @@ export function Rewards() {
           word="Instant"
           variant="green"
           art={<CoinStackArt accent="green" />}
-          amount={pending > 0 ? `${formatRakeback(pending)} SH` : undefined}
+          amount={pending > 0 ? `${formatCash(pending)}` : undefined}
           footer={
             pending <= 0 ? "Not claimable" : instantMature ? "Claim" : formatDropCountdown(matureAt - now)
           }
@@ -243,7 +243,7 @@ export function Rewards() {
           onFooter={handleClaimInstant}
           secondary={
             canClaimEarly
-              ? `Claim early · ${formatRakeback(pending * RAKEBACK_EARLY_PCT)} SH`
+              ? `Claim early · ${formatCash(pending * RAKEBACK_EARLY_PCT)}`
               : undefined
           }
           onSecondary={handleClaimEarly}
@@ -261,7 +261,7 @@ export function Rewards() {
           word="Daily"
           variant="green"
           art={<CoinStackArt accent="green" />}
-          amount={dailyPending > 0 ? `${formatRakeback(dailyPending)} SH` : undefined}
+          amount={dailyPending > 0 ? `${formatCash(dailyPending)}` : undefined}
           footer={
             dailyPending <= 0 ? "Not claimable" : dailyMature ? "Claim" : formatDropCountdown(dailyAt - now)
           }
@@ -281,7 +281,7 @@ export function Rewards() {
           word="Weekly"
           variant="lime"
           art={<CoinStackArt accent="lime" extra />}
-          amount={weeklyReady ? `${formatCredits(WEEKLY_DROP_SH)} SH` : undefined}
+          amount={weeklyReady ? `${formatCash(WEEKLY_DROP_SH)}` : undefined}
           footer={weeklyReady ? "Claim" : formatDropCountdown(weeklyReadyAt - now)}
           footerDisabled={!weeklyReady}
           onFooter={handleWeekly}
@@ -291,7 +291,7 @@ export function Rewards() {
                 A play-money Shard drop on a weekly timer. Claim when the countdown hits zero. After a claim the
                 timer resets for another week.
               </p>
-              <p>Prize: {formatCredits(WEEKLY_DROP_SH)} SH. No deposits, no cash value.</p>
+              <p>Prize: {formatCash(WEEKLY_DROP_SH)}. No deposits, no cash value.</p>
             </DropInfo>
           }
         />
@@ -299,7 +299,7 @@ export function Rewards() {
           word="Monthly"
           variant="gold"
           art={<TreasureChestArt />}
-          amount={monthlyReady ? `${formatCredits(MONTHLY_DROP_SH)} SH` : undefined}
+          amount={monthlyReady ? `${formatCash(MONTHLY_DROP_SH)}` : undefined}
           footer={monthlyReady ? "Claim" : formatDropCountdown(monthlyReadyAt - now)}
           footerDisabled={!monthlyReady}
           onFooter={handleMonthly}
@@ -309,7 +309,7 @@ export function Rewards() {
                 A larger play-money Shard drop on a monthly timer. Claim when ready; the chest then locks until the
                 next cycle.
               </p>
-              <p>Prize: {formatCredits(MONTHLY_DROP_SH)} SH. Demo balance only — never a real payout.</p>
+              <p>Prize: {formatCash(MONTHLY_DROP_SH)}. Demo balance only — never a real payout.</p>
             </DropInfo>
           }
         />

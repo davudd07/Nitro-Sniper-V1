@@ -25,6 +25,7 @@ import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
+import { awardAffiliateOnWager } from "../store/affiliateStore";
 import { useIdentityStore } from "../store/identityStore";
 import { PlayerTag } from "../components/identity/PlayerTag";
 
@@ -99,6 +100,7 @@ export function JackpotPage() {
       return;
     }
     awardRakeback(bet, HOUSE_EDGE.jackpot);
+    awardAffiliateOnWager(bet, HOUSE_EDGE.jackpot);
     sound.chip();
     push(`Joined ${def.label} jackpot with ${formatCash(bet)}.`, "success");
   }

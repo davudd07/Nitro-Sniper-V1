@@ -1,4 +1,5 @@
 import { useEconomyStore } from "../store/economyStore";
+import { awardAffiliateOnWager } from "../store/affiliateStore";
 import { LOCAL_PLAYER, useModerationStore } from "../store/moderationStore";
 import { useAuthStore } from "../store/authStore";
 import { useToastStore } from "../store/toastStore";
@@ -24,5 +25,6 @@ export function takeStake(amount: number, houseEdge: number): boolean {
   const eco = useEconomyStore.getState();
   if (!eco.spend(amount)) return false;
   eco.awardRakeback(amount, houseEdge);
+  awardAffiliateOnWager(amount, houseEdge);
   return true;
 }

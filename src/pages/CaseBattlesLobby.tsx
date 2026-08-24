@@ -19,6 +19,7 @@ import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
 import { requireAccount } from "../lib/stake";
+import { awardAffiliateOnWager } from "../store/affiliateStore";
 import { BattleCost, BorrowBadge, FinishedBattleCostPaid } from "../components/battles/BattleCost";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { WinLeaderBadge } from "../components/layout/WinLeaderBadge";
@@ -111,6 +112,7 @@ export function CaseBattlesLobby() {
     }
     if (cost > 0) applyTipWager(cost);
     awardRakeback(cost, HOUSE_EDGE.battles);
+    awardAffiliateOnWager(cost, HOUSE_EDGE.battles);
     const seat = firstEmptySeat(occupiedSeatFlags(b, joinIntents[b.id]));
     setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct, seat });
     setJoinTarget(null);

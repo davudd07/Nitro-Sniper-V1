@@ -36,6 +36,7 @@ import { AdminViewBar } from "./components/admin/AdminViewBar";
 import { installChatModeration } from "./lib/moderation";
 import { AccountGate } from "./components/auth/AccountGate";
 import { MaxxxWinOverlay } from "./components/cases/MaxxxWinOverlay";
+import { useAffiliateStore } from "./store/affiliateStore";
 
 // Forces a full remount of the battle room whenever the battle id changes,
 // so state from a previous battle (refs, timers, phase) never leaks in.
@@ -69,6 +70,17 @@ export default function App() {
       if (id) trackRecent(id);
     }
   }, [location.pathname]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const ref = params.get("ref");
+    if (!ref) return;
+    const apply = () => useAffiliateStore.getState().captureRef(ref);
+    if (useAffiliateStore.persist.hasHydrated()) apply();
+    return useAffiliateStore.persist.onFinishHydration(() => {
+      apply();
+    });
+  }, [location.search]);
 
   useEffect(() => {
     installChatModeration();

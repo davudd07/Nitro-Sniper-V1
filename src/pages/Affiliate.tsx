@@ -17,15 +17,21 @@ import { CashAmount, CurrencyIcon } from "../components/ui/CurrencyIcon";
 import {
   AFFILIATE_PAGE_SIZE,
   AFFILIATE_SHARE,
+  COMMISSION_EXAMPLE,
   DEMO_BOARD,
-  DEMO_REFERRALS,
   makeAffiliateCode,
   PROGRAM_STATS,
   referralCommission,
+  referralStatusAt,
 } from "../lib/affiliate";
 import { formatFunCoins, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
-import { useAffiliateStore, affiliateAvailable, affiliateLifetime } from "../store/affiliateStore";
+import {
+  affiliateAvailable,
+  affiliateLifetime,
+  ledgerFor,
+  useAffiliateStore,
+} from "../store/affiliateStore";
 import { useAuthStore } from "../store/authStore";
 import { useDemoProfileStore } from "../store/demoProfileStore";
 import { useToastStore } from "../store/toastStore";
@@ -55,7 +61,12 @@ function FormulaChip({ label, accent }: { label: string; accent: "cyan" | "slate
         ? "border-emerald-400/50 bg-emerald-400/10 text-emerald-100"
         : "border-white/15 bg-white/5 text-slate-200";
   return (
-    <span className={clsx("inline-flex rounded-md border-2 px-2.5 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-wide", tone)}>
+    <span
+      className={clsx(
+        "inline-flex rounded-md border-2 px-2.5 py-1.5 text-center text-[11px] font-extrabold uppercase tracking-wide",
+        tone,
+      )}
+    >
       {label}
     </span>
   );
@@ -66,19 +77,27 @@ export function Affiliate() {
   const session = useAuthStore((s) => s.session);
   const code = useMemo(() => makeAffiliateCode(session || displayName), [session, displayName]);
   const push = useToastStore((s) => s.push);
-  const claimedShards = useAffiliateStore((s) => s.claimedShards);
+  const ledgers = useAffiliateStore((s) => s.ledgers);
+  const attributedCode = useAffiliateStore((s) => s.attributedCode);
+  const applyCode = useAffiliateStore((s) => s.applyCode);
   const claim = useAffiliateStore((s) => s.claim);
   const boardCreated = useAffiliateStore((s) => s.boardCreated);
   const createBoard = useAffiliateStore((s) => s.createBoard);
-  const available = affiliateAvailable(claimedShards);
-  const lifetime = affiliateLifetime();
+  const ledger = ledgerFor(ledgers, code);
+  const referrals = ledger.referrals;
+  const available = affiliateAvailable(ledger);
+  const lifetime = affiliateLifetime(ledger);
   const [copied, setCopied] = useState<"code" | "link" | null>(null);
   const [page, setPage] = useState(0);
+  const [codeInput, setCodeInput] = useState("");
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const link = `${origin}/?ref=${encodeURIComponent(code)}`;
-  const pages = Math.max(1, Math.ceil(DEMO_REFERRALS.length / AFFILIATE_PAGE_SIZE));
-  const rows = DEMO_REFERRALS.slice(page * AFFILIATE_PAGE_SIZE, (page + 1) * AFFILIATE_PAGE_SIZE);
+  const pages = Math.max(1, Math.ceil(referrals.length / AFFILIATE_PAGE_SIZE));
+  const safePage = Math.min(page, pages - 1);
+  const rows = referrals.slice(safePage * AFFILIATE_PAGE_SIZE, (safePage + 1) * AFFILIATE_PAGE_SIZE);
+  const usingOwnCode = Boolean(attributedCode && attributedCode === code);
+  const example = COMMISSION_EXAMPLE;
 
   async function copyText(kind: "code" | "link", value: string) {
     try {
@@ -119,6 +138,21 @@ export function Affiliate() {
     push(`Claimed ${formatFunCoins(amt)} Shards from affiliate cut.`, "success");
   }
 
+  function handleApplyCode() {
+    sound.click();
+    const ok = applyCode(codeInput);
+    if (!ok) {
+      if (attributedCode) {
+        push(`Already attributed to ${attributedCode} (first touch).`, "info");
+      } else {
+        push("Enter a valid affiliate code.", "warning");
+      }
+      return;
+    }
+    push("Affiliate code saved. Real World Lock bets will pay that code.", "success");
+    setCodeInput("");
+  }
+
   return (
     <div className="mx-auto max-w-6xl space-y-5">
       <section className="relative overflow-hidden rounded-xl border-2 border-cyan-400/35 bg-gradient-to-br from-cyan-500/12 via-[#0e1818] to-[#0a1010] p-6 shadow-[4px_4px_0_#050808]">
@@ -143,6 +177,7 @@ export function Affiliate() {
             label="Total earned all time"
           />
         </div>
+        <p className="mt-3 text-[11px] text-slate-500">Program-wide showcase totals. Your personal cut is below.</p>
       </section>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -159,18 +194,19 @@ export function Affiliate() {
           >
             Claim now
           </button>
+          <p className="mt-2 text-[11px] text-slate-500">Credits Shards immediately, like Instant Drop.</p>
         </div>
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Total earnings</p>
           <p className="mt-3 text-3xl font-black text-white">
             <ShardAmount value={lifetime} iconClassName="h-7 w-7" />
           </p>
-          <p className="mt-3 text-xs text-slate-400">All-time commissions</p>
+          <p className="mt-3 text-xs text-slate-400">All-time commissions on this browser</p>
         </div>
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Referrals</p>
-          <p className="mt-3 font-mono text-3xl font-black text-white">{DEMO_REFERRALS.length}</p>
-          <p className="mt-3 text-xs text-slate-400">Total registered players</p>
+          <p className="mt-3 font-mono text-3xl font-black text-white">{referrals.length}</p>
+          <p className="mt-3 text-xs text-slate-400">Players who wagered with your code</p>
         </div>
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Affiliate code</p>
@@ -208,16 +244,49 @@ export function Affiliate() {
               Share
             </button>
           </div>
+          <p className="mt-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Have a code?</p>
+          {attributedCode ? (
+            <p className="mt-2 text-sm text-slate-300">
+              First-touch attribution: <span className="font-mono font-bold text-cyan-200">{attributedCode}</span>
+              {usingOwnCode ? " — that’s your own code, so self-referrals are not paid." : ". Real World Lock bets pay that affiliate."}
+            </p>
+          ) : (
+            <form
+              className="mt-2 flex flex-col gap-2 sm:flex-row"
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleApplyCode();
+              }}
+            >
+              <input
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                placeholder="Enter affiliate code"
+                className="min-w-0 flex-1 rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 font-mono text-xs text-slate-200 outline-none"
+              />
+              <button type="submit" className="btn-cyan shrink-0 px-3 py-2 text-sm">
+                Apply code
+              </button>
+            </form>
+          )}
         </div>
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">How you earn</p>
-          <p className="mt-3 text-sm text-slate-300">Commission is a Shard cut of the house-edge slice on referred World Lock wagers.</p>
+          <p className="mt-3 text-sm leading-relaxed text-slate-300">
+            Commission = Your Share % × Total Bets by Referrals × House Edge of the Game. This pays on the{" "}
+            <span className="font-semibold text-white">theoretical house edge</span> of every real bet (bet &gt; 0), not
+            actual player losses. Demo / 0 bets do not count. Paid in Shards.
+          </p>
+          <p className="mt-3 font-mono text-sm text-cyan-100">
+            Example: {formatPercent(example.share, 0)} × {example.wagerWl.toLocaleString("en-US")} WL bets ×{" "}
+            {formatPercent(example.houseEdge, 0)} edge = {example.payout.toLocaleString("en-US")} (paid in Shards).
+          </p>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <FormulaChip label={`${formatPercent(AFFILIATE_SHARE, 0)} your share`} accent="cyan" />
             <span className="text-slate-500">×</span>
-            <FormulaChip label="Total wager by referrals" accent="slate" />
+            <FormulaChip label="Total bets by referrals" accent="slate" />
             <span className="text-slate-500">×</span>
-            <FormulaChip label="House edge by game" accent="slate" />
+            <FormulaChip label="House edge of the game" accent="slate" />
             <span className="text-slate-500">=</span>
             <FormulaChip label="Your commission" accent="emerald" />
           </div>
@@ -227,6 +296,7 @@ export function Affiliate() {
       <section className="surface overflow-hidden">
         <div className="border-b-2 border-white/10 px-5 py-3">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Referral performance</p>
+          <p className="mt-1 text-xs text-slate-500">Live players who wagered with your code on this browser.</p>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[40rem] text-left text-sm">
@@ -240,51 +310,66 @@ export function Affiliate() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-b border-white/5 last:border-0">
-                  <td className="px-5 py-3">
-                    <span className="inline-flex items-center gap-2">
-                      <PlayerAvatar name={row.name} color={row.color} size={28} />
-                      <span className="font-semibold text-white">{row.name}</span>
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 text-slate-200">
-                    <CashAmount wl={row.wagerWl} />
-                  </td>
-                  <td className="px-3 py-3 font-mono text-slate-300">{row.bets.toLocaleString("en-US")}</td>
-                  <td className="px-3 py-3 text-emerald-200">
-                    <ShardAmount value={referralCommission(row)} iconClassName="h-4 w-4" />
-                  </td>
-                  <td className="px-5 py-3">
-                    <span
-                      className={clsx(
-                        "inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide",
-                        row.status === "active" ? "bg-emerald-400/15 text-emerald-300" : "bg-white/10 text-slate-400",
-                      )}
-                    >
-                      {row.status === "active" ? "Active" : "Idle"}
-                    </span>
+              {rows.length === 0 ? (
+                <tr>
+                  <td colSpan={5} className="px-5 py-10 text-center">
+                    <p className="text-sm font-semibold text-slate-200">No referred players yet</p>
+                    <p className="mx-auto mt-2 max-w-md text-xs leading-relaxed text-slate-500">
+                      Share your link. When someone opens it (or enters your code) and places a real World Lock bet, they
+                      appear here with wager, bet count, and your theoretical-edge commission.
+                    </p>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                rows.map((row) => {
+                  const status = referralStatusAt(row);
+                  return (
+                    <tr key={row.id} className="border-b border-white/5 last:border-0">
+                      <td className="px-5 py-3">
+                        <span className="inline-flex items-center gap-2">
+                          <PlayerAvatar name={row.name} color={row.color} size={28} />
+                          <span className="font-semibold text-white">{row.name}</span>
+                        </span>
+                      </td>
+                      <td className="px-3 py-3 text-slate-200">
+                        <CashAmount wl={row.wagerWl} />
+                      </td>
+                      <td className="px-3 py-3 font-mono text-slate-300">{row.bets.toLocaleString("en-US")}</td>
+                      <td className="px-3 py-3 text-emerald-200">
+                        <ShardAmount value={referralCommission(row)} iconClassName="h-4 w-4" />
+                      </td>
+                      <td className="px-5 py-3">
+                        <span
+                          className={clsx(
+                            "inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide",
+                            status === "active" ? "bg-emerald-400/15 text-emerald-300" : "bg-white/10 text-slate-400",
+                          )}
+                        >
+                          {status === "active" ? "Active" : "Idle"}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
         <div className="flex items-center justify-end gap-2 border-t border-white/10 px-4 py-2">
           <button
             type="button"
-            disabled={page <= 0}
+            disabled={safePage <= 0}
             onClick={() => setPage((p) => Math.max(0, p - 1))}
             className="rounded-md border border-white/10 p-1.5 text-slate-300 disabled:opacity-30"
           >
             <ChevronLeft className="h-4 w-4" />
           </button>
           <span className="font-mono text-xs text-slate-400">
-            {page + 1} / {pages}
+            {safePage + 1} / {pages}
           </span>
           <button
             type="button"
-            disabled={page >= pages - 1}
+            disabled={safePage >= pages - 1}
             onClick={() => setPage((p) => Math.min(pages - 1, p + 1))}
             className="rounded-md border border-white/10 p-1.5 text-slate-300 disabled:opacity-30"
           >
@@ -299,8 +384,7 @@ export function Affiliate() {
           <div className="min-w-0 flex-1">
             <h2 className="pixel-label text-xl font-extrabold uppercase text-white">Leaderboard</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-              Track players who wager with your affiliate code. Offer Shard prizes to the top of the board and
-              keep the race going — still play-money, still local to this demo.
+              Showcase race for this demo. Offer Shard prizes to the top of the board — still play-money, still local.
             </p>
             {boardCreated ? (
               <div className="mt-4 overflow-x-auto">
@@ -352,8 +436,9 @@ export function Affiliate() {
       </section>
 
       <p className="text-xs leading-relaxed text-slate-500">
-        Showcase referrals and Shard commissions are local demo data. Claiming credits Shards on this browser only.
-        SeedBET never pays cash and never tracks real affiliate traffic.
+        Personal available / lifetime / referral rows are live demo data on this browser. Program totals and the
+        leaderboard are labeled showcase figures. Claiming credits Shards here only. SeedBET never pays cash and never
+        tracks real affiliate traffic.
       </p>
 
       <Link to="/rewards" className="text-sm text-slate-400 hover:text-white">
@@ -374,7 +459,10 @@ function HeroStat({
 }) {
   return (
     <div>
-      <div className="flex items-center gap-1.5 text-2xl font-black text-white">{icon}{value}</div>
+      <div className="flex items-center gap-1.5 text-2xl font-black text-white">
+        {icon}
+        {value}
+      </div>
       <p className="mt-1 text-[11px] font-semibold uppercase tracking-wide text-slate-500">{label}</p>
     </div>
   );

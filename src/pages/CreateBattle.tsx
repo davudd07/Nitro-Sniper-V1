@@ -41,6 +41,7 @@ import { consumeBattleDraft } from "../lib/battleDraft";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
+import { awardAffiliateOnWager } from "../store/affiliateStore";
 
 function flatten(entries: BattleCaseEntry[]): string[] {
   return entries.flatMap((e) => Array.from({ length: e.count }, () => e.caseId));
@@ -230,6 +231,7 @@ export function CreateBattle() {
     }
     if (youPay > 0) applyTipWager(youPay);
     awardRakeback(youPay, HOUSE_EDGE.battles);
+    awardAffiliateOnWager(youPay, HOUSE_EDGE.battles);
     const mods = sanitizeBattleModifiers({ coinflip, crazy, jackpot, terminal, goldSpin, shared });
     const id = createBattle({
       modeId,

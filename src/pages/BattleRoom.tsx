@@ -30,6 +30,7 @@ import { formatCredits, formatCash } from "../lib/format";
 import { creatorCreateCost, fundedSeatCost, humanSeatPaidFraction, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount } from "../lib/stake";
+import { awardAffiliateOnWager } from "../store/affiliateStore";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
 import { coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
@@ -150,6 +151,7 @@ export function BattleRoom() {
     }
     if (cost > 0) applyTipWager(cost);
     awardRakeback(cost, HOUSE_EDGE.battles);
+    awardAffiliateOnWager(cost, HOUSE_EDGE.battles);
     setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct, seat });
     navigate(`/battles/${battle.id}`, { replace: true });
     return true;

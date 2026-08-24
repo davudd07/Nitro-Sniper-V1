@@ -1,21 +1,33 @@
 import { useEffect, useMemo, useState } from "react";
+import { clsx } from "clsx";
 import { useMaxxxWinStore } from "../../store/maxxxWinStore";
 import { sound } from "../../lib/sound";
 
-const COIN_COUNT = 180;
-const SPARK_COUNT = 48;
-const OVERLAY_MS = 20000;
+const COIN_COUNT = 140;
+const SPARK_COUNT = 40;
+const SHOW_MS = 8000;
+const FADE_MS = 1100;
 
 export function MaxxxWinOverlay() {
   const nonce = useMaxxxWinStore((s) => s.nonce);
   const [burst, setBurst] = useState(0);
+  const [fading, setFading] = useState(false);
 
   useEffect(() => {
     if (nonce <= 0) return;
     setBurst(nonce);
+    setFading(false);
     sound.maxxxWin();
-    const t = window.setTimeout(() => setBurst(0), OVERLAY_MS);
-    return () => window.clearTimeout(t);
+    const fade = window.setTimeout(() => setFading(true), SHOW_MS);
+    const hide = window.setTimeout(() => {
+      setBurst(0);
+      setFading(false);
+      sound.stopMaxxxWin();
+    }, SHOW_MS + FADE_MS);
+    return () => {
+      window.clearTimeout(fade);
+      window.clearTimeout(hide);
+    };
   }, [nonce]);
 
   const coins = useMemo(() => {
@@ -25,8 +37,8 @@ export function MaxxxWinOverlay() {
       return {
         id: `${burst}-c-${i}`,
         left: Math.random() * 100,
-        delay: Math.random() * 5.5,
-        duration: 8.6 + Math.random() * 5.2,
+        delay: Math.random() * 2.2,
+        duration: 5.6 + Math.random() * 2.4,
         size: big ? 28 + Math.random() * 22 : 16 + Math.random() * 14,
         spin: 220 + Math.random() * 720,
         drift: (Math.random() - 0.5) * 140,
@@ -44,7 +56,7 @@ export function MaxxxWinOverlay() {
         id: `${burst}-s-${i}`,
         x: 50 + Math.cos(angle) * dist,
         y: 42 + Math.sin(angle) * dist * 0.72,
-        delay: Math.random() * 1.6,
+        delay: Math.random() * 1.4,
         size: 3 + Math.random() * 7,
         duration: 1.1 + Math.random() * 1.4,
       };
@@ -54,7 +66,13 @@ export function MaxxxWinOverlay() {
   if (!burst) return null;
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[80] overflow-hidden" style={{ perspective: "900px" }}>
+    <div
+      className={clsx(
+        "pointer-events-none fixed inset-0 z-[80] overflow-hidden maxxx-overlay",
+        fading && "maxxx-overlay-out",
+      )}
+      style={{ perspective: "900px" }}
+    >
       <div className="maxxx-flash absolute inset-0" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(255,220,120,0.38),rgba(251,191,36,0.12)_34%,transparent_68%)]" />
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(0,0,0,0.55),transparent_55%)]" />
@@ -91,8 +109,6 @@ export function MaxxxWinOverlay() {
             top: `${spark.y}%`,
             width: spark.size,
             height: spark.size,
-            animationDelay: `${spark.delay}s`,
-            animationDuration: `${spark.duration}s`,
             ["--maxxx-spark-delay" as string]: `${spark.delay}s`,
             ["--maxxx-spark-duration" as string]: `${spark.duration}s`,
           }}
@@ -107,8 +123,6 @@ export function MaxxxWinOverlay() {
             left: `${coin.left}%`,
             width: coin.size,
             height: coin.size,
-            animationDelay: `${coin.delay}s`,
-            animationDuration: `${coin.duration}s`,
             ["--maxxx-delay" as string]: `${coin.delay}s`,
             ["--maxxx-duration" as string]: `${coin.duration}s`,
             ["--maxxx-spin" as string]: `${coin.spin}deg`,

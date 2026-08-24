@@ -168,6 +168,12 @@ class SoundEngine {
     this.maxxxAudio.currentTime = 0;
     void this.maxxxAudio.play().catch(() => {});
   }
+
+  stopMaxxxWin() {
+    if (!this.maxxxAudio) return;
+    this.maxxxAudio.pause();
+    this.maxxxAudio.currentTime = 0;
+  }
 }
 
 export const sound = new SoundEngine();

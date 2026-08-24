@@ -28,7 +28,7 @@ import { Switch } from "../components/ui/Switch";
 import { AddCasesModal } from "../components/battles/AddCasesModal";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
-import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS, teamIndexForSeat, totalPlayers } from "../data/battleModes";
+import { BATTLE_MODES, PLAYER_COLORS, TEAM_COLORS, battleModesFor, clampBattleMode, teamIndexForSeat, totalPlayers } from "../data/battleModes";
 import { ModeGlyph } from "../components/battles/ModeGlyph";
 import { getCase } from "../data/cases";
 import type { BattleCaseEntry } from "../store/battleStore";
@@ -140,6 +140,21 @@ export function CreateBattle() {
   const fullPay = creatorCreateCost(costPerPlayer, players, effectiveFund, 0);
   const joinerPay = Math.round(costPerPlayer * (1 - effectiveFund));
 
+  function applyModeId(id: string) {
+    const nextMode = BATTLE_MODES.find((m) => m.id === id)!;
+    const n = totalPlayers(nextMode);
+    const nextYou = youSeat >= n ? 0 : youSeat;
+    setModeId(id);
+    setYouSeat(nextYou);
+    setBotSeats((prev) => {
+      if (callAllBots) {
+        return new Set(Array.from({ length: n }, (_, i) => i).filter((i) => i !== nextYou));
+      }
+      return new Set([...prev].filter((i) => i < n && i !== nextYou));
+    });
+    setMovingYou(false);
+  }
+
   function setGameMode(next: "classic" | "shared") {
     sound.click();
     const on = next === "shared";
@@ -149,6 +164,8 @@ export function CreateBattle() {
       setCrazy(false);
       setTerminal(false);
       setCoinflip(false);
+      const nextId = clampBattleMode(modeId, true);
+      if (nextId !== modeId) applyModeId(nextId);
     }
   }
 
@@ -267,7 +284,7 @@ export function CreateBattle() {
                 active={shared}
                 icon={Users}
                 title="Shared"
-                blurb="Split the winnings equally."
+                blurb="Split the winnings equally. Up to 6 players, no versus."
                 onClick={() => setGameMode("shared")}
               />
             </div>
@@ -391,20 +408,10 @@ export function CreateBattle() {
               <span className="sr-only">Battle format</span>
               <ModeDropdown
                 value={modeId}
+                shared={shared}
                 onChange={(id) => {
                   sound.click();
-                  const nextMode = BATTLE_MODES.find((m) => m.id === id)!;
-                  const n = totalPlayers(nextMode);
-                  const nextYou = youSeat >= n ? 0 : youSeat;
-                  setModeId(id);
-                  setYouSeat(nextYou);
-                  setBotSeats((prev) => {
-                    if (callAllBots) {
-                      return new Set(Array.from({ length: n }, (_, i) => i).filter((i) => i !== nextYou));
-                    }
-                    return new Set([...prev].filter((i) => i < n && i !== nextYou));
-                  });
-                  setMovingYou(false);
+                  applyModeId(id);
                 }}
               />
             </div>
@@ -673,10 +680,19 @@ export function CreateBattle() {
   );
 }
 
-function ModeDropdown({ value, onChange }: { value: string; onChange: (id: string) => void }) {
+function ModeDropdown({
+  value,
+  onChange,
+  shared = false,
+}: {
+  value: string;
+  onChange: (id: string) => void;
+  shared?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
-  const current = BATTLE_MODES.find((m) => m.id === value);
+  const modes = battleModesFor(shared);
+  const current = modes.find((m) => m.id === value) ?? BATTLE_MODES.find((m) => m.id === value);
 
   useEffect(() => {
     if (!open) return;
@@ -713,7 +729,7 @@ function ModeDropdown({ value, onChange }: { value: string; onChange: (id: strin
           role="listbox"
           className="absolute z-40 mt-1 max-h-80 w-full overflow-y-auto rounded-xl border border-slate-600/80 bg-[#0c1414] py-1 shadow-[0_12px_32px_rgba(0,0,0,0.55)] scrollbar-thin"
         >
-          {BATTLE_MODES.map((m) => {
+          {modes.map((m) => {
             const active = m.id === value;
             const crowdedGlyph = totalPlayers(m) >= 6;
             return (

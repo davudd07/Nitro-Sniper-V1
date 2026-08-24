@@ -23,6 +23,24 @@ export function totalPlayers(mode: BattleMode): number {
 }
 
 export const MAX_BATTLE_PLAYERS = Math.max(...BATTLE_MODES.map(totalPlayers));
+export const MAX_SHARED_PLAYERS = 6;
+
+export function battleModesFor(shared: boolean): BattleMode[] {
+  if (!shared) return BATTLE_MODES;
+  return BATTLE_MODES.filter((m) => totalPlayers(m) <= MAX_SHARED_PLAYERS);
+}
+
+/** Keep the current format when it still fits; otherwise pick the closest seat count ≤ 6. */
+export function clampBattleMode(modeId: string, shared: boolean): string {
+  const allowed = battleModesFor(shared);
+  if (allowed.some((m) => m.id === modeId)) return modeId;
+  const current = BATTLE_MODES.find((m) => m.id === modeId);
+  const target = current ? Math.min(totalPlayers(current), MAX_SHARED_PLAYERS) : 2;
+  const ranked = [...allowed].sort(
+    (a, b) => Math.abs(totalPlayers(a) - target) - Math.abs(totalPlayers(b) - target),
+  );
+  return ranked[0]?.id ?? "1v1";
+}
 
 export function teamIndexForSeat(mode: BattleMode, seat: number): number {
   let cursor = 0;

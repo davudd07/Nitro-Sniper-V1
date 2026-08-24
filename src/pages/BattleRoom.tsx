@@ -86,6 +86,7 @@ export function BattleRoom() {
     });
     return groups;
   }, [players]);
+  const layoutTeams = battle?.shared ? [players] : teams;
   const [phase, setPhase] = useState<Phase>(() =>
     battle?.status === "finished" && !wantReplay ? "finished" : "filling",
   );
@@ -987,12 +988,12 @@ export function BattleRoom() {
           <div className="min-w-0 w-full overflow-x-auto scrollbar-thin">
             <div className="min-w-full">
           <div className="flex w-full items-stretch">
-            {teams.map((teamPlayers, teamIdx) => {
-                const isTeam = teamPlayers.length > 1;
+            {layoutTeams.map((teamPlayers, teamIdx) => {
+                const isTeam = !battle.shared && teamPlayers.length > 1;
                 const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
                 return (
                   <Fragment key={`head-${teamIdx}`}>
-                    {teamIdx > 0 && <TeamDivider mark={false} dense={denseVs} />}
+                    {teamIdx > 0 && !battle.shared && <TeamDivider mark={false} dense={denseVs} />}
                   <div
                     className="flex min-w-0 flex-col overflow-hidden"
                     style={{
@@ -1057,12 +1058,12 @@ export function BattleRoom() {
               />
             )}
             <div className="flex w-full items-stretch">
-              {teams.map((teamPlayers, teamIdx) => {
-                const isTeam = teamPlayers.length > 1;
+              {layoutTeams.map((teamPlayers, teamIdx) => {
+                const isTeam = !battle.shared && teamPlayers.length > 1;
                 const teamColor = TEAM_COLORS[teamIdx % TEAM_COLORS.length];
                 return (
                   <Fragment key={`stage-${teamIdx}`}>
-                    {teamIdx > 0 && <TeamDivider reelSize={reelSize} dense={denseVs} />}
+                    {teamIdx > 0 && !battle.shared && <TeamDivider reelSize={reelSize} dense={denseVs} />}
                     <div
                       className="flex min-w-0 flex-col overflow-hidden"
                       style={{

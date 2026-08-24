@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react";
 import { clsx } from "clsx";
 import type { CaseItem } from "../../data/items";
 import { ITEMS } from "../../data/items";
@@ -5,7 +6,6 @@ import { ItemIcon } from "../ui/ItemIcon";
 import { CHEST_ASPECT, type ChestSticker } from "../../lib/chest";
 
 const DYE = "/images/chests/chest-dye.png";
-const WOOD = "/images/chests/chest-wood.png";
 const LOCK = "/images/chests/chest-lock.png";
 
 export function ChestArt({
@@ -21,9 +21,8 @@ export function ChestArt({
 }) {
   return (
     <div className={clsx("relative isolate", className)} style={{ aspectRatio: `${CHEST_ASPECT}` }}>
-      <img src={WOOD} alt="" draggable={false} className="pointer-events-none absolute inset-0 h-full w-full object-contain" />
       <div
-        className="absolute inset-0"
+        className="absolute inset-0 isolate"
         style={{
           WebkitMaskImage: `url(${DYE})`,
           maskImage: `url(${DYE})`,
@@ -33,8 +32,10 @@ export function ChestArt({
           maskRepeat: "no-repeat",
           WebkitMaskPosition: "center",
           maskPosition: "center",
+          maskMode: "luminance",
+          WebkitMaskSourceType: "luminance",
           backgroundColor: color,
-        }}
+        } as CSSProperties}
       >
         <img
           src={DYE}

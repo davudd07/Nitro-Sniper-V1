@@ -122,7 +122,7 @@ function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number): void {
   const travel: number[] = [];
   for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
   shuffleInPlace(travel, rand);
-  const placeCount = Math.min(travel.length, Math.max(10, Math.floor(travel.length / 3.2)));
+  const placeCount = Math.min(travel.length, Math.max(10, Math.floor(travel.length / 4)));
   for (let n = 0; n < placeCount; n++) {
     const slot = travel[n];
     if (slot === undefined || slot === LAND_INDEX) continue;
@@ -317,8 +317,9 @@ export function CaseReel({
     onGoldTriggered?.();
     timeoutRef.current = setTimeout(() => {
       const goldRand = mulberry32(seedBase * 104729 + 3);
-      // Gold reel: the pool is already gold-tier and those items can land. No baits.
-      const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand);
+      // Gold reel: real gold-pool items can land. No GOLD SPIN indicator baits.
+      // MAXXX WIN still flies past visually and never overwrites LAND_INDEX.
+      const goldStrip = buildStrip(goldPool.length ? goldPool : [landed.item], landed.item, goldRand, [], true);
       pendingSpinRef.current = {
         seed: seedBase + 1,
         duration: goldDuration,
@@ -342,11 +343,12 @@ export function CaseReel({
   useEffect(() => {
     preloadIcons(pool);
     preloadIcons(goldPool);
+    preloadIcons([GOLD_INDICATOR, MAXXX_WIN]);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
   // Full-length idle strip so unique icons decode during countdown / before Open.
-  // Sprinkle gold-tier pass-bys here too so the pool is visible before Open.
+  // GOLD SPIN indicator baits (not gold-pool items) fly past before Open.
   useEffect(() => {
     if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
     const rand = mulberry32(laneSeed + 17);
@@ -361,7 +363,7 @@ export function CaseReel({
     const rand = mulberry32(seedBase);
     const goesGold = goldSpinEnabled && result.goldTier;
     const targetForMain = goesGold ? GOLD_INDICATOR : result.item;
-    // Normal reel: gold-tier items fly past as baits. Landing stays the real result
+    // Normal reel: GOLD SPIN indicator flies past as bait. Landing stays the real result
     // (or the GOLD SPIN indicator). The gold-spin reel below keeps the gold-only pool.
     const mainStrip = buildStrip(pool, targetForMain, rand, goldPool, true);
     pendingSpinRef.current = {

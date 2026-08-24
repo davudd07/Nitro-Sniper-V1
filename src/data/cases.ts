@@ -226,7 +226,7 @@ const CASE_DEFS: CaseDef[] = [
       ["kraken_heart", 25],
       ["tidal_monarch", 6],
       ["maelstrom_core", 1.5],
-      ["leviathans_crown", 0.5],
+      ["leviathans_crown", 0.35],
       ["maxxx_win", 0.12],
       ["barnacle_coin", 0],
     ],

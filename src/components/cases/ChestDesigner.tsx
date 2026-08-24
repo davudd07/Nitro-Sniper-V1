@@ -46,6 +46,7 @@ export function ChestDesigner({
   const onStickersRef = useRef(onStickers);
   onStickersRef.current = onStickers;
   const dragRef = useRef<DragState | null>(null);
+  const pickerRef = useRef<HTMLDivElement>(null);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [pickerOpen, setPickerOpen] = useState(false);
   const allowed = ITEM_LIST.filter((item) => allowedItemIds.includes(item.id));
@@ -81,7 +82,7 @@ export function ChestDesigner({
       }
       if (drag.mode === "rotate") {
         const deg = (Math.atan2(pos.x - cur.x, -(pos.y - cur.y)) * 180) / Math.PI;
-        patch(drag.id, { rotate: deg });
+        patch(drag.id, { rotate: deg - drag.grabX });
         return;
       }
       const dist = Math.hypot(pos.x - cur.x, pos.y - cur.y);
@@ -102,6 +103,17 @@ export function ChestDesigner({
     };
   }, []);
 
+  useEffect(() => {
+    if (!pickerOpen) return;
+    function onDown(e: PointerEvent) {
+      if (pickerRef.current && !pickerRef.current.contains(e.target as Node)) {
+        setPickerOpen(false);
+      }
+    }
+    window.addEventListener("pointerdown", onDown);
+    return () => window.removeEventListener("pointerdown", onDown);
+  }, [pickerOpen]);
+
   function beginMove(id: string, clientX: number, clientY: number) {
     const pos = pointerPct(clientX, clientY);
     const cur = stickersRef.current.find((s) => s.id === id);
@@ -117,13 +129,15 @@ export function ChestDesigner({
     setSelectedId(id);
   }
 
-  function beginRotate(id: string) {
+  function beginRotate(id: string, clientX: number, clientY: number) {
+    const pos = pointerPct(clientX, clientY);
     const cur = stickersRef.current.find((s) => s.id === id);
-    if (!cur) return;
+    if (!pos || !cur) return;
+    const deg = (Math.atan2(pos.x - cur.x, -(pos.y - cur.y)) * 180) / Math.PI;
     dragRef.current = {
       id,
       mode: "rotate",
-      grabX: 0,
+      grabX: deg - cur.rotate,
       grabY: 0,
       startScale: cur.scale,
       startDist: 1,
@@ -173,7 +187,7 @@ export function ChestDesigner({
         <p className="mb-3 text-[11px] text-slate-500">
           Recolors the gold wood and the open interior. The cyan heart, lid studs, and side studs stay locked.
         </p>
-        <div className="relative flex items-start gap-3">
+        <div ref={pickerRef} className="relative flex items-start gap-3">
           <button
             type="button"
             onClick={() => setPickerOpen((v) => !v)}
@@ -242,7 +256,7 @@ export function ChestDesigner({
               onPointerDown={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                beginRotate(selected.id);
+                beginRotate(selected.id, e.clientX, e.clientY);
               }}
               className="pointer-events-auto absolute left-1/2 top-0 z-10 h-4 w-4 -translate-x-1/2 -translate-y-7 cursor-grab rounded-full border-2 border-white bg-emerald-400 shadow touch-none"
             />

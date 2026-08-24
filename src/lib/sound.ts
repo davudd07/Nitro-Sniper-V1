@@ -1,5 +1,5 @@
-// Tiny synthesized sound engine (Web Audio oscillators/noise only — no
-// external audio assets, so there is zero licensing ambiguity).
+// Synthesized sound engine (Web Audio oscillators/noise) plus one local
+// jackpot stinger for the MAXXX WIN hit celebration.
 
 type Envelope = { attack?: number; decay?: number; sustain?: number; release?: number };
 

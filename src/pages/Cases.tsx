@@ -10,6 +10,7 @@ import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { CommunityEarningsModal } from "../components/cases/CommunityEarningsModal";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { formatCredits, formatPercent, formatRakeback, formatXp } from "../lib/format";
+import { formatTicketRange } from "../lib/caseTickets";
 import { matchesCaseName } from "../lib/caseSearch";
 import { RARITIES } from "../data/rarities";
 import { useAdminViewStore } from "../store/adminViewStore";
@@ -295,6 +296,7 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
                       <span style={{ color: RARITIES[o.item.rarity].text }}>{o.item.name}</span>
                       <span className="text-slate-400">
                         {formatCredits(o.item.value)} SH · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
+                        <span className="ml-1.5 font-mono text-slate-500">#{formatTicketRange(o.ticketStart, o.ticketEnd)}</span>
                         {adminView && o.goldTier ? (
                           <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
                         ) : (

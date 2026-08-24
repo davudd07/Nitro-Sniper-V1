@@ -18,6 +18,7 @@ import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { takeStake } from "../lib/stake";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatPercent, formatRakeback } from "../lib/format";
+import { formatTicketRange } from "../lib/caseTickets";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
 import type { CaseItem } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
@@ -131,6 +132,8 @@ export function CaseOpenPage() {
             <StatRow label="Price" value={`${formatCredits(c.price)} SH`} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
+            <StatRow label="Ticket pool" value="1,000,000" />
+            <StatRow label="Rarest 1%" value="tickets 990,000–1,000,000" />
             {c.community && (
               <StatRow
                 label="Creator commission"
@@ -257,6 +260,9 @@ export function CaseOpenPage() {
                     <span className="truncate pr-2">{o.item.name}</span>
                     <span className="shrink-0 text-slate-400">
                       {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
+                      <span className="ml-1.5 font-mono text-[10px] text-slate-500">
+                        #{formatTicketRange(o.ticketStart, o.ticketEnd)}
+                      </span>
                       {adminView && o.goldTier ? (
                         <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
                       ) : (

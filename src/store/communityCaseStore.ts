@@ -30,6 +30,8 @@ export interface CreateCommunityCaseInput {
   from: string;
   to: string;
   designItemIds: string[];
+  chestColor?: string;
+  chestStickers?: CommunityCaseRecord["chestStickers"];
   entries: CommunityOddsInput[];
 }
 
@@ -156,8 +158,12 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
           return { ok: false, error: "Case EV must stay below price after the house edge. +EV cases are not allowed." };
         }
         const selectedIds = new Set(entries.map((e) => e.itemId));
-        const designItemIds = input.designItemIds
+        const stickers = (input.chestStickers ?? [])
+          .filter((s) => selectedIds.has(s.itemId) && ITEMS[s.itemId])
+          .slice(0, COMMUNITY_MAX_DESIGN_ITEMS);
+        const designItemIds = (stickers.length > 0 ? stickers.map((s) => s.itemId) : input.designItemIds)
           .filter((id) => selectedIds.has(id) && ITEMS[id])
+          .filter((id, i, arr) => arr.indexOf(id) === i)
           .slice(0, COMMUNITY_MAX_DESIGN_ITEMS);
         const name = input.name.trim().replace(/\s+/g, " ");
         const rec: CommunityCaseRecord = {
@@ -175,6 +181,8 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
           creatorName: session,
           createdAt: Date.now(),
           designItemIds,
+          chestColor: input.chestColor ?? input.from,
+          chestStickers: stickers,
           entries,
         };
         set((s) => ({ cases: [rec, ...s.cases] }));

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { ShieldCheck, RefreshCw, ChevronDown } from "lucide-react";
 import { useFairnessStore } from "../../store/fairnessStore";
+import { ticketFromRoll } from "../../lib/caseTickets";
 import { clsx } from "clsx";
 
 function truncate(s: string, n = 14) {
@@ -34,9 +35,10 @@ export function ProvablyFairPanel({ compact = false }: { compact?: boolean }) {
         <div className="space-y-3 border-t border-white/5 px-3 py-3 text-xs">
           <p className="text-slate-400">
             Every roll is derived from a server seed (committed via its hash before you play), your client seed, and a
-            round nonce — the same HMAC pattern used across the industry. Because this is a client-only demo, the
-            "server" lives in your browser too, but the verification flow is real: you can re-derive any past roll
-            below.
+            round nonce — HMAC-SHA256, same pattern used across the industry. The float is mapped onto a{" "}
+            <span className="font-mono text-slate-300">1,000,000</span>-ticket pool; the rarest 1% of outcomes sit on
+            tickets 990,000–1,000,000. Because this is a client-only demo, the “server” lives in your browser too, but
+            the verification flow is real: you can re-derive any past roll below.
           </p>
           <div>
             <p className="mb-1 text-slate-500">Server seed hash (committed)</p>
@@ -71,7 +73,8 @@ export function ProvablyFairPanel({ compact = false }: { compact?: boolean }) {
               <div className="max-h-32 space-y-1 overflow-y-auto scrollbar-thin">
                 {history.slice(0, 6).map((h) => (
                   <div key={h.nonce} className="rounded bg-black/20 p-1.5 font-mono text-[10px] text-slate-400">
-                    #{h.nonce} · seed {truncate(h.serverSeed, 6)} · rolls [{h.rolls.map((r) => r.toFixed(4)).join(", ")}]
+                    #{h.nonce} · seed {truncate(h.serverSeed, 6)} · tickets [
+                    {h.rolls.map((r) => ticketFromRoll(r).toLocaleString("en-US")).join(", ")}]
                   </div>
                 ))}
               </div>

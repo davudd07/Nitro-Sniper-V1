@@ -2,6 +2,8 @@ import type { Case, CaseOddsEntry, RiskLevel } from "../data/cases";
 import { ITEMS, type CaseItem } from "../data/items";
 import { houseEdgeForGame, sortedTiers, type VipTier } from "./loyalty";
 import { HOUSE_EDGE } from "./rakeback";
+import { stampTicketRanges } from "./caseTickets";
+import { pileStickers, type ChestSticker } from "./chest";
 
 /**
  * Community case pricing matches official cases (EV stays below price by the
@@ -29,7 +31,7 @@ export const COMMUNITY_COMMISSION_OF_EDGE = 0.05;
 /** @deprecated Use COMMUNITY_COMMISSION_OF_EDGE — this is 5% of the house-edge take, not of price. */
 export const COMMUNITY_COMMISSION = COMMUNITY_COMMISSION_OF_EDGE;
 export const COMMUNITY_MAX_ITEMS = 25;
-export const COMMUNITY_MAX_DESIGN_ITEMS = 5;
+export const COMMUNITY_MAX_DESIGN_ITEMS = 8;
 export const COMMUNITY_NAME_MIN = 4;
 export const COMMUNITY_NAME_MAX = 22;
 /** 4–22 chars, starts/ends alphanumeric, spaces / hyphens / apostrophes in between. */
@@ -77,6 +79,8 @@ export interface CommunityCaseRecord {
   creatorName: string;
   createdAt: number;
   designItemIds: string[];
+  chestColor?: string;
+  chestStickers?: ChestSticker[];
   entries: CommunityOddsInput[];
 }
 
@@ -176,20 +180,15 @@ export function riskFromEntries(entries: CommunityOddsInput[]): RiskLevel {
   return "low";
 }
 
-/** Same rule as official cases: rarest-by-probability items covering the top ~5% mass. */
-export function withGoldTiers(odds: Omit<CaseOddsEntry, "goldTier">[]): CaseOddsEntry[] {
-  const sorted = [...odds].sort((a, b) => a.probability - b.probability);
-  let cumulative = 0;
-  const gold = new Set<string>();
-  for (const entry of sorted) {
-    cumulative += entry.probability;
-    if (cumulative <= 0.05) gold.add(entry.item.id);
-  }
-  return odds.map((entry) => ({ ...entry, goldTier: gold.has(entry.item.id) }));
+/** Same ticket table as official cases: rarest outcomes occupy 990,000–1,000,000. */
+export function withGoldTiers(
+  odds: Omit<CaseOddsEntry, "goldTier" | "tickets" | "ticketStart" | "ticketEnd">[],
+): CaseOddsEntry[] {
+  return stampTicketRanges(odds);
 }
 
 export function hydrateCommunityCase(rec: CommunityCaseRecord): Case {
-  const built: Omit<CaseOddsEntry, "goldTier">[] = [];
+  const built: Omit<CaseOddsEntry, "goldTier" | "tickets" | "ticketStart" | "ticketEnd">[] = [];
   for (const e of rec.entries) {
     const item = ITEMS[e.itemId];
     if (!item) continue;
@@ -199,6 +198,13 @@ export function hydrateCommunityCase(rec: CommunityCaseRecord): Case {
   const odds = withGoldTiers(built);
   const ev = odds.reduce((s, o) => s + o.probability * o.item.value, 0);
   const rtp = rec.price > 0 ? ev / rec.price : 0;
+  const fallbackIds =
+    rec.designItemIds.length > 0
+      ? rec.designItemIds
+      : [...odds]
+          .sort((a, b) => b.item.value - a.item.value)
+          .slice(0, 4)
+          .map((o) => o.item.id);
   return {
     id: rec.id,
     name: rec.name,
@@ -218,6 +224,8 @@ export function hydrateCommunityCase(rec: CommunityCaseRecord): Case {
     creatorName: rec.creatorName,
     designItemIds: rec.designItemIds,
     commissionRate: rec.commissionRate,
+    chestColor: rec.chestColor ?? rec.from,
+    chestStickers: rec.chestStickers && rec.chestStickers.length > 0 ? rec.chestStickers : pileStickers(fallbackIds),
   };
 }
 

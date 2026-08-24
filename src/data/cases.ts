@@ -1,11 +1,16 @@
 import { ITEMS, type CaseItem } from "./items";
 import { findHydratedCommunityCase } from "../store/communityCaseStore";
+import { stampTicketRanges, ticketFromRoll } from "../lib/caseTickets";
+import { OFFICIAL_CHEST_COLORS, pileStickers, type ChestSticker } from "../lib/chest";
 
 export interface CaseOddsEntry {
   item: CaseItem;
   weight: number;
   probability: number;
-  /** Top ~5% rarest-by-probability items in the case — eligible for a Gold Spin. */
+  tickets: number;
+  ticketStart: number;
+  ticketEnd: number;
+  /** Rarest 1% of the million-ticket pool (tickets 990,000–1,000,000) — Gold Spin eligible. */
   goldTier: boolean;
 }
 
@@ -253,11 +258,7 @@ function buildCase(def: CaseDef): { odds: CaseOddsEntry[]; ev: number; rtp: numb
     .map((i) => ({ item: i.item, weight: i.weight, probability: i.weight / totalWeight }))
     .sort((a, b) => a.probability - b.probability);
 
-  let cumulative = 0;
-  const odds: CaseOddsEntry[] = withProbability.map((entry) => {
-    cumulative += entry.probability;
-    return { ...entry, goldTier: cumulative <= 0.05 };
-  });
+  const odds: CaseOddsEntry[] = stampTicketRanges(withProbability);
 
   const ev = odds.reduce((s, o) => s + o.probability * o.item.value, 0);
   return { odds, ev, rtp: ev / def.price };
@@ -273,23 +274,37 @@ export interface Case extends CaseDef {
   creatorName?: string;
   designItemIds?: string[];
   commissionRate?: number;
+  chestColor?: string;
+  chestStickers?: ChestSticker[];
 }
 
 export const CASES: Case[] = CASE_DEFS.map((def) => {
   const { odds, ev, rtp } = buildCase(def);
-  return { ...def, odds, ev, rtp, houseEdge: 1 - rtp };
+  const topIds = [...odds]
+    .sort((a, b) => b.item.value - a.item.value)
+    .slice(0, 4)
+    .map((o) => o.item.id);
+  return {
+    ...def,
+    odds,
+    ev,
+    rtp,
+    houseEdge: 1 - rtp,
+    chestColor: OFFICIAL_CHEST_COLORS[def.id] ?? def.from,
+    chestStickers: pileStickers(topIds),
+    designItemIds: topIds,
+  };
 });
 
 export function getCase(id: string): Case | undefined {
   return CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
 }
 
-/** Rolls a single item id from a case's odds table given a uniform float in [0,1). */
+/** Rolls a single item from a case's million-ticket table given a uniform float in [0,1). */
 export function rollCaseItem(c: Case, roll: number): CaseOddsEntry {
-  let acc = 0;
+  const ticket = ticketFromRoll(roll);
   for (const entry of c.odds) {
-    acc += entry.probability;
-    if (roll < acc) return entry;
+    if (ticket >= entry.ticketStart && ticket <= entry.ticketEnd) return entry;
   }
   return c.odds[c.odds.length - 1];
 }

@@ -1,9 +1,10 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, Palette, RotateCcw, Search, Trash2, X } from "lucide-react";
+import { ChevronDown, RotateCcw, Search, Trash2, X } from "lucide-react";
 import { clsx } from "clsx";
 import { ITEM_LIST } from "../../data/items";
 import { ItemIcon } from "../ui/ItemIcon";
 import { CaseThumb } from "./CaseThumb";
+import { ChestDesigner } from "./ChestDesigner";
 import { useCommunityCaseStore } from "../../store/communityCaseStore";
 import { useLoyaltyStore } from "../../store/loyaltyStore";
 import { useAuthStore } from "../../store/authStore";
@@ -14,7 +15,6 @@ import { sound } from "../../lib/sound";
 import {
   CASE_COLOR_PRESETS,
   COMMUNITY_COMMISSION_OF_EDGE,
-  COMMUNITY_MAX_DESIGN_ITEMS,
   COMMUNITY_MAX_ITEMS,
   COMMUNITY_NAME_MAX,
   COMMUNITY_NAME_MIN,
@@ -32,6 +32,7 @@ import {
   riskFromEntries,
   type CommunityOddsInput,
 } from "../../lib/communityCases";
+import { gradientFromChestColor, pileStickers, type ChestSticker } from "../../lib/chest";
 import type { Case } from "../../data/cases";
 
 type PriceSort = "low" | "high" | "name";
@@ -57,10 +58,11 @@ export function CreateCommunityCaseForm({
   const [sort, setSort] = useState<PriceSort>("low");
   const [entries, setEntries] = useState<CommunityOddsInput[]>([]);
   const [designIds, setDesignIds] = useState<string[]>([]);
-  const [colorId, setColorId] = useState(CASE_COLOR_PRESETS[0]!.id);
+  const [chestColor, setChestColor] = useState(CASE_COLOR_PRESETS[0]!.from);
+  const [stickers, setStickers] = useState<ChestSticker[]>([]);
   const [name, setName] = useState("");
 
-  const color = CASE_COLOR_PRESETS.find((c) => c.id === colorId) ?? CASE_COLOR_PRESETS[0]!;
+  const card = gradientFromChestColor(chestColor);
   const selected = new Set(entries.map((e) => e.itemId));
   const sumPct = chanceSumPct(entries);
   const hundred = chancesAreHundred(entries);
@@ -87,8 +89,8 @@ export function CreateCommunityCaseForm({
         name: name.trim() || "Untitled case",
         price: price || 1,
         blurb: "Community case preview",
-        from: color.from,
-        to: color.to,
+        from: card.from,
+        to: card.to,
         targetRtp: 0,
         risk: "medium",
         raw: [],
@@ -99,6 +101,8 @@ export function CreateCommunityCaseForm({
         community: true,
         designItemIds: designIds,
         creatorName: session ?? "You",
+        chestColor,
+        chestStickers: stickers,
       };
     }
     return hydrateCommunityCase({
@@ -110,15 +114,17 @@ export function CreateCommunityCaseForm({
       commissionRate: COMMUNITY_COMMISSION_OF_EDGE,
       risk: riskFromEntries(entries),
       blurb: "Community case preview",
-      from: color.from,
-      to: color.to,
+      from: card.from,
+      to: card.to,
       creatorId: session ?? "you",
       creatorName: session ?? "You",
       createdAt: Date.now(),
       designItemIds: designIds,
+      chestColor,
+      chestStickers: stickers,
       entries,
     });
-  }, [entries, name, price, ev, houseEdge, color.from, color.to, designIds, session]);
+  }, [entries, name, price, ev, houseEdge, card.from, card.to, designIds, session, chestColor, stickers]);
 
   function addItem(itemId: string) {
     if (selected.has(itemId) || entries.length >= COMMUNITY_MAX_ITEMS) return;
@@ -130,19 +136,11 @@ export function CreateCommunityCaseForm({
     sound.click();
     setEntries((prev) => prev.filter((e) => e.itemId !== itemId));
     setDesignIds((prev) => prev.filter((id) => id !== itemId));
+    setStickers((prev) => prev.filter((s) => s.itemId !== itemId));
   }
 
   function setChance(itemId: string, chancePct: number) {
     setEntries((prev) => prev.map((e) => (e.itemId === itemId ? { ...e, chancePct } : e)));
-  }
-
-  function toggleDesign(itemId: string) {
-    sound.click();
-    setDesignIds((prev) => {
-      if (prev.includes(itemId)) return prev.filter((id) => id !== itemId);
-      if (prev.length >= COMMUNITY_MAX_DESIGN_ITEMS) return prev;
-      return [...prev, itemId];
-    });
   }
 
   function handleCreate() {
@@ -151,11 +149,14 @@ export function CreateCommunityCaseForm({
       push(`Reach level ${req.rank} (${req.tier.name} VIP) to create a community case.`, "warning");
       return;
     }
+    const filled = stickers.length > 0 ? stickers : pileStickers(entries.map((e) => e.itemId));
     const result = createCase({
       name,
-      from: color.from,
-      to: color.to,
-      designItemIds: designIds,
+      from: card.from,
+      to: card.to,
+      designItemIds: filled.map((s) => s.itemId),
+      chestColor,
+      chestStickers: filled,
       entries,
     });
     if (!result.ok) {
@@ -314,16 +315,15 @@ export function CreateCommunityCaseForm({
           </section>
 
           <section className="rounded-xl border border-[#3a5c5c]/60 bg-black/25 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h3 className="text-sm font-bold uppercase tracking-wide text-white">Style your case</h3>
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
-                {designIds.length}/{COMMUNITY_MAX_DESIGN_ITEMS} selected
-              </span>
+            <div className="mb-3">
+              <h3 className="text-sm font-bold uppercase tracking-wide text-white">Style your chest</h3>
+              <p className="mt-1 text-[11px] text-slate-500">
+                Same open chest on official and community cases. Dye the gold wood, then drop case items into the cavity.
+                Cyan heart and studs cannot be recolored.
+              </p>
             </div>
             <div className="mb-4 flex flex-wrap items-center gap-2">
-              <span className="inline-flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-slate-400">
-                <Palette className="h-3.5 w-3.5" /> Choose color
-              </span>
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Quick dyes</span>
               {CASE_COLOR_PRESETS.map((preset) => (
                 <button
                   key={preset.id}
@@ -331,9 +331,9 @@ export function CreateCommunityCaseForm({
                   title={preset.id}
                   onClick={() => {
                     sound.click();
-                    setColorId(preset.id);
+                    setChestColor(preset.from);
                   }}
-                  className={clsx("h-8 w-8 rounded-full border-2", colorId === preset.id ? "border-white" : "border-white/20")}
+                  className={clsx("h-8 w-8 rounded-full border-2", chestColor === preset.from ? "border-white" : "border-white/20")}
                   style={{ background: `linear-gradient(160deg, ${preset.from}, ${preset.to})` }}
                 />
               ))}
@@ -341,7 +341,9 @@ export function CreateCommunityCaseForm({
                 type="button"
                 onClick={() => {
                   sound.click();
-                  setColorId(CASE_COLOR_PRESETS[0]!.id);
+                  const first = CASE_COLOR_PRESETS[0]!;
+                  setChestColor(first.from);
+                  setStickers([]);
                 }}
                 className="inline-flex items-center gap-1 rounded-lg border border-white/15 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-300 hover:bg-white/5"
               >
@@ -349,36 +351,15 @@ export function CreateCommunityCaseForm({
               </button>
             </div>
 
-            <p className="mb-2 text-[11px] font-bold uppercase tracking-wide text-slate-500">
-              Design items — pick up to {COMMUNITY_MAX_DESIGN_ITEMS} from the case
-            </p>
-            <div className="mb-4 flex flex-wrap gap-2">
-              {entries.length === 0 ? (
-                <p className="text-sm text-slate-500">Add items first, then choose which appear on the case art.</p>
-              ) : (
-                entries.map((e) => {
-                  const item = ITEM_LIST.find((i) => i.id === e.itemId);
-                  if (!item) return null;
-                  const on = designIds.includes(item.id);
-                  return (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => toggleDesign(item.id)}
-                      className={clsx(
-                        "flex items-center gap-2 rounded-xl border px-2 py-1.5",
-                        on ? "border-emerald-400/50 bg-emerald-500/10" : "border-white/10 bg-black/20",
-                      )}
-                    >
-                      <ItemIcon icon={item.icon} rarity={item.rarity} size="sm" lite />
-                      <span className="text-xs text-white">{item.name}</span>
-                    </button>
-                  );
-                })
-              )}
-            </div>
+            <ChestDesigner
+              color={chestColor}
+              onColor={setChestColor}
+              stickers={stickers}
+              onStickers={setStickers}
+              allowedItemIds={entries.map((e) => e.itemId)}
+            />
 
-            <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-end">
+            <div className="mt-5 grid gap-4 sm:grid-cols-[minmax(0,1fr)_220px] sm:items-end">
               <label className="block">
                 <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
                   Case name ({COMMUNITY_NAME_MIN}–{COMMUNITY_NAME_MAX})

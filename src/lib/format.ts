@@ -20,6 +20,10 @@ export function formatXp(value: number): string {
   return new Intl.NumberFormat("en-US", { minimumFractionDigits: digits, maximumFractionDigits: 2 }).format(n);
 }
 
+export function formatTickets(n: number): string {
+  return new Intl.NumberFormat("en-US").format(Math.max(0, Math.round(n)));
+}
+
 export function shortId(prefix = "id"): string {
   return `${prefix}_${Math.random().toString(36).slice(2, 9)}`;
 }

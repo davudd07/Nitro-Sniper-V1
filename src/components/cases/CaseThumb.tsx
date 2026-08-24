@@ -2,10 +2,30 @@ import { clsx } from "clsx";
 import type { Case } from "../../data/cases";
 import { ChestArt } from "./ChestArt";
 
-export function CaseThumb({ c, className }: { c: Case; className?: string }) {
+export type CaseThumbSize = "list" | "cozy" | "tile";
+
+function inferSize(className?: string): CaseThumbSize {
+  const cn = className ?? "";
+  if (/\b(h-8|w-8|h-9|w-9|h-10|w-10|h-11|w-11|h-12|w-12|h-14|w-14|h-16|w-16)\b/.test(cn)) {
+    return "list";
+  }
+  if (/\b(h-20|h-24|h-28)\b/.test(cn)) return "cozy";
+  return "tile";
+}
+
+export function CaseThumb({
+  c,
+  className,
+  size,
+}: {
+  c: Case;
+  className?: string;
+  size?: CaseThumbSize;
+}) {
   const color = c.chestColor ?? c.from;
   const stickers = c.chestStickers ?? [];
-  const compact = className?.includes("h-10") || className?.includes("w-10") || className?.includes("h-16");
+  const density = size ?? inferSize(className);
+  const compact = density === "list";
 
   return (
     <div
@@ -22,7 +42,11 @@ export function CaseThumb({ c, className }: { c: Case; className?: string }) {
         color={color}
         stickers={stickers}
         compact={compact}
-        className="relative z-[1] h-full w-full max-w-[220px] drop-shadow-lg transition-transform duration-200 group-hover:scale-105"
+        iconSize={density === "list" ? "xs" : density === "cozy" ? "sm" : "md"}
+        className={clsx(
+          "relative z-[1] w-auto shrink-0 drop-shadow-lg transition-transform duration-200 group-hover:scale-105",
+          compact ? "h-[92%] max-w-[94%]" : density === "cozy" ? "h-[86%] max-w-[78%]" : "h-[88%] max-w-[72%]",
+        )}
       />
     </div>
   );

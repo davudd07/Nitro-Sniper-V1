@@ -312,7 +312,7 @@ export function CreateBattle() {
                 </button>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {rounds.map((id, i) => {
                 const c = getCase(id);
                 if (!c) return null;
@@ -344,7 +344,7 @@ export function CreateBattle() {
                       className="w-full text-left"
                       title="Inspect case"
                     >
-                      <CaseThumb c={c} className="h-24" />
+                      <CaseThumb c={c} size="cozy" className="mx-auto h-28 w-28 rounded-xl" />
                     </button>
                     <div className="flex items-center justify-between gap-1 p-2">
                       <p className="min-w-0 truncate text-xs font-medium text-white">{c.name}</p>
@@ -369,7 +369,7 @@ export function CreateBattle() {
                   sound.click();
                   setModalOpen(true);
                 }}
-                className="flex min-h-[168px] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-white/[0.02] text-slate-400 transition-all duration-200 hover:-translate-y-0.5 hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5 hover:text-white"
+                className="flex min-h-[11.5rem] flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-white/20 bg-white/[0.02] text-slate-400 transition-all duration-200 hover:-translate-y-0.5 hover:border-fuchsia-400/50 hover:bg-fuchsia-500/5 hover:text-white"
               >
                 <span className="grid h-10 w-10 place-items-center rounded-full border border-white/15">
                   <Plus className="h-5 w-5" />

@@ -28,7 +28,7 @@ export function CasePreviewModal({
       >
         <div className="mb-4 flex items-start justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <CaseThumb c={c} className="h-16 w-16 shrink-0 rounded-xl" />
+            <CaseThumb c={c} size="list" className="h-16 w-16 shrink-0 rounded-xl" />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
                 <h3 className="truncate text-lg font-semibold text-white">{c.name}</h3>

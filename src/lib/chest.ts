@@ -16,16 +16,48 @@ export interface ChestSticker {
   rotate: number;
 }
 
-const PILE: { x: number; y: number; scale: number; rotate: number }[] = [
-  { x: 48, y: 48, scale: 1.12, rotate: -14 },
-  { x: 58, y: 50, scale: 1.02, rotate: 16 },
-  { x: 40, y: 51, scale: 0.92, rotate: 10 },
-  { x: 53, y: 43, scale: 0.86, rotate: -8 },
-  { x: 44, y: 44, scale: 0.8, rotate: 6 },
-  { x: 61, y: 46, scale: 0.78, rotate: 20 },
-  { x: 37, y: 47, scale: 0.74, rotate: -18 },
-  { x: 50, y: 54, scale: 0.7, rotate: 4 },
+type PileSlot = { x: number; y: number; scale: number; rotate: number };
+
+/**
+ * Items sit around the open lid / shoulders — close to the chest, not a single
+ * blob on the lid and not floating out at the card edges.
+ */
+const PILE: PileSlot[] = [
+  { x: 50, y: 36, scale: 1.02, rotate: -8 },
+  { x: 36, y: 42, scale: 0.94, rotate: 14 },
+  { x: 64, y: 40, scale: 0.96, rotate: -16 },
+  { x: 28, y: 52, scale: 0.82, rotate: 10 },
+  { x: 72, y: 50, scale: 0.84, rotate: -12 },
+  { x: 44, y: 50, scale: 0.78, rotate: 6 },
+  { x: 58, y: 54, scale: 0.76, rotate: -6 },
+  { x: 50, y: 46, scale: 0.72, rotate: 4 },
 ];
+
+/** Tighter halo for tiny lobby / picker thumbs so gems stay on the chest. */
+const PILE_COMPACT: PileSlot[] = [
+  { x: 50, y: 38, scale: 1.0, rotate: -8 },
+  { x: 34, y: 44, scale: 0.92, rotate: 12 },
+  { x: 66, y: 42, scale: 0.94, rotate: -14 },
+  { x: 26, y: 54, scale: 0.84, rotate: 8 },
+  { x: 74, y: 52, scale: 0.86, rotate: -10 },
+  { x: 42, y: 50, scale: 0.8, rotate: 6 },
+  { x: 58, y: 54, scale: 0.78, rotate: -5 },
+  { x: 50, y: 47, scale: 0.74, rotate: 3 },
+];
+
+/** Keep item ids, restack onto the compact halo (list thumbs only). */
+export function compactPileStickers(stickers: ChestSticker[]): ChestSticker[] {
+  return stickers.map((sticker, i) => {
+    const slot = PILE_COMPACT[i % PILE_COMPACT.length]!;
+    return {
+      ...sticker,
+      x: slot.x,
+      y: slot.y,
+      scale: slot.scale,
+      rotate: slot.rotate,
+    };
+  });
+}
 
 export const OFFICIAL_CHEST_COLORS: Record<string, string> = {
   pocket: "#94a3b8",

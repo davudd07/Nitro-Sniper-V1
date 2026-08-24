@@ -122,7 +122,7 @@ export function AddCasesModal({
                     className="shrink-0"
                     title="Preview case contents"
                   >
-                    <CaseThumb c={c} className="h-16 w-16 rounded-lg" />
+                    <CaseThumb c={c} size="list" className="h-16 w-16 rounded-lg" />
                   </button>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-white">{c.name}</p>

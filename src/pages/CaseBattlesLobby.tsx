@@ -119,8 +119,8 @@ export function CaseBattlesLobby() {
 
   const rowGrid =
     filter === "finished"
-      ? "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(13rem,17rem)_minmax(8rem,13rem)_minmax(0,1fr)_10.5rem]"
-      : "md:grid-cols-[minmax(0,1.1fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(8rem,13rem)_minmax(0,1fr)_10.5rem]";
+      ? "md:grid-cols-[minmax(14rem,1.25fr)_minmax(10rem,auto)_minmax(13rem,17rem)_minmax(8rem,13rem)_minmax(0,1fr)_10.5rem]"
+      : "md:grid-cols-[minmax(14rem,1.25fr)_minmax(10rem,auto)_minmax(7.5rem,10rem)_minmax(8rem,13rem)_minmax(0,1fr)_10.5rem]";
 
   return (
     <div className="space-y-5">
@@ -223,7 +223,7 @@ export function CaseBattlesLobby() {
                   className={clsx("grid cursor-pointer items-center gap-3 px-4 py-3 hover:bg-white/[0.03]", rowGrid)}
                 >
                   <div className="flex min-w-0 items-center gap-2">
-                    <div className="flex -space-x-2">
+                    <div className="flex min-w-0 flex-wrap items-center gap-1.5">
                       {b.cases.slice(0, 4).map((e, i) => {
                         const c = getCase(e.caseId);
                         if (!c) return null;
@@ -237,9 +237,9 @@ export function CaseBattlesLobby() {
                               sound.click();
                               setPreviewId(c.id);
                             }}
-                            className="relative rounded-lg transition-transform hover:z-10 hover:scale-110"
+                            className="relative shrink-0 rounded-lg transition-transform hover:z-10 hover:scale-110"
                           >
-                            <CaseThumb c={c} className="h-10 w-10 rounded-lg ring-2 ring-bg-800" />
+                            <CaseThumb c={c} size="list" className="h-12 w-12 rounded-lg ring-1 ring-black/40" />
                             {e.count > 1 && (
                               <span className="absolute -bottom-1 -right-1 rounded bg-black/80 px-1 text-[9px] font-bold text-white">
                                 ×{e.count}

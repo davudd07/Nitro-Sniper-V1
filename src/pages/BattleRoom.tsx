@@ -1064,7 +1064,7 @@ export function BattleRoom() {
                   doneIdx && !activeIdx && "opacity-40 hover:opacity-80",
                 )}
               >
-                <CaseThumb c={c} className="h-10 w-10 rounded" />
+                <CaseThumb c={c} size="list" className="h-12 w-12 rounded" />
               </button>
             );
           })}

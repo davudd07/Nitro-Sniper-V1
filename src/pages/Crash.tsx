@@ -183,6 +183,7 @@ export function Crash() {
     recordRound(stake, 0, "crash");
     sound.lose();
     if (stake <= 0) push("Demo · rode to crash.", "info");
+    else push(`Crashed — lost ${formatCash(stake)}.`, "danger");
   }
 
   function placeBet() {
@@ -192,7 +193,7 @@ export function Crash() {
       if (bet > 0) push(`You need ${formatCash(bet)} to bet.`, "danger");
       return;
     }
-    sound.chip();
+    sound.click();
     youPlacedRef.current = true;
     youCashedRef.current = false;
     youSettledRef.current = false;
@@ -216,7 +217,6 @@ export function Crash() {
       return;
     }
     if (canBet) {
-      sound.click();
       placeBet();
     }
   }

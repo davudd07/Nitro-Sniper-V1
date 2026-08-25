@@ -422,9 +422,11 @@ export function CreateCommunityCaseForm({
                   type="button"
                   disabled={!canSubmit}
                   onClick={handleCreate}
-                  className="btn-primary px-6 py-2.5 disabled:opacity-40"
+                  className="btn-primary px-6 py-2.5 disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Create Case
+                  {atLimit
+                    ? `Limit reached (${ownedCount}/${COMMUNITY_MAX_CASES_PER_PERSON})`
+                    : "Create Case"}
                 </button>
               </div>
             </div>

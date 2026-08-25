@@ -9,13 +9,6 @@ export function easeOutQuart(t: number): number {
  */
 export const EASE_OUT_QUART_CSS = "cubic-bezier(0.165, 0.84, 0.44, 1)";
 
-export function easeInCubic(t: number): number {
-  return t * t * t;
-}
-
-/** CSS cubic-bezier matching easeInCubic (easings.net). */
-export const EASE_IN_CUBIC_CSS = "cubic-bezier(0.55, 0.055, 0.675, 0.19)";
-
 export function easeOutQuint(t: number): number {
   return 1 - Math.pow(1 - t, 5);
 }

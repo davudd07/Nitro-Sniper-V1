@@ -5,7 +5,7 @@ import type { CaseItem } from "../../data/items";
 import { MAXXX_WIN, isMaxxxWin, itemImageSrc } from "../../data/items";
 import { GOLD_INDICATOR, isGoldIndicator } from "../../data/goldItem";
 import { RARITIES } from "../../data/rarities";
-import { EASE_IN_CUBIC_CSS, EASE_OUT_QUART_CSS, easeInCubic, easeOutQuart } from "../../lib/easing";
+import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
 import { CashAmount } from "../ui/CurrencyIcon";
 import { useSettingsStore } from "../../store/settingsStore";
 import { sound } from "../../lib/sound";
@@ -149,37 +149,32 @@ function maybeGoldNearMiss(strip: CaseItem[], landing: CaseItem, rand: () => num
   return true;
 }
 
-type GoldTeaseCurve = {
-  hold: number;
-  creepEnd: number;
-  holdT: number;
-  pauseT: number;
-  slipT: number;
-};
-
-/** Slow onto the gold bait, dead-stop, then ease-in over the line onto the land slot. */
-function goldTeaseTiming(dur: number): { holdT: number; pauseT: number; slipT: number } {
-  const ms = Math.max(1, dur);
-  const tail = Math.min(1400, Math.max(ms * 0.21, Math.min(500, ms * 0.3)));
-  const pause = Math.min(380, tail * 0.32);
-  const creep = Math.min(160, tail * 0.14);
-  return {
-    holdT: 1 - tail / ms,
-    pauseT: 1 - (tail - pause) / ms,
-    slipT: 1 - (tail - pause - creep) / ms,
-  };
+/**
+ * Single ease-out to the real land. Power ~2.18 puts GOLD SPIN (the slot
+ * before land) in the pointer during the long brake, then the reel keeps
+ * crawling over the line — no zero-velocity pause and no second kick.
+ */
+function goldTeaseProgress(t: number): number {
+  const x = Math.min(1, Math.max(0, t));
+  return 1 - Math.pow(1 - x, 2.18);
 }
 
-function spinOffsetAt(t: number, target: number, tease: GoldTeaseCurve | null): number {
-  if (!tease) return target * easeOutQuart(t);
-  if (t <= tease.holdT) return tease.hold * easeOutQuart(t / Math.max(1e-6, tease.holdT));
-  if (t <= tease.pauseT) return tease.hold;
-  if (t <= tease.slipT) {
-    const u = (t - tease.pauseT) / Math.max(1e-6, tease.slipT - tease.pauseT);
-    return tease.hold + (tease.creepEnd - tease.hold) * u;
+function spinOffsetAt(t: number, target: number, tease: boolean): number {
+  return target * (tease ? goldTeaseProgress(t) : easeOutQuart(t));
+}
+
+function teaseKeyframes(horizontal: boolean, target: number): Keyframe[] {
+  const steps = 36;
+  const frames: Keyframe[] = [];
+  for (let i = 0; i <= steps; i++) {
+    const t = i / steps;
+    frames.push({
+      transform: stripTransform(horizontal, target * goldTeaseProgress(t)),
+      offset: t,
+      easing: "linear",
+    });
   }
-  const u = (t - tease.slipT) / Math.max(1e-6, 1 - tease.slipT);
-  return tease.creepEnd + (target - tease.creepEnd) * easeInCubic(u);
+  return frames;
 }
 
 function poolHasMaxxx(pool: CaseItem[]): boolean {
@@ -305,14 +300,6 @@ export function CaseReel({
     // wider rest jitter.
     const jitter = goldTease ? (rng() - 0.78) * itemSize * 0.28 : (rng() - 0.5) * itemSize * 0.55;
     const targetOffset = landCenter + jitter;
-    const tease: GoldTeaseCurve | null = goldTease
-      ? (() => {
-          const { holdT, pauseT, slipT } = goldTeaseTiming(dur);
-          const hold = (LAND_INDEX - 1) * itemSize + itemSize * 0.58 - containerDim / 2;
-          const creepEnd = hold + (targetOffset - hold) * 0.1;
-          return { hold, creepEnd, holdT, pauseT, slipT };
-        })()
-      : null;
     lastTickIndexRef.current = -1;
     applyOffset(0);
     if (!el) {
@@ -345,7 +332,7 @@ export function CaseReel({
       const start = performance.now();
       const tick = (now: number) => {
         const t = Math.min(1, (now - start) / dur);
-        const pos = spinOffsetAt(t, targetOffset, tease);
+        const pos = spinOffsetAt(t, targetOffset, goldTease);
         applyOffset(pos);
         const currentIndex = Math.floor((pos + containerDim / 2) / itemSize);
         if (currentIndex !== lastTickIndexRef.current && t < 1) {
@@ -361,21 +348,8 @@ export function CaseReel({
 
     // Compositor-thread interpolation — visual motion stays at 60fps even if
     // React / image decode / audio hitch the main thread.
-    const anim = tease
-      ? el.animate(
-          [
-            { transform: stripTransform(isHorizontal, 0), offset: 0, easing: EASE_OUT_QUART_CSS },
-            { transform: stripTransform(isHorizontal, tease.hold), offset: tease.holdT, easing: "linear" },
-            { transform: stripTransform(isHorizontal, tease.hold), offset: tease.pauseT, easing: "linear" },
-            {
-              transform: stripTransform(isHorizontal, tease.creepEnd),
-              offset: tease.slipT,
-              easing: EASE_IN_CUBIC_CSS,
-            },
-            { transform: stripTransform(isHorizontal, targetOffset), offset: 1 },
-          ],
-          { duration: dur, fill: "forwards" },
-        )
+    const anim = goldTease
+      ? el.animate(teaseKeyframes(isHorizontal, targetOffset), { duration: dur, fill: "forwards" })
       : el.animate(
           [{ transform: stripTransform(isHorizontal, 0) }, { transform: stripTransform(isHorizontal, targetOffset) }],
           { duration: dur, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
@@ -386,7 +360,7 @@ export function CaseReel({
     const sampleTicks = () => {
       if (animRef.current !== anim) return;
       const t = Math.min(1, (performance.now() - start) / dur);
-      const pos = spinOffsetAt(t, targetOffset, tease);
+      const pos = spinOffsetAt(t, targetOffset, goldTease);
       const currentIndex = Math.floor((pos + containerDim / 2) / itemSize);
       if (currentIndex !== lastTickIndexRef.current && t < 1) {
         lastTickIndexRef.current = currentIndex;

@@ -5,7 +5,7 @@ import type { CaseItem } from "../../data/items";
 import { MAXXX_WIN, isMaxxxWin, itemImageSrc } from "../../data/items";
 import { GOLD_INDICATOR, isGoldIndicator } from "../../data/goldItem";
 import { RARITIES } from "../../data/rarities";
-import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
+import { EASE_IN_CUBIC_CSS, EASE_OUT_QUART_CSS, easeInCubic, easeOutQuart } from "../../lib/easing";
 import { CashAmount } from "../ui/CurrencyIcon";
 import { useSettingsStore } from "../../store/settingsStore";
 import { sound } from "../../lib/sound";
@@ -46,6 +46,8 @@ type PendingSpin = {
   seed: number;
   duration: number;
   onDone: () => void;
+  /** Last-slot gold bait: ease onto it like a stop, then slip onto the land. */
+  goldTease?: boolean;
 };
 
 // Horizontal (solo case opens): items scroll left-to-right past a vertical
@@ -108,10 +110,12 @@ function shuffleInPlace<T>(arr: T[], rand: () => number): T[] {
 function sprinkleGoldBaits(strip: CaseItem[], hasGold: boolean, rand: () => number): void {
   if (!hasGold) return;
   const travel: number[] = [];
-  for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
+  // Leave LAND_INDEX-1 for the occasional near-miss tease so mid-strip
+  // fly-bys don't all get the fake-stop treatment.
+  for (let i = 3; i < LAND_INDEX - 1; i++) travel.push(i);
   shuffleInPlace(travel, rand);
-  const extra = Math.floor(travel.length / 12);
-  const placeCount = Math.min(travel.length, 4 + extra);
+  const extra = Math.floor(travel.length / 10);
+  const placeCount = Math.min(travel.length, 5 + extra);
   for (let n = 0; n < placeCount; n++) {
     const slot = travel[n];
     if (slot === undefined || slot === LAND_INDEX) continue;
@@ -127,7 +131,7 @@ function sprinkleGoldBaits(strip: CaseItem[], hasGold: boolean, rand: () => numb
 function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number, goldIds: Set<string>): void {
   const bait = goldIds.has(MAXXX_WIN.id) ? GOLD_INDICATOR : MAXXX_WIN;
   const travel: number[] = [];
-  for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
+  for (let i = 3; i < LAND_INDEX - 1; i++) travel.push(i);
   shuffleInPlace(travel, rand);
   const placeCount = Math.min(travel.length, Math.max(6, Math.floor(travel.length / 8)));
   for (let n = 0; n < placeCount; n++) {
@@ -138,10 +142,37 @@ function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number, goldIds: Set<
 }
 
 /** Sometimes park GOLD SPIN just before the land slot so the reel looks like it will stop, then rolls over. */
-function maybeGoldNearMiss(strip: CaseItem[], landing: CaseItem, rand: () => number): void {
-  if (isGoldIndicator(landing) || isMaxxxWin(landing)) return;
-  if (rand() > 0.32) return;
+function maybeGoldNearMiss(strip: CaseItem[], landing: CaseItem, rand: () => number): boolean {
+  if (isGoldIndicator(landing) || isMaxxxWin(landing)) return false;
+  if (rand() > 0.4) return false;
   strip[LAND_INDEX - 1] = GOLD_INDICATOR;
+  return true;
+}
+
+type GoldTeaseCurve = {
+  hold: number;
+  creepEnd: number;
+  holdT: number;
+  slipT: number;
+};
+
+/** Slow onto the gold bait, linger, then ease-in over the line onto the land slot. */
+function goldTeaseTiming(dur: number): { holdT: number; slipT: number } {
+  const ms = Math.max(1, dur);
+  const tail = Math.min(1100, Math.max(ms * 0.18, Math.min(420, ms * 0.28)));
+  const creep = Math.min(520, tail * 0.45);
+  return { holdT: 1 - tail / ms, slipT: 1 - (tail - creep) / ms };
+}
+
+function spinOffsetAt(t: number, target: number, tease: GoldTeaseCurve | null): number {
+  if (!tease) return target * easeOutQuart(t);
+  if (t <= tease.holdT) return tease.hold * easeOutQuart(t / Math.max(1e-6, tease.holdT));
+  if (t <= tease.slipT) {
+    const u = (t - tease.holdT) / Math.max(1e-6, tease.slipT - tease.holdT);
+    return tease.hold + (tease.creepEnd - tease.hold) * u;
+  }
+  const u = (t - tease.slipT) / Math.max(1e-6, 1 - tease.slipT);
+  return tease.creepEnd + (target - tease.creepEnd) * easeInCubic(u);
 }
 
 function poolHasMaxxx(pool: CaseItem[]): boolean {
@@ -166,7 +197,7 @@ function buildStrip(
   if (baitMaxxx && (poolHasMaxxx(pool) || poolHasMaxxx(baits))) {
     sprinkleMaxxxBaits(strip, rand, goldIds);
   }
-  maybeGoldNearMiss(strip, landing, rand);
+  if (baits.length) maybeGoldNearMiss(strip, landing, rand);
   strip[LAND_INDEX] = landing;
   return strip;
 }
@@ -253,14 +284,28 @@ export function CaseReel({
     }
   }
 
-  function startWaapi(seed: number, dur: number, done: () => void) {
+  function startWaapi(seed: number, dur: number, done: () => void, goldTease = false) {
     cancelMotion();
     const el = stripRef.current;
     const containerDim = isHorizontal
       ? (containerRef.current?.clientWidth || cfg.boxSize)
       : (containerRef.current?.clientHeight || cfg.boxSize);
-    const jitter = (mulberry32(seed)() - 0.5) * cfg.itemSize * 0.55;
-    const targetOffset = LAND_INDEX * cfg.itemSize + cfg.itemSize / 2 - containerDim / 2 + jitter;
+    const rng = mulberry32(seed);
+    const itemSize = cfg.itemSize;
+    const landCenter = LAND_INDEX * itemSize + itemSize / 2 - containerDim / 2;
+    // Tease rests just past the gold→land boundary so the winner is clearly
+    // selected but gold is still hugging the pointer. Normal spins keep the
+    // wider rest jitter.
+    const jitter = goldTease ? (rng() - 0.78) * itemSize * 0.28 : (rng() - 0.5) * itemSize * 0.55;
+    const targetOffset = landCenter + jitter;
+    const tease: GoldTeaseCurve | null = goldTease
+      ? (() => {
+          const { holdT, slipT } = goldTeaseTiming(dur);
+          const hold = (LAND_INDEX - 1) * itemSize + itemSize * 0.58 - containerDim / 2;
+          const creepEnd = hold + (targetOffset - hold) * 0.14;
+          return { hold, creepEnd, holdT, slipT };
+        })()
+      : null;
     lastTickIndexRef.current = -1;
     applyOffset(0);
     if (!el) {
@@ -293,8 +338,9 @@ export function CaseReel({
       const start = performance.now();
       const tick = (now: number) => {
         const t = Math.min(1, (now - start) / dur);
-        applyOffset(targetOffset * easeOutQuart(t));
-        const currentIndex = Math.floor((targetOffset * easeOutQuart(t) + containerDim / 2) / cfg.itemSize);
+        const pos = spinOffsetAt(t, targetOffset, tease);
+        applyOffset(pos);
+        const currentIndex = Math.floor((pos + containerDim / 2) / itemSize);
         if (currentIndex !== lastTickIndexRef.current && t < 1) {
           lastTickIndexRef.current = currentIndex;
           playSpinTick(1 - t);
@@ -308,18 +354,32 @@ export function CaseReel({
 
     // Compositor-thread interpolation — visual motion stays at 60fps even if
     // React / image decode / audio hitch the main thread.
-    const anim = el.animate(
-      [{ transform: stripTransform(isHorizontal, 0) }, { transform: stripTransform(isHorizontal, targetOffset) }],
-      { duration: dur, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
-    );
+    const anim = tease
+      ? el.animate(
+          [
+            { transform: stripTransform(isHorizontal, 0), offset: 0, easing: EASE_OUT_QUART_CSS },
+            { transform: stripTransform(isHorizontal, tease.hold), offset: tease.holdT, easing: "linear" },
+            {
+              transform: stripTransform(isHorizontal, tease.creepEnd),
+              offset: tease.slipT,
+              easing: EASE_IN_CUBIC_CSS,
+            },
+            { transform: stripTransform(isHorizontal, targetOffset), offset: 1 },
+          ],
+          { duration: dur, fill: "forwards" },
+        )
+      : el.animate(
+          [{ transform: stripTransform(isHorizontal, 0) }, { transform: stripTransform(isHorizontal, targetOffset) }],
+          { duration: dur, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
+        );
     animRef.current = anim;
 
     const start = performance.now();
     const sampleTicks = () => {
       if (animRef.current !== anim) return;
       const t = Math.min(1, (performance.now() - start) / dur);
-      const pos = targetOffset * easeOutQuart(t);
-      const currentIndex = Math.floor((pos + containerDim / 2) / cfg.itemSize);
+      const pos = spinOffsetAt(t, targetOffset, tease);
+      const currentIndex = Math.floor((pos + containerDim / 2) / itemSize);
       if (currentIndex !== lastTickIndexRef.current && t < 1) {
         lastTickIndexRef.current = currentIndex;
         playSpinTick(1 - t);
@@ -389,9 +449,14 @@ export function CaseReel({
     // Normal reel: GOLD SPIN flies past as bait (including when MAXXX is in the
     // gold pool). Landing stays the real result (or the GOLD SPIN indicator).
     const mainStrip = buildStrip(pool, targetForMain, rand, goldPool, true);
+    const goldTease =
+      Boolean(goldPool.length) &&
+      !isGoldIndicator(targetForMain) &&
+      isGoldIndicator(mainStrip[LAND_INDEX - 1]);
     pendingSpinRef.current = {
       seed: seedBase,
       duration,
+      goldTease,
       onDone: () => {
         if (goesGold) {
           goldSeedRef.current = seedBase;
@@ -425,7 +490,7 @@ export function CaseReel({
     const pending = pendingSpinRef.current;
     if (!pending) return;
     pendingSpinRef.current = null;
-    startWaapi(pending.seed, pending.duration, pending.onDone);
+    startWaapi(pending.seed, pending.duration, pending.onDone, pending.goldTease);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [strip, phase]);
 

@@ -24,6 +24,8 @@ import { JackpotPage } from "./pages/Jackpot";
 import { CoinFlip } from "./pages/CoinFlip";
 import { Upgrader } from "./pages/Upgrader";
 import { Dice } from "./pages/Dice";
+import { Crash } from "./pages/Crash";
+import { CrossRoad } from "./pages/CrossRoad";
 import { ComingSoon } from "./pages/ComingSoon";
 import { ChatRainController } from "./components/chat/ChatRainController";
 import { SupportWidget } from "./components/support/SupportWidget";
@@ -131,6 +133,8 @@ export default function App() {
               <Route path="/coinflip" element={<CoinFlip />} />
               <Route path="/upgrader" element={<Upgrader />} />
               <Route path="/dice" element={<Dice />} />
+              <Route path="/crash" element={<Crash />} />
+              <Route path="/road" element={<CrossRoad />} />
               <Route path="/keno" element={<ComingSoon title="Keno" />} />
             </Routes>
           </div>

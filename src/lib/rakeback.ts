@@ -10,6 +10,8 @@ export const HOUSE_EDGE = {
   keno: 0.06,
   upgrader: 0.05,
   dice: 0.04,
+  crash: 0.04,
+  road: 0.04,
 } as const;
 
 export type HouseGame = keyof typeof HOUSE_EDGE;

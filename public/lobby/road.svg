@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 528 704" role="img" aria-label="Cross the Road">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#163230"/>
+      <stop offset="55%" stop-color="#0c1614"/>
+      <stop offset="100%" stop-color="#070f0e"/>
+    </linearGradient>
+    <linearGradient id="asphalt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1c2424"/>
+      <stop offset="100%" stop-color="#141a1a"/>
+    </linearGradient>
+  </defs>
+  <rect width="528" height="704" fill="url(#bg)"/>
+  <rect x="40" y="210" width="448" height="220" rx="12" fill="url(#asphalt)" stroke="#3a5c5c" stroke-width="4"/>
+  <g stroke="#94a3b8" stroke-width="4" stroke-dasharray="14 16" opacity="0.45">
+    <line x1="150" y1="222" x2="150" y2="418"/>
+    <line x1="250" y1="222" x2="250" y2="418"/>
+    <line x1="350" y1="222" x2="350" y2="418"/>
+  </g>
+  <circle cx="200" cy="320" r="28" fill="#101818" stroke="#4ade80" stroke-width="3"/>
+  <circle cx="300" cy="320" r="28" fill="#101818" stroke="#67e8f9" stroke-width="3"/>
+  <circle cx="400" cy="320" r="28" fill="#101818" stroke="#334155" stroke-width="3"/>
+  <text x="200" y="448" text-anchor="middle" fill="#86efac" font-family="Outfit, sans-serif" font-size="18">1.04×</text>
+  <text x="300" y="448" text-anchor="middle" fill="#67e8f9" font-family="Outfit, sans-serif" font-size="18">1.09×</text>
+  <rect x="56" y="248" width="72" height="72" rx="10" fill="#0f766e"/>
+  <text x="264" y="540" text-anchor="middle" fill="#ecfeff" font-family="Outfit, sans-serif" font-size="36" font-weight="700" letter-spacing="2">CROSS THE ROAD</text>
+  <text x="264" y="576" text-anchor="middle" fill="#5eead4" font-family="Outfit, sans-serif" font-size="16" letter-spacing="5">STEP · SURVIVE · CASH</text>
+</svg>

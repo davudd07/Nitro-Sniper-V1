@@ -13,6 +13,8 @@ export const ACTIVITY_GAMES = [
   "upgrader",
   "dice",
   "keno",
+  "crash",
+  "road",
 ] as const;
 
 export type ActivityGame = (typeof ACTIVITY_GAMES)[number];
@@ -27,6 +29,8 @@ export const ACTIVITY_GAME_LABELS: Record<ActivityGame, string> = {
   upgrader: "Upgrader",
   dice: "Dice",
   keno: "Keno",
+  crash: "Crash",
+  road: "Cross the Road",
 };
 
 export interface PlayRecord {

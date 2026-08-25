@@ -17,14 +17,16 @@ export const LOBBY_GAMES: LobbyGame[] = [
   { id: "coinflip", name: "Coin Flip", image: "/lobby/coinflip.webp", to: "/coinflip", isNew: true, subtitle: "Prism Vault Originals" },
   { id: "upgrader", name: "Upgrader", image: "/lobby/upgrader.svg", to: "/upgrader", isNew: true, subtitle: "Prism Vault Originals" },
   { id: "dice", name: "Dice", image: "/lobby/dice.webp", to: "/dice", isNew: true, subtitle: "Prism Vault Originals" },
+  { id: "crash", name: "Crash", image: "/lobby/crash.svg", to: "/crash", isNew: true, subtitle: "SeedBET Originals" },
+  { id: "road", name: "Cross the Road", image: "/lobby/road.svg", to: "/road", isNew: true, subtitle: "Prism Vault Originals" },
   { id: "keno", name: "Keno", image: "/lobby/keno.webp", comingSoon: true, isNew: true, subtitle: "Prism Vault Originals" },
   { id: "plinko", name: "Plinko", image: "/lobby/plinko.webp", comingSoon: true, subtitle: "Coming soon" },
   { id: "roulette", name: "Roulette", image: "/lobby/roulette.webp", comingSoon: true, subtitle: "Coming soon" },
   { id: "baccarat", name: "Baccarat", image: "/lobby/baccarat.webp", comingSoon: true, subtitle: "Coming soon" },
 ];
 
-export const ORIGINAL_IDS = ["mines", "blackjack", "cases", "battles", "jackpot", "coinflip", "upgrader", "dice", "keno"];
-export const POPULAR_IDS = ["battles", "dice", "upgrader", "coinflip", "blackjack", "jackpot", "mines", "cases"];
+export const ORIGINAL_IDS = ["mines", "blackjack", "cases", "battles", "jackpot", "coinflip", "upgrader", "dice", "crash", "road", "keno"];
+export const POPULAR_IDS = ["crash", "road", "battles", "dice", "upgrader", "coinflip", "blackjack", "jackpot", "mines", "cases"];
 export const SOON_IDS = ["keno", "plinko", "roulette", "baccarat"];
 
 export const PATH_TO_GAME: Record<string, string> = {
@@ -36,6 +38,8 @@ export const PATH_TO_GAME: Record<string, string> = {
   "/coinflip": "coinflip",
   "/upgrader": "upgrader",
   "/dice": "dice",
+  "/crash": "crash",
+  "/road": "road",
 };
 
 export function gameById(id: string): LobbyGame | undefined {

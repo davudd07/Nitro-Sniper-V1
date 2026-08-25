@@ -6,7 +6,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
-import { formatCash, formatPercent } from "../lib/format";
+import { formatCash } from "../lib/format";
 import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
@@ -17,9 +17,9 @@ import { HOUSE_EDGE } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
 import {
   ROAD_DIFFICULTIES,
-  ROAD_HOUSE_EDGE,
-  ROAD_RTP,
+  formatRoadHit,
   formatRoadMulti,
+  formatRoadMultiShort,
   roadDifficulty,
   roadLaneHits,
   roadMultiplier,
@@ -56,6 +56,7 @@ export function CrossRoad() {
   const [roundId, setRoundId] = useState(0);
   const [jumpToken, setJumpToken] = useState(0);
   const [splat, setSplat] = useState(false);
+  const [splatLane, setSplatLane] = useState<number | null>(null);
   const [panning, setPanning] = useState(false);
 
   const credit = useEconomyStore((s) => s.credit);
@@ -64,13 +65,13 @@ export function CrossRoad() {
   const play = useFairnessStore((s) => s.play);
 
   const def = roadDifficulty(diff);
-  const currentMulti = roadMultiplier(steps, def.survive);
-  const nextMulti = roadMultiplier(steps + 1, def.survive);
-  const potential = roadPayout(bet, steps, def.survive);
+  const currentMulti = roadMultiplier(steps, diff);
+  const nextMulti = roadMultiplier(steps + 1, diff);
+  const potential = roadPayout(bet, steps, diff);
   const locked = phase === "playing" || busy;
   const roundOver = phase === "busted" || phase === "cashed";
   const seedMaxSteps = hits.length ? roadSeedMaxSteps(hits) : 0;
-  const seedMaxMulti = hits.length ? roadSeedMaxMulti(hits, def.survive) : 1;
+  const seedMaxMulti = hits.length ? roadSeedMaxMulti(hits, diff) : 1;
   const seedDeathLane = hits.findIndex(Boolean);
   const lastSafeLane = seedDeathLane < 0 ? (hits.length ? hits.length - 1 : -1) : seedDeathLane - 1;
 
@@ -93,10 +94,11 @@ export function CrossRoad() {
     }
     setBusy(true);
     const rolls = await play(def.lanes);
-    setHits(roadLaneHits(rolls, def.survive));
+    setHits(roadLaneHits(rolls, def.hit));
     setSteps(0);
     setJumpToken(0);
     setSplat(false);
+    setSplatLane(null);
     setRoundId((n) => n + 1);
     setPhase("playing");
     setBusy(false);
@@ -105,7 +107,7 @@ export function CrossRoad() {
 
   function cashOut() {
     if (phase !== "playing" || steps <= 0 || busy) return;
-    const paid = roadPayout(bet, steps, def.survive);
+    const paid = roadPayout(bet, steps, diff);
     if (paid > 0) credit(paid);
     recordRound(bet, paid, "road");
     setPhase("cashed");
@@ -120,16 +122,20 @@ export function CrossRoad() {
     if (phase !== "playing" || busy || index !== steps) return;
     setBusy(true);
     sound.click();
+    const dies = Boolean(hits[index]);
+    if (dies) {
+      setSplatLane(index);
+      setSplat(true);
+      sound.lose();
+    }
     setJumpToken((n) => n + 1);
     setSteps(index + 1);
     await sleep(JUMP_MS);
-    if (hits[index]) {
-      setSplat(true);
-      sound.lose();
-      await sleep(480);
+    if (dies) {
+      await sleep(220);
       setPhase("busted");
       recordRound(bet, 0, "road");
-      const maxM = roadSeedMaxMulti(hits, def.survive);
+      const maxM = roadSeedMaxMulti(hits, diff);
       const maxSteps = roadSeedMaxSteps(hits);
       push(
         maxSteps <= 0
@@ -145,12 +151,12 @@ export function CrossRoad() {
     const next = index + 1;
     sound.tick(Math.min(1, next / 10));
     if (next >= def.lanes) {
-      const paid = roadPayout(bet, next, def.survive);
+      const paid = roadPayout(bet, next, diff);
       if (paid > 0) credit(paid);
       recordRound(bet, paid, "road");
       setPhase("cashed");
       sound.win("big");
-      push(`Cleared the road at ${formatRoadMulti(roadMultiplier(next, def.survive))}!`, "success");
+      push(`Cleared the road at ${formatRoadMulti(roadMultiplier(next, diff))}!`, "success");
     }
     setBusy(false);
   }
@@ -163,16 +169,17 @@ export function CrossRoad() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Cross the Road</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Step lane by lane. Survive for a higher multiplier, or cash out before you get hit. {formatPercent(ROAD_RTP)} RTP.
+            Step lane by lane. Survive for a higher multiplier, or cash out before a car comes down the next lane.
           </p>
         </div>
-        <InfoButton title="Cross the Road — RTP & House Edge">
-          <StatRow label="RTP" value={formatPercent(ROAD_RTP)} />
-          <StatRow label="House edge" value={formatPercent(ROAD_HOUSE_EDGE)} />
-          <StatRow label="Easy survive" value={formatPercent(roadDifficulty("easy").survive)} />
+        <InfoButton title="Cross the Road — Hit odds">
+          <StatRow label="Easy hit" value={formatRoadHit(roadDifficulty("easy"))} />
+          <StatRow label="Medium hit" value={formatRoadHit(roadDifficulty("medium"))} />
+          <StatRow label="Hard hit" value={formatRoadHit(roadDifficulty("hard"))} />
+          <StatRow label="Expert hit" value={formatRoadHit(roadDifficulty("expert"))} />
           <p>
-            Each lane is rolled from the provably-fair seed. Survive chance is the difficulty. Multiplier after k
-            clears is RTP ÷ survive<sup>k</sup>, so cashing at any depth is {formatPercent(ROAD_RTP)} RTP.
+            Each lane is rolled from the provably-fair seed. Hit chance is the same on every lane of a difficulty.
+            Multipliers are the posted table for that difficulty — they are not derived from a flat RTP formula.
           </p>
         </InfoButton>
       </div>
@@ -327,10 +334,11 @@ export function CrossRoad() {
                 <Lane
                   key={`${roundId}-${i}`}
                   index={i}
-                  multi={roadMultiplier(i + 1, def.survive)}
+                  multi={roadMultiplier(i + 1, diff)}
                   clickable={phase === "playing" && i === steps && !busy}
                   cleared={i < steps && i !== seedDeathLane}
                   hit={roundOver && seedDeathLane === i}
+                  droppingCar={splat && splatLane === i}
                   seedPeak={roundOver && lastSafeLane === i}
                   deathRef={seedDeathLane === i ? deathLaneRef : undefined}
                   onStep={() => {
@@ -346,19 +354,19 @@ export function CrossRoad() {
                 style={{ width: WALKER_SIZE, height: WALKER_SIZE }}
                 initial={false}
                 animate={{ left: walkerLeft(steps) }}
-                transition={{ left: { duration: jumpToken > 0 && !splat ? JUMP_MS / 1000 : 0, ease: [0.22, 0.8, 0.36, 1] } }}
+                transition={{ left: { duration: jumpToken > 0 ? JUMP_MS / 1000 : 0, ease: [0.22, 0.8, 0.36, 1] } }}
               >
                 <motion.div
-                  key={splat ? "splat" : jumpToken}
+                  key={jumpToken}
                   initial={{ y: 0, scaleX: 1, scaleY: 1, rotate: 0 }}
                   animate={
                     splat
-                      ? { y: 22, scaleX: 1.42, scaleY: 0.2, rotate: 16 }
+                      ? { y: [0, -56, 12, 26], scaleX: [1, 1, 1.2, 1.48], scaleY: [1, 1.06, 0.62, 0.18], rotate: [0, -8, 10, 20] }
                       : { y: jumpToken > 0 ? [0, -52, 0] : 0, scaleX: 1, scaleY: 1, rotate: 0 }
                   }
                   transition={
                     splat
-                      ? { duration: 0.28, delay: 0.18, ease: [0.4, 0, 0.7, 1] }
+                      ? { duration: 0.64, times: [0, 0.36, 0.58, 1], ease: "easeOut" }
                       : { duration: JUMP_MS / 1000, times: [0, 0.45, 1], ease: "easeOut" }
                   }
                   style={{ originY: 1, originX: 0.5 }}
@@ -369,19 +377,6 @@ export function CrossRoad() {
                     className="pixelated h-[88px] w-[88px] object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]"
                   />
                 </motion.div>
-                <AnimatePresence>
-                  {splat && (
-                    <motion.div
-                      initial={{ y: -150, x: -24, rotate: -12, opacity: 0 }}
-                      animate={{ y: 18, x: 10, rotate: 8, opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.42, ease: [0.15, 0.85, 0.25, 1] }}
-                      className="absolute -top-2 left-0 z-30"
-                    >
-                      <HitCar />
-                    </motion.div>
-                  )}
-                </AnimatePresence>
               </motion.div>
             </div>
           </div>
@@ -430,6 +425,7 @@ function Lane({
   clickable,
   cleared,
   hit,
+  droppingCar,
   seedPeak,
   deathRef,
   onStep,
@@ -439,6 +435,7 @@ function Lane({
   clickable: boolean;
   cleared: boolean;
   hit: boolean;
+  droppingCar: boolean;
   seedPeak: boolean;
   deathRef?: RefObject<HTMLButtonElement | null>;
   onStep: () => void;
@@ -451,13 +448,25 @@ function Lane({
       disabled={!clickable}
       onClick={onStep}
       className={clsx(
-        "relative flex h-full w-[112px] shrink-0 flex-col items-center justify-center border-r border-white/10 disabled:cursor-default",
+        "relative flex h-full w-[112px] shrink-0 flex-col items-center justify-center overflow-hidden border-r border-white/10 disabled:cursor-default",
         odd ? "bg-[#161c1c]" : "bg-[#121818]",
         clickable && "hover:bg-cyan-400/10",
         seedPeak && "bg-amber-400/10",
       )}
     >
       <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0 border-l-2 border-dashed border-slate-500/35" />
+      <AnimatePresence>
+        {droppingCar && (
+          <motion.div
+            initial={{ bottom: "108%", opacity: 0.2 }}
+            animate={{ bottom: "2.35rem", opacity: 1 }}
+            transition={{ duration: JUMP_MS / 1000, ease: [0.18, 0.72, 0.2, 1] }}
+            className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
+          >
+            <HitCar />
+          </motion.div>
+        )}
+      </AnimatePresence>
       {seedPeak && (
         <span className="absolute top-3 z-10 rounded-full bg-amber-300/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-950">
           Seed max
@@ -498,7 +507,7 @@ function Lane({
                   : "text-slate-500",
         )}
       >
-        {formatRoadMulti(multi)}
+        {formatRoadMultiShort(multi)}
       </span>
     </button>
   );
@@ -506,13 +515,14 @@ function Lane({
 
 function HitCar() {
   return (
-    <div className="relative h-14 w-[5.5rem] drop-shadow-[0_8px_12px_rgba(0,0,0,0.65)]">
-      <div className="absolute inset-x-0 top-3 h-8 rounded-md bg-gradient-to-r from-rose-700 via-orange-400 to-amber-200" />
-      <div className="absolute left-3 top-0.5 h-5 w-11 rounded-t-lg bg-rose-100/95" />
-      <span className="absolute left-2 top-5 h-2.5 w-2.5 rounded-full bg-amber-100" />
-      <span className="absolute right-1.5 top-5 h-2.5 w-2.5 rounded-full bg-amber-100" />
-      <span className="absolute left-1.5 bottom-0 h-3.5 w-3.5 rounded-full bg-slate-950 ring-2 ring-amber-200" />
-      <span className="absolute right-1 bottom-0 h-3.5 w-3.5 rounded-full bg-slate-950 ring-2 ring-amber-200" />
+    <div className="relative h-24 w-[4.25rem] drop-shadow-[0_10px_14px_rgba(0,0,0,0.7)]">
+      <div className="absolute inset-x-2 top-8 h-14 rounded-md bg-gradient-to-b from-rose-500 via-orange-500 to-amber-700" />
+      <div className="absolute inset-x-3 top-2 h-10 rounded-t-[1.35rem] bg-gradient-to-b from-rose-200 to-rose-500" />
+      <div className="absolute inset-x-4 top-3 h-5 rounded-t-xl bg-sky-200/80" />
+      <span className="absolute left-1 top-[3.35rem] h-3.5 w-2.5 rounded-sm bg-slate-950 ring-2 ring-amber-200" />
+      <span className="absolute right-1 top-[3.35rem] h-3.5 w-2.5 rounded-sm bg-slate-950 ring-2 ring-amber-200" />
+      <span className="absolute left-2.5 bottom-2 h-2 w-2 rounded-full bg-amber-100 shadow-[0_0_10px_#fde68a]" />
+      <span className="absolute right-2.5 bottom-2 h-2 w-2 rounded-full bg-amber-100 shadow-[0_0_10px_#fde68a]" />
     </div>
   );
 }

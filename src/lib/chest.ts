@@ -72,6 +72,14 @@ export const OFFICIAL_CHEST_COLORS: Record<string, string> = {
   party: "#ec4899",
   whale: "#155e75",
   phoenix: "#f43f5e",
+  forge: "#fb7185",
+  dragons: "#a78bfa",
+  gilded: "#fbbf24",
+  ruby: "#f43f5e",
+  legend: "#c4b5fd",
+  tide: "#38bdf8",
+  abyss: "#22d3ee",
+  nightking: "#6366f1",
 };
 
 export function pileStickers(itemIds: string[]): ChestSticker[] {

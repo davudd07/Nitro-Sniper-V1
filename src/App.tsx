@@ -107,36 +107,38 @@ export default function App() {
         <WinLeaderStrip />
         <DemoBanner />
         <BanNotice />
-        <main
-          className={clsx(
-            "mx-auto w-full min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-6 sm:px-4",
-            isBattleRoom ? "max-w-none" : "max-w-7xl",
-          )}
-        >
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/rewards" element={<Rewards />} />
-            <Route path="/vip" element={<Vip />} />
-            <Route path="/affiliate" element={<Affiliate />} />
-            <Route path="/mines" element={<Mines />} />
-            <Route path="/blackjack" element={<Blackjack />} />
-            <Route path="/cases" element={<Cases />} />
-            <Route path="/cases/create" element={<CreateCommunityCasePage />} />
-            <Route path="/cases/:caseId" element={<CaseOpenPage />} />
-            <Route path="/battles" element={<CaseBattlesLobby />} />
-            <Route path="/battles/create" element={<CreateBattle />} />
-            <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
-            <Route path="/jackpot" element={<JackpotPage />} />
-            <Route path="/coinflip" element={<CoinFlip />} />
-            <Route path="/upgrader" element={<Upgrader />} />
-            <Route path="/dice" element={<Dice />} />
-            <Route path="/keno" element={<ComingSoon title="Keno" />} />
-          </Routes>
+        <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
+          <div
+            className={clsx(
+              "mx-auto w-full min-h-full px-3 py-6 sm:px-4",
+              isBattleRoom ? "max-w-none" : "max-w-7xl",
+            )}
+          >
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/rewards" element={<Rewards />} />
+              <Route path="/vip" element={<Vip />} />
+              <Route path="/affiliate" element={<Affiliate />} />
+              <Route path="/mines" element={<Mines />} />
+              <Route path="/blackjack" element={<Blackjack />} />
+              <Route path="/cases" element={<Cases />} />
+              <Route path="/cases/create" element={<CreateCommunityCasePage />} />
+              <Route path="/cases/:caseId" element={<CaseOpenPage />} />
+              <Route path="/battles" element={<CaseBattlesLobby />} />
+              <Route path="/battles/create" element={<CreateBattle />} />
+              <Route path="/battles/:battleId" element={<BattleRoomRoute />} />
+              <Route path="/jackpot" element={<JackpotPage />} />
+              <Route path="/coinflip" element={<CoinFlip />} />
+              <Route path="/upgrader" element={<Upgrader />} />
+              <Route path="/dice" element={<Dice />} />
+              <Route path="/keno" element={<ComingSoon title="Keno" />} />
+            </Routes>
+          </div>
+          <LiveBetStrip />
+          <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
+            Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
+          </footer>
         </main>
-        <LiveBetStrip />
-        <footer className="shrink-0 border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
-          Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
-        </footer>
       </div>
       <ChatSidebar />
       <ChatRainController />

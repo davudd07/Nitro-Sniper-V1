@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
-import { useParams, Link, Navigate } from "react-router-dom";
-import { ArrowLeft, Handshake, Sparkles, Zap } from "lucide-react";
+import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
+import { ArrowLeft, Handshake, Sparkles, Trash2, Zap } from "lucide-react";
 import { clsx } from "clsx";
 import { getCase, rollCaseItem } from "../data/cases";
 import { CaseReel } from "../components/cases/CaseReel";
@@ -20,8 +20,8 @@ import { keepPct, MAX_BORROW_PCT, pctLabel, winPayout } from "../lib/battleFinan
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
-import { formatTicketRange } from "../lib/caseTickets";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
+import { useAuthStore } from "../store/authStore";
 import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
 import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import type { CaseItem } from "../data/items";
@@ -61,6 +61,10 @@ export function CaseOpenPage() {
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
   const adminView = useAdminViewStore((s) => s.active);
+  const navigate = useNavigate();
+  const session = useAuthStore((s) => s.session);
+  const deleteCase = useCommunityCaseStore((s) => s.deleteCase);
+  const isOwner = Boolean(c?.community && c.creatorId && c.creatorId === session);
 
   const goldPool = useMemo(() => (c ? c.odds.filter((o) => o.goldTier).map((o) => o.item) : []), [c]);
   const goldIds = useMemo(() => new Set(goldPool.map((item) => item.id)), [goldPool]);
@@ -156,7 +160,28 @@ export function CaseOpenPage() {
             <p className="text-sm text-slate-400">{c.blurb}</p>
             <CaseCreatorLine c={c} />
           </div>
-          <InfoButton title={`${c.name} — Odds & House Edge`}>
+          <div className="flex flex-wrap items-center gap-2">
+            {isOwner && (
+              <button
+                type="button"
+                disabled={spinning}
+                onClick={() => {
+                  if (spinning) return;
+                  if (!window.confirm(`Delete "${c.name}"? This cannot be undone.`)) return;
+                  const err = deleteCase(c.id);
+                  if (err) {
+                    push(err, "danger");
+                    return;
+                  }
+                  push("Community case deleted.", "success");
+                  navigate("/cases?catalog=community&nav=mine");
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-rose-400/40 bg-rose-500/10 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-rose-100 hover:bg-rose-500/20 disabled:opacity-40"
+              >
+                <Trash2 className="h-3.5 w-3.5" /> Delete case
+              </button>
+            )}
+            <InfoButton title={`${c.name} — Odds & House Edge`}>
             <StatRow label="Price" value={<CashAmount wl={c.price} />} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
@@ -169,6 +194,7 @@ export function CaseOpenPage() {
               />
             )}
           </InfoButton>
+          </div>
         </div>
       </div>
 
@@ -323,13 +349,11 @@ export function CaseOpenPage() {
                     )}
                   >
                     <span className="truncate pr-2">{o.item.name}</span>
-                    <span className="shrink-0 text-slate-400">
-                      {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
-                      <span className="ml-1.5 font-mono text-[10px] text-slate-500">
-                        #{formatTicketRange(o.ticketStart, o.ticketEnd)}
-                      </span>
+                    <span className="flex shrink-0 items-center gap-1.5 text-slate-400">
+                      <span>{(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%</span>
+                      <CashAmount wl={o.item.value} iconClassName="h-3 w-3" />
                       {adminView && o.goldTier ? (
-                        <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
+                        <span className="font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
                       ) : (
                         o.goldTier && " ✨"
                       )}

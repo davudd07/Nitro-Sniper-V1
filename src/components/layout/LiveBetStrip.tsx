@@ -58,7 +58,7 @@ export function LiveBetStrip() {
   }, [plays, tab]);
 
   return (
-    <section className="shrink-0 border-t border-white/[0.06] bg-[#0a1212]">
+    <section className="border-t border-white/[0.06] bg-[#0a1212]">
       <div className="flex items-center gap-1 overflow-x-auto px-3 pt-2 scrollbar-thin">
         {TABS.map((t) => (
           <button

@@ -39,12 +39,15 @@ export const COMMUNITY_NAME_RE = /^[A-Za-z0-9](?:[A-Za-z0-9 \-']{0,20}[A-Za-z0-9
 
 /**
  * Community-case create gate:
- * VIP has named ranks, not numeric levels. Default requirement is Diamond 1
- * (`diamond_1`, 55,000 lifetime XP on the Unranked → Emperor ladder).
- * Creation is enforced against that XP threshold (and live admin-edited tiers).
+ * VIP has named ranks; the UI calls the 1-based index a "level".
+ * Default requirement is level 5 = Gold 1 (`gold_1`, 10,000 lifetime XP
+ * on the Unranked → Emperor ladder). Creation is enforced against that
+ * XP threshold (and live admin-edited tiers).
  */
-export const COMMUNITY_CREATE_TIER_ID = "diamond_1";
-export const COMMUNITY_CREATE_VIP_RANK = 8;
+export const COMMUNITY_CREATE_TIER_ID = "gold_1";
+export const COMMUNITY_CREATE_VIP_RANK = 5;
+/** Hard cap on published community cases per username. */
+export const COMMUNITY_MAX_CASES_PER_PERSON = 8;
 
 export const CASE_COLOR_PRESETS: { id: string; from: string; to: string }[] = [
   { id: "vault", from: "#0f766e", to: "#042f2e" },
@@ -103,6 +106,21 @@ export function communityCreateRequirement(tiers: VipTier[]): { tier: VipTier; m
 
 export function canCreateCommunityCase(lifetimeXp: number, tiers: VipTier[]): boolean {
   return lifetimeXp >= communityCreateRequirement(tiers).minXp;
+}
+
+export function communityCasesOwnedCount(
+  cases: { creatorId: string }[],
+  creatorId: string | null | undefined,
+): number {
+  if (!creatorId) return 0;
+  return cases.reduce((n, c) => n + (c.creatorId === creatorId ? 1 : 0), 0);
+}
+
+export function atCommunityCaseLimit(
+  cases: { creatorId: string }[],
+  creatorId: string | null | undefined,
+): boolean {
+  return communityCasesOwnedCount(cases, creatorId) >= COMMUNITY_MAX_CASES_PER_PERSON;
 }
 
 export function communityNameIssue(raw: string): string | null {

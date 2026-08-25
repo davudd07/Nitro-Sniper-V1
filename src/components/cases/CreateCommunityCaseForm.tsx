@@ -15,10 +15,13 @@ import { sound } from "../../lib/sound";
 import {
   CASE_COLOR_PRESETS,
   COMMUNITY_COMMISSION_OF_EDGE,
+  COMMUNITY_MAX_CASES_PER_PERSON,
   COMMUNITY_MAX_ITEMS,
   COMMUNITY_NAME_MAX,
   COMMUNITY_NAME_MIN,
+  atCommunityCaseLimit,
   canCreateCommunityCase,
+  communityCasesOwnedCount,
   chanceSumPct,
   chancesAreHundred,
   communityCasePrice,
@@ -44,6 +47,7 @@ export function CreateCommunityCaseForm({
 }) {
   const push = useToastStore((s) => s.push);
   const createCase = useCommunityCaseStore((s) => s.createCase);
+  const cases = useCommunityCaseStore((s) => s.cases);
   const session = useAuthStore((s) => s.session);
   const xpByUser = useLoyaltyStore((s) => s.xpByUser);
   const tiers = useLoyaltyStore((s) => s.config.tiers);
@@ -51,6 +55,8 @@ export function CreateCommunityCaseForm({
   const lifetimeXp = useMemo(() => useLoyaltyStore.getState().lifetimeXp(), [xpByUser, session]);
   const req = communityCreateRequirement(tiers);
   const unlocked = canCreateCommunityCase(lifetimeXp, tiers);
+  const ownedCount = communityCasesOwnedCount(cases, session);
+  const atLimit = atCommunityCaseLimit(cases, session);
   const houseEdge = communityHouseEdge(houseEdges);
 
   const [itemsOpen, setItemsOpen] = useState(true);
@@ -150,6 +156,10 @@ export function CreateCommunityCaseForm({
       push(`Reach level ${req.rank} (${req.tier.name} VIP) to create a community case.`, "warning");
       return;
     }
+    if (atLimit) {
+      push(`You can publish at most ${COMMUNITY_MAX_CASES_PER_PERSON} community cases. Delete one to create another.`, "warning");
+      return;
+    }
     const filled = stickers.length > 0 ? stickers : pileStickers(entries.map((e) => e.itemId));
     const result = createCase({
       name,
@@ -169,7 +179,7 @@ export function CreateCommunityCaseForm({
     onCreated?.(result.id);
   }
 
-  const canSubmit = unlocked && !nameIssue && hundred && entries.length > 0 && price > 0 && Boolean(session);
+  const canSubmit = unlocked && !atLimit && !nameIssue && hundred && entries.length > 0 && price > 0 && Boolean(session);
 
   return (
     <div className="surface w-full overflow-hidden bg-[#101818] p-4 sm:p-5">
@@ -186,6 +196,12 @@ export function CreateCommunityCaseForm({
           <div className="mb-4 rounded-xl border-2 border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
             Level {req.rank} required to create. That is VIP {req.tier.name} ({formatXp(req.minXp)} lifetime XP). You have{" "}
             {formatXp(lifetimeXp)} XP.
+          </div>
+        )}
+        {unlocked && atLimit && (
+          <div className="mb-4 rounded-xl border-2 border-amber-400/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+            You already have {ownedCount}/{COMMUNITY_MAX_CASES_PER_PERSON} community cases. Delete one from its open page to
+            publish another.
           </div>
         )}
 

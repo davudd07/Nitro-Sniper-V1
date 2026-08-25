@@ -8,8 +8,10 @@ import { useEconomyStore } from "./economyStore";
 import { useLoyaltyStore } from "./loyaltyStore";
 import {
   COMMUNITY_COMMISSION_OF_EDGE,
+  COMMUNITY_MAX_CASES_PER_PERSON,
   COMMUNITY_MAX_DESIGN_ITEMS,
   COMMUNITY_MAX_ITEMS,
+  atCommunityCaseLimit,
   canCreateCommunityCase,
   chancesAreHundred,
   communityCasePrice,
@@ -45,6 +47,8 @@ interface CommunityCasePersisted {
 
 interface CommunityCaseState extends CommunityCasePersisted {
   createCase: (input: CreateCommunityCaseInput) => { ok: true; id: string } | { ok: false; error: string };
+  /** Creator-only. Returns an error string, or null on success. */
+  deleteCase: (caseId: string) => string | null;
   /**
    * Credit creator earnings for paid human opens. `paidOpens` may be fractional
    * (borrow-mode credits on a human seat). Bot opens must not be included.
@@ -150,6 +154,12 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
             error: `Level ${req.rank} (${req.tier.name} VIP, ${req.minXp.toLocaleString()} XP) required to create a community case.`,
           };
         }
+        if (atCommunityCaseLimit(get().cases, session)) {
+          return {
+            ok: false,
+            error: `You can publish at most ${COMMUNITY_MAX_CASES_PER_PERSON} community cases. Delete one to create another.`,
+          };
+        }
         const nameIssue = communityNameIssue(input.name);
         if (nameIssue) return { ok: false, error: nameIssue };
         const entries = sanitizeEntries(input.entries);
@@ -191,6 +201,18 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
         };
         set((s) => ({ cases: [rec, ...s.cases] }));
         return { ok: true, id: rec.id };
+      },
+      deleteCase: (caseId) => {
+        const session = useAuthStore.getState().session;
+        if (!session) return "Create a username before deleting a community case.";
+        const rec = get().cases.find((c) => c.id === caseId);
+        if (!rec) return "That case is already gone.";
+        if (rec.creatorId !== session) return "Only the creator can delete this case.";
+        set((s) => ({
+          cases: s.cases.filter((c) => c.id !== caseId),
+          favoriteIds: s.favoriteIds.filter((id) => id !== caseId),
+        }));
+        return null;
       },
     }),
     {

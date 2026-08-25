@@ -24,7 +24,9 @@ import {
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import {
   COMMUNITY_COMMISSION_OF_EDGE,
+  COMMUNITY_MAX_CASES_PER_PERSON,
   canCreateCommunityCase,
+  communityCasesOwnedCount,
   communityCommissionPerOpen,
   communityCreateRequirement,
 } from "../lib/communityCases";
@@ -59,6 +61,8 @@ export function Cases() {
   const lifetimeXp = useMemo(() => useLoyaltyStore.getState().lifetimeXp(), [xpByUser, session]);
   const req = communityCreateRequirement(tiers);
   const unlocked = canCreateCommunityCase(lifetimeXp, tiers);
+  const ownedCount = communityCasesOwnedCount(records, session);
+  const atLimit = ownedCount >= COMMUNITY_MAX_CASES_PER_PERSON;
 
   const communityCases = useMemo(() => listHydratedCommunityCases(), [records, hydrated]);
   const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
@@ -136,16 +140,16 @@ export function Cases() {
                 <Wallet className="h-3.5 w-3.5" /> My earnings
               </button>
               <Link
-                to="/cases/create"
+                to={atLimit ? "/cases?catalog=community&nav=mine" : "/cases/create"}
                 onClick={() => sound.click()}
                 className={clsx(
                   "inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide",
-                  unlocked
+                  unlocked && !atLimit
                     ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25"
                     : "border-white/15 text-slate-400 hover:border-white/30 hover:text-white",
                 )}
               >
-                <Plus className="h-3.5 w-3.5" /> Create Case
+                <Plus className="h-3.5 w-3.5" /> {atLimit ? `${ownedCount}/${COMMUNITY_MAX_CASES_PER_PERSON} cases` : "Create Case"}
               </Link>
             </div>
           </div>
@@ -154,6 +158,11 @@ export function Cases() {
             <p className="mb-3 text-xs text-slate-400">
               Level {req.rank} ({req.tier.name} VIP, {formatXp(req.minXp)} XP) required to publish. You have{" "}
               {formatXp(lifetimeXp)} XP.
+            </p>
+          )}
+          {unlocked && atLimit && (
+            <p className="mb-3 text-xs text-amber-200/90">
+              You have {ownedCount}/{COMMUNITY_MAX_CASES_PER_PERSON} community cases. Delete one from its page to publish another.
             </p>
           )}
 
@@ -180,7 +189,7 @@ export function Cases() {
                       ? "No community cases match that search."
                       : "No community cases yet."}
               </p>
-              {subNav !== "favorites" && (
+              {subNav !== "favorites" && !atLimit && (
                 <Link to="/cases/create" onClick={() => sound.click()} className="btn-primary mt-4 inline-flex px-4 py-2 text-sm">
                   Create Case
                 </Link>

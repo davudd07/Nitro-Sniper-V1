@@ -19,7 +19,6 @@ export function ItemIcon({
   lite?: boolean;
 }) {
   const maxxx = icon === "maxxx";
-  const pixel = icon === "leafboard";
   const r = RARITIES[rarity];
   const dims = maxxx
     ? { xs: "h-4 w-8 p-px", sm: "h-8 w-16 p-0.5", md: "h-12 w-24 p-1", lg: "h-16 w-32 p-1.5", xl: "h-20 w-40 p-2" }[size]
@@ -45,7 +44,7 @@ export function ItemIcon({
     <div
       className={clsx("overflow-hidden shrink-0", radius, dims, className)}
       style={{
-        background: `linear-gradient(155deg, ${r.from}55, ${r.to}dd)`,
+        background: `linear-gradient(155deg, ${r.from}33, ${r.to}aa)`,
         boxShadow: lite ? undefined : glow ? `0 0 24px ${r.ring}88, inset 0 0 20px ${r.ring}33` : `inset 0 0 12px ${r.ring}22`,
         border: `1px solid ${r.ring}66`,
       }}
@@ -55,8 +54,9 @@ export function ItemIcon({
         alt=""
         loading={lite ? "eager" : "lazy"}
         decoding="async"
-        className={clsx("h-full w-full rounded-lg", pixel ? "pixelated object-contain" : "object-cover")}
+        className="h-full w-full pixelated object-contain"
         draggable={false}
+        style={{ imageRendering: "pixelated" }}
       />
     </div>
   );

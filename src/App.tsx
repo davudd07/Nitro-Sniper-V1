@@ -37,6 +37,7 @@ import { AdminViewBar } from "./components/admin/AdminViewBar";
 import { installChatModeration } from "./lib/moderation";
 import { AccountGate } from "./components/auth/AccountGate";
 import { MaxxxWinOverlay } from "./components/cases/MaxxxWinOverlay";
+import { LiveBetStrip } from "./components/layout/LiveBetStrip";
 import { useAffiliateStore } from "./store/affiliateStore";
 
 // Forces a full remount of the battle room whenever the battle id changes,
@@ -132,6 +133,7 @@ export default function App() {
             <Route path="/keno" element={<ComingSoon title="Keno" />} />
           </Routes>
         </main>
+        <LiveBetStrip />
         <footer className="shrink-0 border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
           Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
         </footer>

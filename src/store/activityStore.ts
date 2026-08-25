@@ -43,6 +43,7 @@ const MAX_PLAYS = 400;
 interface ActivityState {
   plays: PlayRecord[];
   logPlay: (entry: Omit<PlayRecord, "id" | "at"> & { id?: string; at?: number }) => void;
+  injectLivePlays: () => void;
   playsFor: (name: string, game?: ActivityGame | "all") => PlayRecord[];
   totalsFor: (name: string) => { wagered: number; won: number; profit: number; rounds: number };
 }
@@ -67,6 +68,26 @@ function mulberry(seed: number) {
   };
 }
 
+function fakePlay(rnd: () => number, at: number, name: string): PlayRecord {
+  const game = ACTIVITY_GAMES[Math.floor(rnd() * ACTIVITY_GAMES.length)]!;
+  const roll = rnd();
+  let wagered: number;
+  if (roll > 0.94) wagered = Math.round(100_000 + rnd() * 900_000);
+  else if (roll > 0.8) wagered = Math.round(2_000 + rnd() * 40_000);
+  else wagered = Math.round(20 + rnd() * 1800);
+  const lucky = rnd() > 0.88;
+  const win = lucky || rnd() > 0.48;
+  const won = win ? Math.round(wagered * (lucky ? 10 + rnd() * 70 : 0.4 + rnd() * 2.4)) : 0;
+  return {
+    id: shortId("live"),
+    at,
+    name,
+    game,
+    wagered,
+    won,
+  };
+}
+
 function seedBotPlays(): PlayRecord[] {
   const now = Date.now();
   const plays: PlayRecord[] = [];
@@ -74,18 +95,7 @@ function seedBotPlays(): PlayRecord[] {
     const rnd = mulberry(hashName(name) ^ 0x51eed);
     const count = 8 + Math.floor(rnd() * 8);
     for (let i = 0; i < count; i++) {
-      const game = ACTIVITY_GAMES[Math.floor(rnd() * ACTIVITY_GAMES.length)]!;
-      const wagered = Math.round(20 + rnd() * 1800);
-      const win = rnd() > 0.52;
-      const won = win ? Math.round(wagered * (0.4 + rnd() * 2.2)) : 0;
-      plays.push({
-        id: `seed_${name}_${i}`,
-        at: now - Math.round((i + 1) * (8 + rnd() * 40) * 60_000),
-        name,
-        game,
-        wagered,
-        won,
-      });
+      plays.push(fakePlay(rnd, now - Math.round((i + 1) * (4 + rnd() * 50) * 1_000), name));
     }
   }
   return plays.sort((a, b) => b.at - a.at).slice(0, MAX_PLAYS);
@@ -107,6 +117,17 @@ export const useActivityStore = create<ActivityState>()(
         };
         set((s) => ({ plays: [rec, ...s.plays].slice(0, MAX_PLAYS) }));
       },
+      injectLivePlays: () => {
+        const rnd = mulberry((Date.now() ^ (get().plays.length * 7919)) >>> 0);
+        const n = 2 + Math.floor(rnd() * 3);
+        const now = Date.now();
+        const extra: PlayRecord[] = [];
+        for (let i = 0; i < n; i++) {
+          const name = BOT_NAMES[Math.floor(rnd() * BOT_NAMES.length)]!;
+          extra.push(fakePlay(rnd, now - i * 400, name));
+        }
+        set((s) => ({ plays: [...extra, ...s.plays].slice(0, MAX_PLAYS) }));
+      },
       playsFor: (name, game = "all") => {
         const q = name.trim().toLowerCase();
         return get().plays.filter((p) => {
@@ -123,7 +144,7 @@ export const useActivityStore = create<ActivityState>()(
       },
     }),
     {
-      name: "prism-vault-activity",
+      name: "prism-vault-activity-v2",
       merge: (persisted, current) => {
         const p = persisted as { plays?: PlayRecord[] } | undefined;
         if (p?.plays && p.plays.length > 0) return { ...current, ...p };

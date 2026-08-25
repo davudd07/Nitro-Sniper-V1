@@ -1,6 +1,8 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuthStore } from "../../store/authStore";
+import { useToastStore } from "../../store/toastStore";
 import { BrandMark } from "../layout/BrandMark";
+import { applySignupReferral } from "../../lib/signupBonus";
 import { sound } from "../../lib/sound";
 
 export function AccountGate() {
@@ -9,6 +11,7 @@ export function AccountGate() {
   const register = useAuthStore((s) => s.register);
   const login = useAuthStore((s) => s.login);
   const session = useAuthStore((s) => s.session);
+  const push = useToastStore((s) => s.push);
 
   useEffect(() => {
     const prompt = () => useAuthStore.getState().promptOnce();
@@ -20,6 +23,10 @@ export function AccountGate() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [email, setEmail] = useState("");
+  const [referral, setReferral] = useState(() => {
+    if (typeof window === "undefined") return "";
+    return new URLSearchParams(window.location.search).get("ref") ?? "";
+  });
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -31,11 +38,21 @@ export function AccountGate() {
     setError("");
     try {
       const err =
-        mode === "register" ? await register(username, password, email) : await login(username, password);
+        mode === "register" ? await register(username, password, email, referral) : await login(username, password);
       if (err) {
         setError(err);
         sound.lose();
         return;
+      }
+      if (mode === "register") {
+        const result = applySignupReferral(referral);
+        if (result.bonus > 0) {
+          push(`Referral ${result.code?.toUpperCase()} — ${result.bonus} WL signup bonus credited.`, "success");
+        } else if (result.attributed) {
+          push(`Referral ${result.code?.toUpperCase()} linked to this account.`, "success");
+        } else if (result.unknown) {
+          push("That referral code isn’t recognized. You can still play.", "info");
+        }
       }
       sound.click();
     } finally {
@@ -84,6 +101,17 @@ export function AccountGate() {
               onChange={(e) => setEmail(e.target.value)}
               className="mb-3 w-full rounded-md border-2 border-white/10 bg-black/30 px-3 py-2.5 font-mono text-sm text-white outline-none focus:border-emerald-400/40"
             />
+            <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">
+              Referral code <span className="font-medium normal-case tracking-normal text-slate-600">(optional)</span>
+            </label>
+            <input
+              autoComplete="off"
+              value={referral}
+              onChange={(e) => setReferral(e.target.value)}
+              placeholder="WELCOME / LOCK100 / friend’s code"
+              className="mb-1 w-full rounded-md border-2 border-white/10 bg-black/30 px-3 py-2.5 font-mono text-sm uppercase text-white outline-none placeholder:normal-case placeholder:text-slate-600 focus:border-emerald-400/40"
+            />
+            <p className="mb-3 text-[10px] text-slate-500">Some codes credit a World Lock signup bonus (WELCOME, ZAPP, LOCK100 = 100 WL).</p>
           </>
         )}
         {error && <p className="mb-3 text-sm text-rose-300">{error}</p>}

@@ -22,6 +22,8 @@ import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { formatTicketRange } from "../lib/caseTickets";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
+import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
+import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import type { CaseItem } from "../data/items";
 import { isMaxxxWin } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
@@ -82,6 +84,8 @@ export function CaseOpenPage() {
     }
     if (!demo && c.community) {
       useCommunityCaseStore.getState().accrue(c.id, n * keepPct(borrow));
+    } else if (!demo) {
+      noteOfficialCaseOpens(c.id, n * keepPct(borrow));
     }
     demoRoundRef.current = demo;
     roundBorrowRef.current = borrow;
@@ -150,9 +154,7 @@ export function CaseOpenPage() {
               <RiskBadge risk={c.risk} />
             </div>
             <p className="text-sm text-slate-400">{c.blurb}</p>
-            {c.community && c.creatorName ? (
-              <p className="text-[11px] text-slate-500">Community · {c.creatorName}</p>
-            ) : null}
+            <CaseCreatorLine c={c} />
           </div>
           <InfoButton title={`${c.name} — Odds & House Edge`}>
             <StatRow label="Price" value={<CashAmount wl={c.price} />} />

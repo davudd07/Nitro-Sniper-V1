@@ -82,6 +82,8 @@ export interface CommunityCaseRecord {
   chestColor?: string;
   chestStickers?: ChestSticker[];
   entries: CommunityOddsInput[];
+  /** Paid human opens only. Bot unboxes never increment this. */
+  opens?: number;
 }
 
 export function communityHouseEdge(overrides?: Record<string, number>): number {
@@ -226,6 +228,7 @@ export function hydrateCommunityCase(rec: CommunityCaseRecord): Case {
     commissionRate: rec.commissionRate,
     chestColor: rec.chestColor ?? rec.from,
     chestStickers: rec.chestStickers && rec.chestStickers.length > 0 ? rec.chestStickers : pileStickers(fallbackIds),
+    opens: rec.opens ?? 0,
   };
 }
 

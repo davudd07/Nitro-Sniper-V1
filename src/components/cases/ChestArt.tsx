@@ -69,7 +69,7 @@ export function ChestArt({
         const item = ITEMS[sticker.itemId] as CaseItem | undefined;
         if (!item) return null;
         const maxxx = item.icon === "maxxx";
-        const pixel = item.icon === "leafboard";
+        const pixel = item.icon !== "sparkles";
         const ring = RARITIES[item.rarity].ring;
         return (
           <div

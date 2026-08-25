@@ -3,6 +3,7 @@ import { AvatarChangeCopy, AvatarPicker } from "../../components/identity/Avatar
 import { RoleBadge } from "../../components/identity/RoleBadge";
 import { useIdentityStore } from "../../store/identityStore";
 import { useAuthStore } from "../../store/authStore";
+import { Switch } from "../ui/Switch";
 import { useDemoProfileStore } from "../../store/demoProfileStore";
 import { sound } from "../../lib/sound";
 import { VaultHeroArt } from "./VaultHeroArt";
@@ -11,6 +12,8 @@ export function HomeHero() {
   const session = useAuthStore((s) => s.session);
   const openGate = useAuthStore((s) => s.openGate);
   const displayName = useDemoProfileStore((s) => s.displayName);
+  const anonymous = useDemoProfileStore((s) => s.anonymous);
+  const setAnonymous = useDemoProfileStore((s) => s.setAnonymous);
   const name = session ?? displayName;
   const role = useIdentityStore((s) => s.roleFor("You"));
 
@@ -46,6 +49,13 @@ export function HomeHero() {
               </div>
               <p className="mt-1 text-[11px] text-slate-500">
                 <AvatarChangeCopy />
+              </p>
+              <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+                <Switch checked={anonymous} onChange={setAnonymous} color="#67e8f9" />
+                Stay anonymous in games
+              </label>
+              <p className="mt-0.5 max-w-xs text-[10px] leading-relaxed text-slate-600">
+                Hides your username on bets, cases, and tables. Chat still shows your name when you talk.
               </p>
             </div>
           </div>

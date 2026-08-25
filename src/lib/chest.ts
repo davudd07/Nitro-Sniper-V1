@@ -59,15 +59,19 @@ export function compactPileStickers(stickers: ChestSticker[]): ChestSticker[] {
 }
 
 export const OFFICIAL_CHEST_COLORS: Record<string, string> = {
-  pocket: "#94a3b8",
-  starter: "#64748b",
-  vault: "#0f766e",
-  chaos: "#ea580c",
-  prime: "#ca8a04",
-  steady: "#0e7490",
-  elite: "#7c3aed",
+  pocket: "#a8a29e",
+  starter: "#65a30d",
+  vault: "#0284c7",
+  angel: "#e2e8f0",
+  prime: "#7c3aed",
+  chaos: "#22d3ee",
+  steady: "#38bdf8",
+  elite: "#f97316",
+  comet: "#fbbf24",
   apex: "#e11d48",
+  party: "#ec4899",
   whale: "#155e75",
+  phoenix: "#f43f5e",
 };
 
 export function pileStickers(itemIds: string[]): ChestSticker[] {

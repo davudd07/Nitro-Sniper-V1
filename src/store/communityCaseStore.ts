@@ -131,6 +131,9 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
             ...s.opensByCreator,
             [rec.creatorId]: (s.opensByCreator[rec.creatorId] ?? 0) + paidOpens,
           },
+          cases: s.cases.map((c) =>
+            c.id === rec.id ? { ...c, opens: (c.opens ?? 0) + paidOpens } : c,
+          ),
         }));
         return amount;
       },
@@ -184,6 +187,7 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
           chestColor: input.chestColor ?? input.from,
           chestStickers: stickers,
           entries,
+          opens: 0,
         };
         set((s) => ({ cases: [rec, ...s.cases] }));
         return { ok: true, id: rec.id };
@@ -201,7 +205,9 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
       }),
       migrate: (persisted) => {
         const p = (persisted ?? {}) as Record<string, unknown>;
-        const cases = Array.isArray(p.cases) ? (p.cases as CommunityCaseRecord[]) : [];
+        const cases = Array.isArray(p.cases)
+          ? (p.cases as CommunityCaseRecord[]).map((c) => ({ ...c, opens: c.opens ?? 0 }))
+          : [];
         const oldEarn =
           (p.totalEarnedByCreator as Record<string, number> | undefined) ??
           (p.earningsByCreator as Record<string, number> | undefined) ??

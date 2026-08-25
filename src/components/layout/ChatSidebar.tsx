@@ -100,6 +100,7 @@ export function ChatSidebar() {
                     size={20}
                     kind={m.you ? "you" : "player"}
                     tintName
+                    fromChat
                     className="min-w-0"
                     nameClassName="text-[11px] font-bold"
                   />

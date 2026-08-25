@@ -123,6 +123,7 @@ export function CreateCommunityCaseForm({
       chestColor,
       chestStickers: stickers,
       entries,
+      opens: 0,
     });
   }, [entries, name, price, ev, houseEdge, card.from, card.to, designIds, session, chestColor, stickers]);
 

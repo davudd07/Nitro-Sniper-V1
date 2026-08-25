@@ -8,6 +8,7 @@ import { formatPercent } from "../../lib/format";
 import { CashAmount } from "../ui/CurrencyIcon";
 import { sound } from "../../lib/sound";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../../lib/communityCases";
+import { CaseCreatorLine } from "./CaseCreatorLine";
 
 export function CasePreviewModal({
   caseId,
@@ -46,9 +47,7 @@ export function CasePreviewModal({
                   ""
                 )}
               </p>
-              {c.community && c.creatorName ? (
-                <p className="text-[11px] text-slate-500">Community · {c.creatorName}</p>
-              ) : null}
+              <CaseCreatorLine c={c} className="mt-0.5 text-[11px] text-slate-500" />
             </div>
           </div>
           <button

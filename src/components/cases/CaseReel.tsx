@@ -110,8 +110,8 @@ function sprinkleGoldBaits(strip: CaseItem[], hasGold: boolean, rand: () => numb
   const travel: number[] = [];
   for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
   shuffleInPlace(travel, rand);
-  const extra = Math.floor(travel.length / 6);
-  const placeCount = Math.min(travel.length, 8 + extra);
+  const extra = Math.floor(travel.length / 12);
+  const placeCount = Math.min(travel.length, 4 + extra);
   for (let n = 0; n < placeCount; n++) {
     const slot = travel[n];
     if (slot === undefined || slot === LAND_INDEX) continue;
@@ -120,8 +120,8 @@ function sprinkleGoldBaits(strip: CaseItem[], hasGold: boolean, rand: () => numb
 }
 
 /**
- * Extra fly-bys of MAXXX WIN — but if MAXXX sits in the gold-spin pool, those
- * slots show GOLD SPIN instead. Gold-pool prizes are never used as bait.
+ * Extra fly-bys of MAXXX WIN — only when MAXXX is actually in this case.
+ * If MAXXX sits in the gold-spin pool, those slots show GOLD SPIN instead.
  * Never writes LAND_INDEX.
  */
 function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number, goldIds: Set<string>): void {
@@ -129,12 +129,23 @@ function sprinkleMaxxxBaits(strip: CaseItem[], rand: () => number, goldIds: Set<
   const travel: number[] = [];
   for (let i = 3; i < LAND_INDEX; i++) travel.push(i);
   shuffleInPlace(travel, rand);
-  const placeCount = Math.min(travel.length, Math.max(10, Math.floor(travel.length / 4)));
+  const placeCount = Math.min(travel.length, Math.max(6, Math.floor(travel.length / 8)));
   for (let n = 0; n < placeCount; n++) {
     const slot = travel[n];
     if (slot === undefined || slot === LAND_INDEX) continue;
     strip[slot] = bait;
   }
+}
+
+/** Sometimes park GOLD SPIN just before the land slot so the reel looks like it will stop, then rolls over. */
+function maybeGoldNearMiss(strip: CaseItem[], landing: CaseItem, rand: () => number): void {
+  if (isGoldIndicator(landing) || isMaxxxWin(landing)) return;
+  if (rand() > 0.32) return;
+  strip[LAND_INDEX - 1] = GOLD_INDICATOR;
+}
+
+function poolHasMaxxx(pool: CaseItem[]): boolean {
+  return pool.some((item) => isMaxxxWin(item));
 }
 
 function buildStrip(
@@ -152,7 +163,10 @@ function buildStrip(
     strip.push(i === LAND_INDEX ? landing : pickFrom(fillerPool, rand));
   }
   if (baits.length) sprinkleGoldBaits(strip, true, rand);
-  if (baitMaxxx) sprinkleMaxxxBaits(strip, rand, goldIds);
+  if (baitMaxxx && (poolHasMaxxx(pool) || poolHasMaxxx(baits))) {
+    sprinkleMaxxxBaits(strip, rand, goldIds);
+  }
+  maybeGoldNearMiss(strip, landing, rand);
   strip[LAND_INDEX] = landing;
   return strip;
 }
@@ -588,7 +602,7 @@ const ReelSlot = memo(function ReelSlot({
             height={iconPx}
             decoding="async"
             draggable={false}
-            className={clsx("shrink-0", maxxx || item.icon === "leafboard" ? "pixelated object-contain" : "rounded object-cover")}
+            className={clsx("shrink-0 pixelated object-contain")}
             style={{ width: maxxx ? Math.round(iconPx * 1.7) : iconPx, height: iconPx }}
           />
           {maxxx ? (

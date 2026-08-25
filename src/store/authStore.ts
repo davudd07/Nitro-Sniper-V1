@@ -24,7 +24,7 @@ interface AuthState {
   openGate: () => void;
   closeGate: () => void;
   promptOnce: () => void;
-  register: (username: string, password: string, email?: string) => Promise<string | null>;
+  register: (username: string, password: string, email?: string, referralCode?: string) => Promise<string | null>;
   login: (username: string, password: string) => Promise<string | null>;
   logout: () => void;
   requireAccount: () => boolean;
@@ -61,7 +61,7 @@ export const useAuthStore = create<AuthState>()(
         set({ gateOpen: true });
         return false;
       },
-      register: async (username, password, email = "") => {
+      register: async (username, password, email = "", _referralCode = "") => {
         const nameErr = usernameIssue(username);
         if (nameErr) return nameErr;
         const passErr = passwordIssue(password);

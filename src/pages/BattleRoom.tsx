@@ -36,6 +36,7 @@ import { computeJackpotWeights } from "../lib/jackpotOdds";
 import { coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
 import { saveBattleDraft } from "../lib/battleDraft";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
+import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import { isMaxxxWin } from "../data/items";
 import { shouldCelebrateMaxxxWin, useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 
@@ -405,7 +406,10 @@ export function BattleRoom() {
               },
             ),
           );
-          if (paidOpens > 0) useCommunityCaseStore.getState().accrue(caseId, paidOpens);
+          if (paidOpens > 0) {
+            if (c.community) useCommunityCaseStore.getState().accrue(caseId, paidOpens);
+            else noteOfficialCaseOpens(caseId, paidOpens);
+          }
         }
         const log = replayLogRef.current.slice();
         log[idx] = results;

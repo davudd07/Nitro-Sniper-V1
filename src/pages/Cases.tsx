@@ -30,6 +30,7 @@ import {
 } from "../lib/communityCases";
 import { sound } from "../lib/sound";
 import type { Case } from "../data/cases";
+import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
 
 const SORTED_OFFICIAL = [...CASES].sort((a, b) => a.price - b.price);
 
@@ -246,7 +247,7 @@ function CommunityCaseCard({
           <p className="font-bold text-emerald-200">
             <CashAmount wl={c.price} className="text-sm" />
           </p>
-          {c.creatorName ? <p className="mt-0.5 truncate text-[11px] text-slate-500">by {c.creatorName}</p> : null}
+          <CaseCreatorLine c={c} className="mt-0.5 truncate text-[11px] text-slate-500" />
         </div>
         <button
           type="button"
@@ -313,6 +314,7 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
           </InfoButton>
         </div>
         <RiskBadge risk={c.risk} className="mb-2" />
+        <CaseCreatorLine c={c} className="mb-2 text-[11px] text-slate-500" />
         <p className="mb-3 text-xs text-slate-500">{c.blurb}</p>
         <Link to={`/cases/${c.id}`} className="btn-primary block w-full py-2 text-center text-sm">
           <span className="inline-flex items-center justify-center gap-1">

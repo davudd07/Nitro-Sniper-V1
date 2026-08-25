@@ -9,6 +9,8 @@ import {
   type WinLeaderGame,
   type WinLeaderRecord,
 } from "../../store/winLeaderStore";
+import { publicPlayerName } from "../../lib/publicName";
+import { useDemoProfileStore } from "../../store/demoProfileStore";
 
 export function WinLeaderBadge({
   game,
@@ -68,16 +70,18 @@ function WinLeaderMark({
   className?: string;
   compact?: boolean;
 }) {
+  useDemoProfileStore((s) => s.anonymous);
+  const shownName = publicPlayerName(record.name);
   const label = ACTIVITY_GAME_LABELS[game];
-  const title = `${record.name} holds the ${label} record at ${formatWinMulti(record.multiplier)}`;
+  const title = `${shownName} holds the ${label} record at ${formatWinMulti(record.multiplier)}`;
   const inner = compact ? (
     <>
       <Trophy className="h-3 w-3 shrink-0 text-amber-300" aria-hidden />
-      <span className="max-w-[6.5rem] truncate">{record.name}</span>
+      <span className="max-w-[6.5rem] truncate">{shownName}</span>
     </>
   ) : (
     <>
-      <span className="max-w-[7.5rem] truncate">{record.name}</span>
+      <span className="max-w-[7.5rem] truncate">{shownName}</span>
       <span className="font-mono text-[10px] font-medium tabular-nums text-amber-200/75">
         {formatWinMulti(record.multiplier)}
       </span>

@@ -84,7 +84,10 @@ export function formatRoadMulti(m: number): string {
 export function formatRoadMultiShort(m: number): string {
   if (!Number.isFinite(m) || m <= 0) return "—";
   if (m >= 1_000_000) return `${(m / 1_000_000).toFixed(m >= 10_000_000 ? 1 : 2)}M×`;
-  if (m >= 10_000) return `${Math.round(m).toLocaleString("en-US")}×`;
+  if (m >= 10_000) {
+    const digits = Math.abs(m - Math.round(m)) < 0.005 ? 0 : 1;
+    return `${m.toLocaleString("en-US", { maximumFractionDigits: digits })}×`;
+  }
   return formatRoadMulti(m);
 }
 

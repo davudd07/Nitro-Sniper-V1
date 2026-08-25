@@ -24,11 +24,25 @@ import {
   roadLaneHits,
   roadMultiplier,
   roadPayout,
+  roadSeedMaxMulti,
+  roadSeedMaxSteps,
   type RoadDifficulty,
 } from "../lib/road";
 
 const WALKER = "/images/road/walker.png";
 const LANE_W = 112;
+const SIDEWALK_W = 108;
+const WALKER_SIZE = 88;
+const JUMP_MS = 420;
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+function walkerLeft(steps: number): number {
+  if (steps <= 0) return (SIDEWALK_W - WALKER_SIZE) / 2;
+  return SIDEWALK_W + (steps - 1) * LANE_W + (LANE_W - WALKER_SIZE) / 2;
+}
 
 type Phase = "idle" | "playing" | "busted" | "cashed";
 
@@ -40,6 +54,7 @@ export function CrossRoad() {
   const [steps, setSteps] = useState(0);
   const [hits, setHits] = useState<boolean[]>([]);
   const [roundId, setRoundId] = useState(0);
+  const [jumpToken, setJumpToken] = useState(0);
 
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -51,12 +66,20 @@ export function CrossRoad() {
   const nextMulti = roadMultiplier(steps + 1, def.survive);
   const potential = roadPayout(bet, steps, def.survive);
   const locked = phase === "playing" || busy;
+  const roundOver = phase === "busted" || phase === "cashed";
+  const seedMaxSteps = hits.length ? roadSeedMaxSteps(hits) : 0;
+  const seedMaxMulti = hits.length ? roadSeedMaxMulti(hits, def.survive) : 1;
+  const seedDeathLane = hits.findIndex(Boolean);
+  const lastSafeLane = seedDeathLane < 0 ? (hits.length ? hits.length - 1 : -1) : seedDeathLane - 1;
+
   const walkerRef = useRef<HTMLDivElement>(null);
-  const scrollerRef = useRef<HTMLDivElement>(null);
+  const deathLaneRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
-    walkerRef.current?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [steps, phase, roundId]);
+    const ahead = roundOver && seedDeathLane >= 0 && seedDeathLane + 1 > steps;
+    const el = ahead ? deathLaneRef.current : walkerRef.current;
+    el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+  }, [steps, phase, roundId, seedDeathLane, roundOver]);
 
   async function startGame() {
     if (phase === "playing" || busy) return;
@@ -68,6 +91,7 @@ export function CrossRoad() {
     const rolls = await play(def.lanes);
     setHits(roadLaneHits(rolls, def.survive));
     setSteps(0);
+    setJumpToken(0);
     setRoundId((n) => n + 1);
     setPhase("playing");
     setBusy(false);
@@ -91,18 +115,27 @@ export function CrossRoad() {
     if (phase !== "playing" || busy || index !== steps) return;
     setBusy(true);
     sound.click();
-    await new Promise((r) => setTimeout(r, 220));
+    setJumpToken((n) => n + 1);
+    setSteps(index + 1);
+    await sleep(JUMP_MS);
     if (hits[index]) {
-      setSteps(index + 1);
       setPhase("busted");
       recordRound(bet, 0, "road");
       sound.lose();
-      push(bet > 0 ? `Hit on lane ${index + 1}. Lost ${formatCash(bet)}.` : "Demo · busted on that lane.", "danger");
+      const maxM = roadSeedMaxMulti(hits, def.survive);
+      const maxSteps = roadSeedMaxSteps(hits);
+      push(
+        maxSteps <= 0
+          ? bet > 0
+            ? `Hit on lane 1. Lost ${formatCash(bet)}.`
+            : "Demo · busted on lane 1."
+          : `Hit on lane ${index + 1}. Seed max was ${formatRoadMulti(maxM)}.`,
+        "danger",
+      );
       setBusy(false);
       return;
     }
-    const next = steps + 1;
-    setSteps(next);
+    const next = index + 1;
     sound.tick(Math.min(1, next / 10));
     if (next >= def.lanes) {
       const paid = roadPayout(bet, next, def.survive);
@@ -227,34 +260,59 @@ export function CrossRoad() {
                 </div>
               </div>
             )}
+            {roundOver && hits.length > 0 && (
+              <p className="mt-3 text-center text-xs text-amber-200/90">
+                This seed maxed at <span className="font-mono font-bold">{formatRoadMulti(seedMaxMulti)}</span>
+                {seedMaxSteps >= def.lanes ? " (full clear)" : ` · first hit on lane ${seedMaxSteps + 1}`}
+              </p>
+            )}
           </div>
           <ProvablyFairPanel compact />
         </div>
 
         <div className="relative surface overflow-hidden pb-11">
           <WinLeaderStageMark game="road" />
-          <div
-            ref={scrollerRef}
-            className="overflow-x-auto scrollbar-thin"
-          >
+          <div className="overflow-x-auto scrollbar-thin">
             <div
               className="relative flex h-[280px] sm:h-[320px]"
-              style={{ width: 108 + def.lanes * LANE_W }}
+              style={{ width: SIDEWALK_W + def.lanes * LANE_W }}
             >
-              <Sidewalk active={steps === 0} walkerRef={walkerRef} showWalker={steps === 0} busted={phase === "busted" && steps === 0} />
+              <Sidewalk active={steps === 0} />
               {Array.from({ length: def.lanes }, (_, i) => (
                 <Lane
                   key={`${roundId}-${i}`}
                   index={i}
                   multi={roadMultiplier(i + 1, def.survive)}
                   clickable={phase === "playing" && i === steps && !busy}
-                  cleared={i < steps && !(phase === "busted" && i === steps - 1)}
-                  hit={phase === "busted" && i === steps - 1}
-                  walkerHere={steps === i + 1}
-                  walkerRef={walkerRef}
+                  cleared={i < steps && i !== seedDeathLane}
+                  hit={roundOver && seedDeathLane === i}
+                  seedPeak={roundOver && lastSafeLane === i}
+                  deathRef={seedDeathLane === i ? deathLaneRef : undefined}
                   onStep={() => void stepLane(i)}
                 />
               ))}
+              <motion.div
+                key={roundId}
+                ref={walkerRef}
+                className={clsx("pointer-events-none absolute bottom-10 z-20", phase === "busted" && "opacity-40")}
+                style={{ width: WALKER_SIZE, height: WALKER_SIZE }}
+                initial={false}
+                animate={{ left: walkerLeft(steps) }}
+                transition={{ left: { duration: jumpToken > 0 ? JUMP_MS / 1000 : 0, ease: [0.22, 0.8, 0.36, 1] } }}
+              >
+                <motion.div
+                  key={jumpToken}
+                  initial={{ y: 0 }}
+                  animate={{ y: jumpToken > 0 ? [0, -52, 0] : 0 }}
+                  transition={{ duration: JUMP_MS / 1000, times: [0, 0.45, 1], ease: "easeOut" }}
+                >
+                  <img
+                    src={WALKER}
+                    alt=""
+                    className="pixelated h-[88px] w-[88px] object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]"
+                  />
+                </motion.div>
+              </motion.div>
             </div>
           </div>
           <div className="flex items-center justify-between px-3 py-2 text-[11px] text-slate-500">
@@ -274,17 +332,7 @@ export function CrossRoad() {
   );
 }
 
-function Sidewalk({
-  active,
-  walkerRef,
-  showWalker,
-  busted,
-}: {
-  active: boolean;
-  walkerRef: RefObject<HTMLDivElement | null>;
-  showWalker: boolean;
-  busted: boolean;
-}) {
+function Sidewalk({ active }: { active: boolean }) {
   return (
     <div
       className={clsx(
@@ -301,19 +349,6 @@ function Sidewalk({
       <div className="absolute right-3 top-24 grid h-9 w-9 place-items-center rounded-full border-2 border-rose-400 bg-[#1a1010] text-rose-300">
         <Ban className="h-4 w-4" />
       </div>
-      <AnimatePresence>
-        {showWalker && (
-          <motion.div
-            ref={walkerRef}
-            layoutId="road-walker"
-            className={clsx("relative z-10", busted && "opacity-40")}
-            initial={{ x: -12, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-          >
-            <img src={WALKER} alt="" className="pixelated h-[88px] w-[88px] object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]" />
-          </motion.div>
-        )}
-      </AnimatePresence>
       <p className="text-[10px] font-bold uppercase tracking-wide text-slate-500">Start</p>
     </div>
   );
@@ -325,8 +360,8 @@ function Lane({
   clickable,
   cleared,
   hit,
-  walkerHere,
-  walkerRef,
+  seedPeak,
+  deathRef,
   onStep,
 }: {
   index: number;
@@ -334,13 +369,14 @@ function Lane({
   clickable: boolean;
   cleared: boolean;
   hit: boolean;
-  walkerHere: boolean;
-  walkerRef: RefObject<HTMLDivElement | null>;
+  seedPeak: boolean;
+  deathRef?: RefObject<HTMLButtonElement | null>;
   onStep: () => void;
 }) {
   const odd = index % 2 === 1;
   return (
     <button
+      ref={deathRef}
       type="button"
       disabled={!clickable}
       onClick={onStep}
@@ -348,6 +384,7 @@ function Lane({
         "relative flex h-full w-[112px] shrink-0 flex-col items-center justify-center border-r border-white/10 disabled:cursor-default",
         odd ? "bg-[#161c1c]" : "bg-[#121818]",
         clickable && "hover:bg-cyan-400/10",
+        seedPeak && "bg-amber-400/10",
       )}
     >
       <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0 border-l-2 border-dashed border-slate-500/35" />
@@ -363,28 +400,28 @@ function Lane({
           </motion.div>
         )}
       </AnimatePresence>
-      {walkerHere && (
-        <motion.div ref={walkerRef} layoutId="road-walker" className="absolute bottom-10 z-10">
-          <img
-            src={WALKER}
-            alt=""
-            className={clsx(
-              "pixelated h-[88px] w-[88px] object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]",
-              hit && "opacity-40",
-            )}
-          />
-        </motion.div>
+      {seedPeak && (
+        <span className="absolute top-3 z-10 rounded-full bg-amber-300/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-950">
+          Seed max
+        </span>
+      )}
+      {hit && (
+        <span className="absolute top-3 z-10 rounded-full bg-rose-500/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-white">
+          First hit
+        </span>
       )}
       <span
         className={clsx(
           "relative z-10 grid h-12 w-12 place-items-center rounded-full border-2",
           clickable
             ? "border-cyan-300 bg-cyan-400/15 text-cyan-100"
-            : cleared
-              ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
-              : hit
-                ? "border-rose-400/70 bg-rose-500/20 text-rose-200"
-                : "border-white/15 bg-black/40 text-slate-400",
+            : hit
+              ? "border-rose-400/70 bg-rose-500/20 text-rose-200"
+              : seedPeak
+                ? "border-amber-300/80 bg-amber-400/20 text-amber-100"
+                : cleared
+                  ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-200"
+                  : "border-white/15 bg-black/40 text-slate-400",
         )}
       >
         <Menu className="h-5 w-5" />
@@ -392,7 +429,15 @@ function Lane({
       <span
         className={clsx(
           "relative z-10 mt-2 font-mono text-xs font-bold",
-          clickable ? "text-cyan-200" : cleared ? "text-emerald-300" : hit ? "text-rose-300" : "text-slate-500",
+          clickable
+            ? "text-cyan-200"
+            : hit
+              ? "text-rose-300"
+              : seedPeak
+                ? "text-amber-200"
+                : cleared
+                  ? "text-emerald-300"
+                  : "text-slate-500",
         )}
       >
         {formatRoadMulti(multi)}

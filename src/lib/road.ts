@@ -50,3 +50,13 @@ export function roadLaneHits(rolls: number[], survive: number): boolean[] {
     return u < miss;
   });
 }
+
+/** How many successful steps this seed allows before the first hit. */
+export function roadSeedMaxSteps(hits: boolean[]): number {
+  const i = hits.findIndex(Boolean);
+  return i < 0 ? hits.length : i;
+}
+
+export function roadSeedMaxMulti(hits: boolean[], survive: number): number {
+  return roadMultiplier(roadSeedMaxSteps(hits), survive);
+}

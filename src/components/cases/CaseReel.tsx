@@ -654,9 +654,14 @@ const ReelSlot = memo(function ReelSlot({
             className="pixelated shrink-0 object-contain drop-shadow-[0_0_16px_rgba(56,189,248,0.85)]"
             style={{ width: cubePx, height: cubePx }}
           />
-          {!(isHorizontal || iconSize === "sm") && (
-            <p className="text-[10px] font-black uppercase tracking-[0.16em] text-sky-200">Gold Spin</p>
-          )}
+          <span
+            className={clsx(
+              "max-w-[92%] truncate px-0.5 font-black uppercase tracking-[0.14em] text-sky-200",
+              iconSize === "sm" ? "text-[8px]" : "text-[10px]",
+            )}
+          >
+            Gold Spin
+          </span>
         </>
       ) : (
         <>

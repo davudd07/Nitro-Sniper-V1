@@ -2,7 +2,8 @@ import { useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Heart, Plus, Wallet } from "lucide-react";
 import { clsx } from "clsx";
-import { CASES } from "../data/cases";
+import type { Case } from "../data/cases";
+import { listOfficialCases } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { RiskBadge } from "../components/cases/RiskBadge";
 import { CatalogSwitch, type CaseCatalogKind } from "../components/cases/CatalogSwitch";
@@ -15,6 +16,7 @@ import { formatTicketRange } from "../lib/caseTickets";
 import { matchesCaseName } from "../lib/caseSearch";
 import { RARITIES } from "../data/rarities";
 import { useAdminViewStore } from "../store/adminViewStore";
+import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useAuthStore } from "../store/authStore";
 import {
   listHydratedCommunityCases,
@@ -31,16 +33,15 @@ import {
   communityCreateRequirement,
 } from "../lib/communityCases";
 import { sound } from "../lib/sound";
-import type { Case } from "../data/cases";
 import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
-
-const SORTED_OFFICIAL = [...CASES].sort((a, b) => a.price - b.price);
+import { AdminCaseActions } from "../components/admin/AdminCaseActions";
 
 type CommunitySubNav = "all" | "mine" | "favorites";
 type PriceSort = "low" | "high";
 
 export function Cases() {
   const adminView = useAdminViewStore((s) => s.active);
+  const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
   const [searchParams, setSearchParams] = useSearchParams();
   const [catalog, setCatalog] = useState<CaseCatalogKind>(
     searchParams.get("catalog") === "community" ? "community" : "official",
@@ -75,8 +76,11 @@ export function Cases() {
   }, [communityCases, query, sort, subNav, session, favoriteSet]);
 
   const shownOfficial = useMemo(
-    () => SORTED_OFFICIAL.filter((c) => matchesCaseName(c.name, query)),
-    [query],
+    () =>
+      listOfficialCases()
+        .filter((c) => matchesCaseName(c.name, query))
+        .sort((a, b) => a.price - b.price),
+    [query, hiddenOfficialIds, adminView],
   );
 
   function setCatalogKind(next: CaseCatalogKind) {
@@ -257,6 +261,9 @@ function CommunityCaseCard({
             <CashAmount wl={c.price} className="text-sm" />
           </p>
           <CaseCreatorLine c={c} className="mt-0.5 truncate text-[11px] text-slate-500" />
+          <div className="mt-2">
+            <AdminCaseActions c={c} />
+          </div>
         </div>
         <button
           type="button"
@@ -276,15 +283,21 @@ function CommunityCaseCard({
 }
 
 function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
+  const hidden = useCatalogModerationStore((s) => s.hiddenOfficialIds.includes(c.id));
   return (
-    <div className="surface group overflow-hidden">
+    <div className={clsx("surface group overflow-hidden", hidden && "ring-1 ring-amber-400/40")}>
       <Link to={`/cases/${c.id}`}>
         <CaseThumb c={c} className="h-36" />
       </Link>
       <div className="p-4">
         <div className="mb-1 flex items-center justify-between gap-2">
-          <p className="font-semibold text-white">{c.name}</p>
-          <InfoButton title={`${c.name} — Odds & House Edge`}>
+          <p className="truncate font-semibold text-white">
+            {c.name}
+            {hidden ? <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">Hidden</span> : null}
+          </p>
+          <div className="flex shrink-0 items-center gap-1">
+            <AdminCaseActions c={c} />
+            <InfoButton title={`${c.name} — Odds & House Edge`}>
             <StatRow label="Price" value={<CashAmount wl={c.price} />} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
             <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
@@ -321,6 +334,7 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
               </div>
             </div>
           </InfoButton>
+          </div>
         </div>
         <RiskBadge risk={c.risk} className="mb-2" />
         <CaseCreatorLine c={c} className="mb-2 text-[11px] text-slate-500" />

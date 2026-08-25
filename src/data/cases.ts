@@ -2,6 +2,8 @@ import { ITEMS, type CaseItem } from "./items";
 import { findHydratedCommunityCase } from "../store/communityCaseStore";
 import { stampTicketRanges, ticketFromRoll } from "../lib/caseTickets";
 import { OFFICIAL_CHEST_COLORS, pileStickers, type ChestSticker } from "../lib/chest";
+import { useCatalogModerationStore } from "../store/catalogModerationStore";
+import { useAdminViewStore } from "../store/adminViewStore";
 
 export interface CaseOddsEntry {
   item: CaseItem;
@@ -369,6 +371,18 @@ export const CASES: Case[] = CASE_DEFS.map((def) => {
 
 export function getCase(id: string): Case | undefined {
   return CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
+}
+
+/** Official catalog, minus cases a warden hid. Admin view still sees hidden rows. */
+export function listOfficialCases(): Case[] {
+  const hidden = new Set(useCatalogModerationStore.getState().hiddenOfficialIds);
+  if (hidden.size === 0) return CASES;
+  if (useAdminViewStore.getState().active) return CASES;
+  return CASES.filter((c) => !hidden.has(c.id));
+}
+
+export function isOfficialCaseHidden(id: string): boolean {
+  return useCatalogModerationStore.getState().isOfficialHidden(id);
 }
 
 /** Rolls a single item from a case's million-ticket table given a uniform float in [0,1). */

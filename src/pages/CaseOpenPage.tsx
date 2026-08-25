@@ -14,6 +14,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useAdminViewStore } from "../store/adminViewStore";
+import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { takeStake } from "../lib/stake";
 import { keepPct, MAX_BORROW_PCT, pctLabel, winPayout } from "../lib/battleFinance";
@@ -23,6 +24,7 @@ import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../lib/communityCases";
 import { useAuthStore } from "../store/authStore";
+import { AdminCaseActions } from "../components/admin/AdminCaseActions";
 import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
 import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import type { CaseItem } from "../data/items";
@@ -66,6 +68,7 @@ export function CaseOpenPage() {
   const navigate = useNavigate();
   const session = useAuthStore((s) => s.session);
   const deleteCase = useCommunityCaseStore((s) => s.deleteCase);
+  const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
   const isOwner = Boolean(c?.community && c.creatorId && c.creatorId === session);
 
   const goldPool = useMemo(() => (c ? c.odds.filter((o) => o.goldTier).map((o) => o.item) : []), [c]);
@@ -77,6 +80,7 @@ export function CaseOpenPage() {
   );
 
   if (!c) return <Navigate to="/cases" replace />;
+  if (!c.community && hiddenOfficialIds.includes(c.id) && !adminView) return <Navigate to="/cases" replace />;
 
   const totalPrice = c.price * openCount;
   const reelSize = openCount >= 3 ? "md" : "lg";
@@ -179,7 +183,7 @@ export function CaseOpenPage() {
             )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {isOwner && (
+            {isOwner && !adminView && (
               <button
                 type="button"
                 disabled={spinning}
@@ -199,6 +203,10 @@ export function CaseOpenPage() {
                 <Trash2 className="h-3.5 w-3.5" /> Delete case
               </button>
             )}
+            <AdminCaseActions
+              c={c}
+              afterCommunityDelete={() => navigate("/cases?catalog=community")}
+            />
             <InfoButton title={`${c.name} — Odds & House Edge`}>
             <StatRow label="Price" value={<CashAmount wl={c.price} />} />
             <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />

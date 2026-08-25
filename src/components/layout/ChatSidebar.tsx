@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight, MessageSquare, Send } from "lucide-react";
+import { ChevronLeft, ChevronRight, MessageSquare, Send, Trash2 } from "lucide-react";
 import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
 import { useChatStore } from "../../store/chatStore";
@@ -109,7 +109,22 @@ export function ChatSidebar() {
                     {adminView && !m.rain && !m.shout && <ChatModMenu name={m.name} />}
                   </span>
                 </div>
-                <p className="text-[12px] leading-snug text-slate-200">{m.text}</p>
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-[12px] leading-snug text-slate-200">{m.text}</p>
+                  {adminView && (
+                    <button
+                      type="button"
+                      title="Delete message"
+                      onClick={() => {
+                        sound.click();
+                        useChatStore.getState().removeMessage(m.id);
+                      }}
+                      className="mt-0.5 shrink-0 rounded p-0.5 text-rose-300/80 hover:bg-rose-500/15 hover:text-rose-100"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { clsx } from "clsx";
 import { X, Plus, Minus } from "lucide-react";
-import { CASES, getCase } from "../../data/cases";
+import { getCase, listOfficialCases } from "../../data/cases";
 import { CaseThumb } from "../cases/CaseThumb";
 import { CasePreviewModal } from "../cases/CasePreviewModal";
 import { RiskBadge } from "../cases/RiskBadge";
@@ -12,6 +12,8 @@ import { CashAmount } from "../ui/CurrencyIcon";
 import { matchesCaseName } from "../../lib/caseSearch";
 import type { BattleCaseEntry } from "../../store/battleStore";
 import { listHydratedCommunityCases, useCommunityCaseStore } from "../../store/communityCaseStore";
+import { useCatalogModerationStore } from "../../store/catalogModerationStore";
+import { useAdminViewStore } from "../../store/adminViewStore";
 import { sound } from "../../lib/sound";
 
 export const MAX_CASES_PER_BATTLE = 50;
@@ -32,8 +34,11 @@ export function AddCasesModal({
   const [catalog, setCatalog] = useState<CaseCatalogKind>("official");
   const [query, setQuery] = useState("");
   const communityRecords = useCommunityCaseStore((s) => s.cases);
+  const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
+  const adminView = useAdminViewStore((s) => s.active);
   const communityCases = useMemo(() => listHydratedCommunityCases(), [communityRecords]);
-  const catalogCases = catalog === "official" ? CASES : communityCases;
+  const officialCases = useMemo(() => listOfficialCases(), [hiddenOfficialIds, adminView]);
+  const catalogCases = catalog === "official" ? officialCases : communityCases;
   const shown = useMemo(
     () => catalogCases.filter((c) => matchesCaseName(c.name, query)),
     [catalogCases, query],

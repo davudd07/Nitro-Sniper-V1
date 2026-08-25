@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { Ban, Coins, MoreHorizontal, Volume2, VolumeX, Wallet } from "lucide-react";
+import { Ban, Coins, MoreHorizontal, Trash2, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import { LOCAL_PLAYER, useModerationStore } from "../../store/moderationStore";
+import { useChatStore } from "../../store/chatStore";
 import { useToastStore } from "../../store/toastStore";
 import { receiveIncomingTip } from "../chat/PlayerTipButton";
 import { sound } from "../../lib/sound";
@@ -15,6 +16,7 @@ export function ChatModMenu({ name }: { name: string }) {
   const mute = useModerationStore((s) => s.mute);
   const unmute = useModerationStore((s) => s.unmute);
   const topUpShards = useModerationStore((s) => s.topUpShards);
+  const removeByName = useChatStore((s) => s.removeByName);
   const push = useToastStore((s) => s.push);
 
   function act(label: string, fn: () => void) {
@@ -37,7 +39,7 @@ export function ChatModMenu({ name }: { name: string }) {
         <MoreHorizontal className="h-3.5 w-3.5" />
       </button>
       {open && (
-        <div className="absolute right-0 top-6 z-[60] w-40 overflow-hidden rounded-md border-2 border-amber-400/30 bg-[#101818] py-1 shadow-[4px_4px_0_#050808]">
+        <div className="absolute right-0 top-6 z-[60] w-44 overflow-hidden rounded-md border-2 border-amber-400/30 bg-[#101818] py-1 shadow-[4px_4px_0_#050808]">
           {banned ? (
             <MenuItem onClick={() => act(`Unbanned ${label}`, () => unban(name))}>Unban</MenuItem>
           ) : (
@@ -54,6 +56,9 @@ export function ChatModMenu({ name }: { name: string }) {
               <VolumeX className="h-3 w-3" /> Mute
             </MenuItem>
           )}
+          <MenuItem onClick={() => act(`Purged chat from ${label}`, () => removeByName(name))} danger>
+            <Trash2 className="h-3 w-3" /> Purge chat
+          </MenuItem>
           <MenuItem onClick={() => act(`+1,000 SH → ${label}`, () => topUpShards(name, 1000))}>
             <Wallet className="h-3 w-3" /> Top up 1k SH
           </MenuItem>

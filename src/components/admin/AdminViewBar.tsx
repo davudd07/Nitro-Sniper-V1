@@ -14,7 +14,7 @@ export function AdminViewBar() {
         <Eye className="h-4 w-4 shrink-0" />
         Admin view
         <span className="hidden font-medium normal-case tracking-normal text-amber-100/80 sm:inline">
-          Chat messages have ban / mute / top-up. Gold-spin items are highlighted on cases.
+          Ban, mute, and purge from chat or live bets. Hide official cases and delete community cases from the catalog.
         </span>
         <Sparkles className="hidden h-3.5 w-3.5 text-amber-200 sm:block" />
       </p>

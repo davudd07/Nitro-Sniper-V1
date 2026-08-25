@@ -11,6 +11,8 @@ interface SettingsState {
   lockUnit: LockUnit;
   /** Header shows lock balance or the Shards (ex–Fun Coins) wallet. */
   headerWallet: HeaderWallet;
+  /** Show last-roll diamonds on the Dice slider. */
+  diceRollMarks: boolean;
   toggleSound: () => void;
   toggleLeftNav: () => void;
   toggleChat: () => void;
@@ -18,6 +20,7 @@ interface SettingsState {
   setChat: (open: boolean) => void;
   setLockUnit: (unit: LockUnit) => void;
   setHeaderWallet: (wallet: HeaderWallet) => void;
+  setDiceRollMarks: (on: boolean) => void;
 }
 
 type PersistedSettings = Partial<SettingsState> & { displayCurrency?: string };
@@ -30,6 +33,7 @@ export const useSettingsStore = create<SettingsState>()(
       chatOpen: true,
       lockUnit: "wl",
       headerWallet: "locks",
+      diceRollMarks: true,
       toggleSound: () => {
         const next = !get().soundOn;
         sound.setMuted(!next);
@@ -41,6 +45,7 @@ export const useSettingsStore = create<SettingsState>()(
       setChat: (open) => set({ chatOpen: open }),
       setLockUnit: (unit) => set({ lockUnit: unit, headerWallet: "locks" }),
       setHeaderWallet: (wallet) => set({ headerWallet: wallet }),
+      setDiceRollMarks: (on) => set({ diceRollMarks: on }),
     }),
     {
       name: "prism-vault-settings",
@@ -52,6 +57,7 @@ export const useSettingsStore = create<SettingsState>()(
             ...p,
             lockUnit: isLockUnit(p.lockUnit) ? p.lockUnit : "wl",
             headerWallet: p.headerWallet === "shards" ? "shards" : "locks",
+            diceRollMarks: p.diceRollMarks !== false,
           };
         }
         return {

@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
-import { ArrowLeftRight, Dices, Percent, RefreshCw } from "lucide-react";
+import { ArrowLeftRight, Dices, Eye, EyeOff, Percent, RefreshCw } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
@@ -14,6 +14,7 @@ import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { considerWinLeader, localWinName } from "../store/winLeaderStore";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { takeStake } from "../lib/stake";
+import { useSettingsStore } from "../store/settingsStore";
 import {
   DICE_HOUSE_EDGE,
   DICE_MAX_CHANCE,
@@ -63,6 +64,8 @@ export function Dice() {
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
+  const showMarks = useSettingsStore((s) => s.diceRollMarks);
+  const setDiceRollMarks = useSettingsStore((s) => s.setDiceRollMarks);
 
   const multi = multiplierFromChance(chance);
   const target = targetFromChance(chance, condition);
@@ -120,7 +123,7 @@ export function Dice() {
       setRollingDisplay(null);
       setLastRoll(roll);
       setLastWon(won);
-      setHistory((h) => [{ roll, won }, ...h].slice(0, 16));
+      setHistory((h) => [{ roll, won }, ...h].slice(0, 5));
 
       if (won) {
         if (paid > 0) credit(paid);
@@ -284,28 +287,29 @@ export function Dice() {
         </div>
 
         <div className="relative surface space-y-8 overflow-hidden p-5 pb-12 sm:p-8">
-          <WinLeaderStageMark game="dice" />
+          <WinLeaderStageMark game="dice" anchor="top-right" />
           <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-300">
             <Dices className="h-4 w-4 text-cyan-300" />
             {status}
           </div>
 
           <div className="relative mx-auto max-w-3xl px-2 pt-8">
-            {history.slice(0, 10).map((h, i) => {
-              const left = ((h.roll - DICE_MIN_ROLL) / (DICE_MAX_ROLL - DICE_MIN_ROLL)) * 100;
-              return (
-                <span
-                  key={`${h.roll}-${i}`}
-                  title={`${h.roll.toFixed(2)} · ${h.won ? "win" : "miss"}`}
-                  className={clsx(
-                    "pointer-events-none absolute -top-1 h-3 w-3 -translate-x-1/2 rotate-45 rounded-[2px] border",
-                    h.won ? "border-emerald-200 bg-emerald-400" : "border-rose-200 bg-rose-500",
-                    i === 0 && lastRoll != null && "h-3.5 w-3.5 ring-2 ring-white",
-                  )}
-                  style={{ left: `${left}%` }}
-                />
-              );
-            })}
+            {showMarks &&
+              history.slice(0, 5).map((h, i) => {
+                const left = ((h.roll - DICE_MIN_ROLL) / (DICE_MAX_ROLL - DICE_MIN_ROLL)) * 100;
+                return (
+                  <span
+                    key={`${h.roll}-${i}`}
+                    title={`${h.roll.toFixed(2)} · ${h.won ? "win" : "miss"}`}
+                    className={clsx(
+                      "pointer-events-none absolute -top-1 h-3 w-3 -translate-x-1/2 rotate-45 rounded-[2px] border",
+                      h.won ? "border-emerald-200 bg-emerald-400" : "border-rose-200 bg-rose-500",
+                      i === 0 && lastRoll != null && "h-3.5 w-3.5 ring-2 ring-white",
+                    )}
+                    style={{ left: `${left}%` }}
+                  />
+                );
+              })}
 
             <div className="relative h-4 overflow-hidden rounded-full shadow-[inset_0_1px_4px_rgba(0,0,0,0.65)]">
               <div
@@ -327,6 +331,16 @@ export function Dice() {
                 }}
               />
             </div>
+            <div
+              className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
+              style={{ left: `${sliderPct}%` }}
+            >
+              <div className="flex h-9 w-[18px] flex-col items-center justify-center rounded-full border-2 border-cyan-100/90 bg-gradient-to-b from-cyan-200 via-teal-400 to-emerald-600 shadow-[0_4px_10px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.55)]">
+                <span className="mb-0.5 h-0.5 w-2 rounded-full bg-white/80" />
+                <span className="mb-0.5 h-0.5 w-2 rounded-full bg-white/55" />
+                <span className="h-0.5 w-2 rounded-full bg-white/80" />
+              </div>
+            </div>
             <input
               type="range"
               min={DICE_MIN_ROLL}
@@ -335,7 +349,7 @@ export function Dice() {
               disabled={locked}
               value={clampTarget(target, condition)}
               onChange={(e) => applyTarget(Number(e.target.value))}
-              className="dice-slider absolute inset-x-0 -top-1 h-6 w-full cursor-pointer disabled:cursor-not-allowed"
+              className="dice-slider absolute inset-x-0 -top-2 z-20 h-8 w-full cursor-grab active:cursor-grabbing disabled:cursor-not-allowed"
               aria-label="Roll target"
             />
 
@@ -354,7 +368,7 @@ export function Dice() {
             )}
           </div>
 
-          <div className="mx-auto flex max-w-3xl justify-center pt-6">
+          <div className="mx-auto flex max-w-3xl flex-wrap items-center justify-center gap-3 pt-6">
             <div className="grid grid-cols-2 gap-1 rounded-lg bg-black/35 p-1">
               {(["under", "over"] as const).map((c) => (
                 <button
@@ -375,6 +389,20 @@ export function Dice() {
                 </button>
               ))}
             </div>
+            <button
+              type="button"
+              onClick={() => setDiceRollMarks(!showMarks)}
+              className={clsx(
+                "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-wide ring-1",
+                showMarks
+                  ? "text-slate-300 ring-white/10 hover:bg-white/5"
+                  : "text-slate-500 ring-white/10 hover:bg-white/5",
+              )}
+              title={showMarks ? "Hide last rolls on the slider" : "Show last 5 rolls on the slider"}
+            >
+              {showMarks ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {showMarks ? "Last 5 rolls" : "Rolls hidden"}
+            </button>
           </div>
 
           <div className="mx-auto grid max-w-3xl gap-2 pt-3 sm:grid-cols-3">

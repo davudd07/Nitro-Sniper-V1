@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ban, Coins, Crown, Eye, Gift, Headphones, KeyRound, LogOut, MessageSquare, Search, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
+import { Ban, Coins, Crown, Eye, Gift, Headphones, KeyRound, LogOut, MessageSquare, Package, Search, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import {
   clearAdminSession,
@@ -25,6 +25,7 @@ import { useToastStore } from "../store/toastStore";
 import { useAuthStore } from "../store/authStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { VipDesk } from "../components/admin/VipDesk";
+import { CasesDesk } from "../components/admin/CasesDesk";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { useIdentityStore } from "../store/identityStore";
 import { VISUAL_ROLE_LIST, type VisualRole } from "../lib/identity";
@@ -111,7 +112,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const [lookup, setLookup] = useState("");
   const [amount, setAmount] = useState(1000);
   const [confirmView, setConfirmView] = useState(false);
-  const [deskTab, setDeskTab] = useState<"players" | "support" | "vip">("players");
+  const [deskTab, setDeskTab] = useState<"players" | "support" | "vip" | "cases">("players");
   const [gameFilter, setGameFilter] = useState<ActivityGame | "all">("all");
   const [chatWord, setChatWord] = useState("");
   const [ticketId, setTicketId] = useState<string | null>(null);
@@ -243,13 +244,13 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
             </button>
             <button
               type="button"
-              onClick={() => setDeskTab("vip")}
+              onClick={() => setDeskTab("cases")}
               className={clsx(
                 "inline-flex items-center gap-1 rounded px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide",
-                deskTab === "vip" ? "bg-cyan-400/20 text-white" : "text-slate-400 hover:text-white",
+                deskTab === "cases" ? "bg-cyan-400/20 text-white" : "text-slate-400 hover:text-white",
               )}
             >
-              <Crown className="h-3 w-3" /> VIP
+              <Package className="h-3 w-3" /> Cases
             </button>
           </div>
         </div>
@@ -339,6 +340,8 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
           <div className="space-y-4">
             {deskTab === "vip" ? (
               <VipDesk />
+            ) : deskTab === "cases" ? (
+              <CasesDesk />
             ) : deskTab === "support" ? (
               <SupportDesk
                 tickets={tickets}

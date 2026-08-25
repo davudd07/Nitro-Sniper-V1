@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 import { shortId } from "../lib/format";
 import { ITEMS } from "../data/items";
 import { useAuthStore } from "./authStore";
+import { useAdminViewStore } from "./adminViewStore";
+import { hasAdminSession } from "../lib/adminAuth";
 import { useEconomyStore } from "./economyStore";
 import { useLoyaltyStore } from "./loyaltyStore";
 import {
@@ -203,11 +205,11 @@ export const useCommunityCaseStore = create<CommunityCaseState>()(
         return { ok: true, id: rec.id };
       },
       deleteCase: (caseId) => {
-        const session = useAuthStore.getState().session;
-        if (!session) return "Create a username before deleting a community case.";
         const rec = get().cases.find((c) => c.id === caseId);
         if (!rec) return "That case is already gone.";
-        if (rec.creatorId !== session) return "Only the creator can delete this case.";
+        const session = useAuthStore.getState().session;
+        const warden = useAdminViewStore.getState().active || hasAdminSession();
+        if (!warden && rec.creatorId !== session) return "Only the creator can delete this case.";
         set((s) => ({
           cases: s.cases.filter((c) => c.id !== caseId),
           favoriteIds: s.favoriteIds.filter((id) => id !== caseId),

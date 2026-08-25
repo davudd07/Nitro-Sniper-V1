@@ -55,6 +55,8 @@ export function CrossRoad() {
   const [hits, setHits] = useState<boolean[]>([]);
   const [roundId, setRoundId] = useState(0);
   const [jumpToken, setJumpToken] = useState(0);
+  const [splat, setSplat] = useState(false);
+  const [panning, setPanning] = useState(false);
 
   const credit = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -74,6 +76,8 @@ export function CrossRoad() {
 
   const walkerRef = useRef<HTMLDivElement>(null);
   const deathLaneRef = useRef<HTMLButtonElement>(null);
+  const scrollerRef = useRef<HTMLDivElement>(null);
+  const panRef = useRef<{ pointer: number; startX: number; startScroll: number; moved: boolean } | null>(null);
 
   useEffect(() => {
     const ahead = roundOver && seedDeathLane >= 0 && seedDeathLane + 1 > steps;
@@ -92,6 +96,7 @@ export function CrossRoad() {
     setHits(roadLaneHits(rolls, def.survive));
     setSteps(0);
     setJumpToken(0);
+    setSplat(false);
     setRoundId((n) => n + 1);
     setPhase("playing");
     setBusy(false);
@@ -119,6 +124,8 @@ export function CrossRoad() {
     setSteps(index + 1);
     await sleep(JUMP_MS);
     if (hits[index]) {
+      setSplat(true);
+      await sleep(420);
       setPhase("busted");
       recordRound(bet, 0, "road");
       sound.lose();
@@ -271,10 +278,48 @@ export function CrossRoad() {
         </div>
 
         <div className="relative surface overflow-hidden pb-11">
-          <WinLeaderStageMark game="road" />
-          <div className="overflow-x-auto scrollbar-thin">
+          <WinLeaderStageMark game="road" anchor="top-right" />
+          <div
+            ref={scrollerRef}
+            className={clsx("overflow-x-auto scrollbar-thin", panning ? "cursor-grabbing" : "cursor-grab")}
+            onPointerDown={(e) => {
+              if (e.button !== 0) return;
+              const el = scrollerRef.current;
+              if (!el) return;
+              panRef.current = {
+                pointer: e.pointerId,
+                startX: e.clientX,
+                startScroll: el.scrollLeft,
+                moved: false,
+              };
+              el.setPointerCapture(e.pointerId);
+            }}
+            onPointerMove={(e) => {
+              const pan = panRef.current;
+              const el = scrollerRef.current;
+              if (!pan || !el || pan.pointer !== e.pointerId) return;
+              const dx = e.clientX - pan.startX;
+              if (Math.abs(dx) > 6) {
+                pan.moved = true;
+                if (!panning) setPanning(true);
+              }
+              if (pan.moved) el.scrollLeft = pan.startScroll - dx;
+            }}
+            onPointerUp={(e) => {
+              const pan = panRef.current;
+              if (pan && pan.pointer === e.pointerId) panRef.current = pan.moved ? { ...pan, pointer: -1 } : null;
+              setPanning(false);
+              window.setTimeout(() => {
+                panRef.current = null;
+              }, 0);
+            }}
+            onPointerCancel={() => {
+              panRef.current = null;
+              setPanning(false);
+            }}
+          >
             <div
-              className="relative flex h-[280px] sm:h-[320px]"
+              className="relative flex h-[280px] select-none sm:h-[320px]"
               style={{ width: SIDEWALK_W + def.lanes * LANE_W }}
             >
               <Sidewalk active={steps === 0} />
@@ -288,23 +333,35 @@ export function CrossRoad() {
                   hit={roundOver && seedDeathLane === i}
                   seedPeak={roundOver && lastSafeLane === i}
                   deathRef={seedDeathLane === i ? deathLaneRef : undefined}
-                  onStep={() => void stepLane(i)}
+                  onStep={() => {
+                    if (panRef.current?.moved) return;
+                    void stepLane(i);
+                  }}
                 />
               ))}
               <motion.div
                 key={roundId}
                 ref={walkerRef}
-                className={clsx("pointer-events-none absolute bottom-10 z-20", phase === "busted" && "opacity-40")}
+                className="pointer-events-none absolute bottom-10 z-20"
                 style={{ width: WALKER_SIZE, height: WALKER_SIZE }}
                 initial={false}
                 animate={{ left: walkerLeft(steps) }}
-                transition={{ left: { duration: jumpToken > 0 ? JUMP_MS / 1000 : 0, ease: [0.22, 0.8, 0.36, 1] } }}
+                transition={{ left: { duration: jumpToken > 0 && !splat ? JUMP_MS / 1000 : 0, ease: [0.22, 0.8, 0.36, 1] } }}
               >
                 <motion.div
-                  key={jumpToken}
-                  initial={{ y: 0 }}
-                  animate={{ y: jumpToken > 0 ? [0, -52, 0] : 0 }}
-                  transition={{ duration: JUMP_MS / 1000, times: [0, 0.45, 1], ease: "easeOut" }}
+                  key={splat ? "splat" : jumpToken}
+                  initial={{ y: 0, scaleX: 1, scaleY: 1, rotate: 0 }}
+                  animate={
+                    splat
+                      ? { y: 22, scaleX: 1.42, scaleY: 0.2, rotate: 16 }
+                      : { y: jumpToken > 0 ? [0, -52, 0] : 0, scaleX: 1, scaleY: 1, rotate: 0 }
+                  }
+                  transition={
+                    splat
+                      ? { duration: 0.28, delay: 0.18, ease: [0.4, 0, 0.7, 1] }
+                      : { duration: JUMP_MS / 1000, times: [0, 0.45, 1], ease: "easeOut" }
+                  }
+                  style={{ originY: 1, originX: 0.5 }}
                 >
                   <img
                     src={WALKER}
@@ -312,6 +369,19 @@ export function CrossRoad() {
                     className="pixelated h-[88px] w-[88px] object-contain drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]"
                   />
                 </motion.div>
+                <AnimatePresence>
+                  {splat && (
+                    <motion.div
+                      initial={{ y: -150, x: -24, rotate: -12, opacity: 0 }}
+                      animate={{ y: 18, x: 10, rotate: 8, opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.42, ease: [0.15, 0.85, 0.25, 1] }}
+                      className="absolute -top-2 left-0 z-30"
+                    >
+                      <HitCar />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </motion.div>
             </div>
           </div>
@@ -388,18 +458,6 @@ function Lane({
       )}
     >
       <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0 border-l-2 border-dashed border-slate-500/35" />
-      <AnimatePresence>
-        {hit && (
-          <motion.div
-            initial={{ y: -80, opacity: 0 }}
-            animate={{ y: 8, opacity: 1 }}
-            className="absolute top-8 z-20 h-10 w-16 rounded-md bg-gradient-to-r from-rose-400 to-orange-400 shadow-[0_0_18px_rgba(251,113,133,0.55)]"
-          >
-            <span className="absolute left-1 top-2 h-2 w-2 rounded-full bg-amber-200" />
-            <span className="absolute left-1 bottom-2 h-2 w-2 rounded-full bg-amber-200" />
-          </motion.div>
-        )}
-      </AnimatePresence>
       {seedPeak && (
         <span className="absolute top-3 z-10 rounded-full bg-amber-300/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-950">
           Seed max
@@ -443,5 +501,18 @@ function Lane({
         {formatRoadMulti(multi)}
       </span>
     </button>
+  );
+}
+
+function HitCar() {
+  return (
+    <div className="relative h-12 w-[4.75rem] drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]">
+      <div className="absolute inset-x-0.5 top-2 h-7 rounded-md bg-gradient-to-r from-rose-600 via-orange-400 to-amber-300" />
+      <div className="absolute left-2.5 top-0.5 h-[18px] w-9 rounded-t-lg bg-rose-200/90" />
+      <span className="absolute left-1.5 top-3.5 h-2 w-2 rounded-full bg-amber-100" />
+      <span className="absolute right-1.5 top-3.5 h-2 w-2 rounded-full bg-amber-100" />
+      <span className="absolute left-1.5 bottom-0 h-3 w-3 rounded-full bg-slate-950 ring-2 ring-amber-200" />
+      <span className="absolute right-1.5 bottom-0 h-3 w-3 rounded-full bg-slate-950 ring-2 ring-amber-200" />
+    </div>
   );
 }

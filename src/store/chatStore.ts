@@ -39,6 +39,8 @@ interface ChatState {
   rainPot: number;
   send: (text: string) => void;
   post: (msg: Omit<ChatMessage, "id" | "at">) => void;
+  removeMessage: (id: string) => void;
+  removeByName: (name: string) => void;
   joinRain: () => boolean;
   tipRain: (amount: number) => boolean;
   maybeFillJoins: (now: number) => void;
@@ -84,6 +86,15 @@ export const useChatStore = create<ChatState>()(
             ...s.messages,
             { ...msg, id: shortId("chat"), at: Date.now() },
           ].slice(-80),
+        }));
+      },
+      removeMessage: (id) => {
+        set((s) => ({ messages: s.messages.filter((m) => m.id !== id) }));
+      },
+      removeByName: (name) => {
+        const key = name.toLowerCase();
+        set((s) => ({
+          messages: s.messages.filter((m) => m.name.toLowerCase() !== key && !(name === "You" && m.you)),
         }));
       },
       joinRain: () => {

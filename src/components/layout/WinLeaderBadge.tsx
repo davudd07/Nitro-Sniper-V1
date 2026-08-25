@@ -31,11 +31,14 @@ export function WinLeaderStageMark({
   game,
   className,
   inline = false,
+  anchor = "bottom-right",
 }: {
   game: WinLeaderGame;
   className?: string;
   /** Place the mark in document flow (e.g. beside a full-width Upgrade button). */
   inline?: boolean;
+  /** Overlay corner when not `inline`. */
+  anchor?: "bottom-right" | "top-right";
 }) {
   const record = useWinLeaderStore((s) => s.records[game]);
   if (!record) return null;
@@ -45,7 +48,9 @@ export function WinLeaderStageMark({
         "pointer-events-auto",
         inline
           ? "relative shrink-0"
-          : "absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3",
+          : anchor === "top-right"
+            ? "absolute top-2 right-2 z-20 sm:top-3 sm:right-3"
+            : "absolute bottom-2 right-2 z-20 sm:bottom-3 sm:right-3",
         className,
       )}
     >

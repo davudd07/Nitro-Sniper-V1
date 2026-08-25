@@ -4,7 +4,7 @@ export const CRASH_HOUSE_EDGE = 1 - CRASH_RTP;
 export const CRASH_MAX_MULTI = 1_000;
 export const CRASH_MIN_CASHOUT = 1.01;
 /** Seconds to reach 2.00× on the visible curve. */
-export const CRASH_TWO_X_SECONDS = 6;
+export const CRASH_TWO_X_SECONDS = 8;
 export const CRASH_GROWTH = Math.log(2) / CRASH_TWO_X_SECONDS;
 export const CRASH_BETTING_MS = 6_500;
 export const CRASH_CRASH_HOLD_MS = 2_800;

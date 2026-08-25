@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Clock, Sparkles, Flame, Search, ShieldCheck } from "lucide-react";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
-import { CASES } from "../data/cases";
+import { listOfficialCases } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { formatPercent } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
@@ -19,10 +19,15 @@ import {
   gameById,
 } from "../data/lobbyGames";
 import { listRecent } from "../lib/recentGames";
+import { useCatalogModerationStore } from "../store/catalogModerationStore";
+import { useAdminViewStore } from "../store/adminViewStore";
 
 export function Home() {
   const [query, setQuery] = useState("");
   const push = useToastStore((s) => s.push);
+  const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
+  const adminView = useAdminViewStore((s) => s.active);
+  const featuredCases = useMemo(() => listOfficialCases(), [hiddenOfficialIds, adminView]);
   const recent = useMemo(
     () => listRecent().map(gameById).filter((g): g is NonNullable<typeof g> => Boolean(g)),
     [],
@@ -111,7 +116,7 @@ export function Home() {
           <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-white">Featured cases</h2>
         </div>
         <div className="flex gap-3 overflow-x-auto pb-1 scrollbar-thin">
-          {CASES.map((c) => (
+          {featuredCases.map((c) => (
             <Link
               key={c.id}
               to={`/cases/${c.id}`}

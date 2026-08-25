@@ -27,14 +27,12 @@ import {
   CRASH_MIN_CASHOUT,
   CRASH_RTP,
   clampCashout,
-  crashChipTone,
   crashPayout,
   crashPointFromFloat,
   displayedMultiplier,
   flightDurationMs,
   formatCrashMulti,
   roundCrash,
-  seedCrashHistory,
   type CrashPhase,
 } from "../lib/crash";
 
@@ -76,13 +74,6 @@ function spawnBots(): Seat[] {
   return seats.sort((a, b) => b.stake - a.stake);
 }
 
-function chipClass(m: number): string {
-  const tone = crashChipTone(m);
-  if (tone === "moon") return "bg-amber-400/15 text-amber-200 ring-1 ring-amber-400/45";
-  if (tone === "hit") return "bg-emerald-400/15 text-emerald-200 ring-1 ring-emerald-400/40";
-  return "bg-white/[0.04] text-slate-400 ring-1 ring-white/10";
-}
-
 export function Crash() {
   const [bet, setBet] = useState(100);
   const [autoCashout, setAutoCashout] = useState(2);
@@ -92,7 +83,6 @@ export function Crash() {
   const [samples, setSamples] = useState<CrashSample[]>([]);
   const [bettingLeftMs, setBettingLeftMs] = useState(CRASH_BETTING_MS);
   const [seats, setSeats] = useState<Seat[]>([]);
-  const [history, setHistory] = useState<number[]>(() => [...seedCrashHistory()].reverse());
   const [youPlaced, setYouPlaced] = useState(false);
   const [youCashed, setYouCashed] = useState(false);
 
@@ -324,7 +314,6 @@ export function Crash() {
       setMultiplier(point);
       multiRef.current = point;
       if (youPlacedRef.current && !youCashedRef.current) settleLoss();
-      setHistory((h) => [point, ...h].slice(0, 24));
       ctl.timeout = window.setTimeout(() => beginBetting(), CRASH_CRASH_HOLD_MS);
     }
 
@@ -522,21 +511,6 @@ export function Crash() {
         </div>
 
         <div className="surface relative flex min-h-0 flex-col overflow-hidden">
-          <div className="flex gap-1.5 overflow-x-auto border-b border-white/8 px-3 py-2 scrollbar-thin">
-            {history.map((m, i) => (
-              <span
-                key={`${m}-${i}`}
-                title={formatCrashMulti(m)}
-                className={clsx(
-                  "shrink-0 rounded-md px-2 py-0.5 font-mono text-[11px] font-bold tabular-nums",
-                  chipClass(m),
-                  i === 0 && "ring-2 ring-white/30",
-                )}
-              >
-                {formatCrashMulti(m)}
-              </span>
-            ))}
-          </div>
           <CrashGraph
             phase={phase}
             multiplier={multiplier}

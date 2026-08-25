@@ -1,6 +1,6 @@
 import { ITEMS, type CaseItem } from "./items";
 import { findHydratedCommunityCase } from "../store/communityCaseStore";
-import { stampTicketRanges, ticketFromRoll } from "../lib/caseTickets";
+import { isFillerLoot, stampTicketRanges, ticketFromRoll } from "../lib/caseTickets";
 import { OFFICIAL_CHEST_COLORS, pileStickers, type ChestSticker } from "../lib/chest";
 import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useAdminViewStore } from "../store/adminViewStore";
@@ -12,7 +12,7 @@ export interface CaseOddsEntry {
   tickets: number;
   ticketStart: number;
   ticketEnd: number;
-  /** Rarest 1% of the million-ticket pool (tickets 990,000–1,000,000) — Gold Spin eligible. */
+  /** Rarest 1% of prize tickets (990,000–1,000,000) — Gold Spin eligible. Never junk filler. */
   goldTier: boolean;
 }
 
@@ -182,7 +182,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "elite",
     name: "Aura Chamber",
     price: 800,
-    blurb: "Auras through Shadow Crown in the rarest tickets.",
+    blurb: "Auras through Love Eyes in the gold-spin pool.",
     from: "#f97316",
     to: "#7c2d12",
     targetRtp: 0.96,
@@ -224,7 +224,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "apex",
     name: "Crown Vault",
     price: 2000,
-    blurb: "Crowns and twin swords. Diamond Dragon is the spike.",
+    blurb: "Crowns and twin swords. Guardian Pineapple sits in the gold tickets.",
     from: "#e11d48",
     to: "#4c0519",
     targetRtp: 0.96,
@@ -298,7 +298,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "forge",
     name: "Phoenix Forge",
     price: 12000,
-    blurb: "Phoenix steel and ultraviolet loot. MAGPLANT sits in the gold-spin pool.",
+    blurb: "Phoenix steel and ultraviolet loot. Draconic Soul Aura sits in the gold tickets.",
     from: "#fb7185",
     to: "#7f1d1d",
     targetRtp: 0.96,
@@ -321,7 +321,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "dragons",
     name: "Dragon Yard",
     price: 35000,
-    blurb: "Crowns, a dragon of legend, and Royal Lock in the rare tickets.",
+    blurb: "Crowns, a dragon of legend, and Space Cat in the gold tickets.",
     from: "#a78bfa",
     to: "#2e1065",
     targetRtp: 0.96,
@@ -371,17 +371,17 @@ const CASE_DEFS: CaseDef[] = [
     id: "ruby",
     name: "Ruby Reliquary",
     price: 180000,
-    blurb: "Ruby Lock through Legendary Katana. Whip of Truth is the spike.",
+    blurb: "Ruby Lock is the usual hit. Legendary Katana sits in the gold-spin pool.",
     from: "#f43f5e",
     to: "#4c0519",
     targetRtp: 0.96,
     risk: "high",
     raw: [
-      ["ruby_lock", 40],
-      ["holiday_light_scarf", 32],
-      ["legendbot_009", 24],
-      ["whip_of_truth", 14],
-      ["legendary_katana", 8],
+      ["ruby_lock", 21],
+      ["holiday_light_scarf", 18],
+      ["legendbot_009", 16],
+      ["whip_of_truth", 15],
+      ["legendary_katana", 14],
       ["dirt", 0],
     ],
   },
@@ -389,20 +389,20 @@ const CASE_DEFS: CaseDef[] = [
     id: "legend",
     name: "Legend Chamber",
     price: 420000,
-    blurb: "Emerald Lock, Growie Award, and Da Vinci Wings in the tail.",
+    blurb: "Dirt is the miss. Da Vinci Wings sit in the gold-spin pool.",
     from: "#c4b5fd",
     to: "#2e1065",
     targetRtp: 0.96,
     risk: "medium",
     raw: [
-      ["neptunes_armor", 32],
-      ["emerald_lock", 28],
-      ["mothman_wings", 24],
-      ["snowglobe_staff", 20],
-      ["legendary_title", 16],
-      ["morty_the_pink_elephant", 12],
-      ["growie_award", 8],
-      ["da_vinci_wings", 6],
+      ["neptunes_armor", 18],
+      ["emerald_lock", 20],
+      ["mothman_wings", 22],
+      ["snowglobe_staff", 22],
+      ["legendary_title", 20],
+      ["morty_the_pink_elephant", 16],
+      ["growie_award", 12],
+      ["da_vinci_wings", 7],
       ["dirt", 0],
     ],
   },
@@ -410,20 +410,20 @@ const CASE_DEFS: CaseDef[] = [
     id: "tide",
     name: "Neptune's Trove",
     price: 900000,
-    blurb: "Neptune's set plus Phoenix Wings. Ghost Pirate Scimitar hides here.",
+    blurb: "Dirt is the miss. Neptune's Trident sits in the gold-spin pool.",
     from: "#38bdf8",
     to: "#0c4a6e",
     targetRtp: 0.96,
     risk: "high",
     raw: [
-      ["possessing_scarf", 28],
-      ["neptunes_crown", 26],
-      ["stethoscope", 20],
+      ["possessing_scarf", 16],
+      ["neptunes_crown", 16],
+      ["stethoscope", 18],
       ["legendary_wings", 16],
-      ["neptunes_chariot", 12],
-      ["phoenix_wings", 8],
-      ["ghost_pirate_scimitar", 5],
-      ["neptunes_trident", 3],
+      ["neptunes_chariot", 14],
+      ["phoenix_wings", 10],
+      ["ghost_pirate_scimitar", 7],
+      ["neptunes_trident", 4],
       ["dirt", 0],
     ],
   },
@@ -431,19 +431,19 @@ const CASE_DEFS: CaseDef[] = [
     id: "abyss",
     name: "Pearl Abyss",
     price: 2400000,
-    blurb: "Pink Pearl, Giant Eye, and Oceanaura. Burning Pearl Spinner is the spike.",
+    blurb: "Dirt is the miss. Burning Pearl Spinner sits in the gold-spin pool.",
     from: "#22d3ee",
     to: "#083344",
     targetRtp: 0.96,
     risk: "high",
     raw: [
-      ["curse_of_the_pink_pearl", 24],
-      ["giant_eye_head", 20],
-      ["mystic_battle_lance", 16],
+      ["curse_of_the_pink_pearl", 14],
+      ["giant_eye_head", 14],
+      ["mystic_battle_lance", 14],
       ["pearl_treasured_octopus", 12],
-      ["oldsocks_old_mate_ricky", 10],
-      ["oceanaura", 7],
-      ["burning_pearl_spinner", 5],
+      ["oldsocks_old_mate_ricky", 11],
+      ["oceanaura", 9],
+      ["burning_pearl_spinner", 6],
       ["dirt", 0],
     ],
   },
@@ -451,21 +451,21 @@ const CASE_DEFS: CaseDef[] = [
     id: "nightking",
     name: "Nightking's Cache",
     price: 10000000,
-    blurb: "Midnight cape, Curse Wand, Phonecats Hat. The 20 million WL chase.",
+    blurb: "Dirt is the miss. Nightking's Cape is the 20 million WL gold-spin chase.",
     from: "#6366f1",
     to: "#020617",
     targetRtp: 0.96,
     risk: "high",
     raw: [
-      ["golden_pickaxe", 24],
-      ["morty_the_diamond_elephant", 20],
-      ["hellfire_horns_ruby", 16],
-      ["radiant_doom_staff", 12],
-      ["focused_eyes", 9],
-      ["dark_cult_hood", 6],
-      ["phonecats_hat", 4],
-      ["curse_wand", 2.5],
-      ["nightkings_cape_midnight_blue", 2],
+      ["golden_pickaxe", 14],
+      ["morty_the_diamond_elephant", 14],
+      ["hellfire_horns_ruby", 14],
+      ["radiant_doom_staff", 13],
+      ["focused_eyes", 12],
+      ["dark_cult_hood", 10],
+      ["phonecats_hat", 8],
+      ["curse_wand", 5],
+      ["nightkings_cape_midnight_blue", 3],
       ["dirt", 0],
     ],
   },
@@ -505,6 +505,19 @@ function buildCase(def: CaseDef): { odds: CaseOddsEntry[]; ev: number; rtp: numb
     .sort((a, b) => a.probability - b.probability);
 
   const odds: CaseOddsEntry[] = stampTicketRanges(withProbability);
+
+  const fillerOdds = odds.filter((o) => isFillerLoot(o.item));
+  const prizeOdds = odds.filter((o) => !isFillerLoot(o.item));
+  if (odds.some((o) => o.goldTier && isFillerLoot(o.item))) {
+    throw new Error(`Case "${def.id}" put junk filler in the gold-spin pool`);
+  }
+  if (fillerOdds.length > 0 && prizeOdds.length > 0) {
+    const rarestPrize = Math.min(...prizeOdds.map((o) => o.probability));
+    const fillerShare = fillerOdds.reduce((s, o) => s + o.probability, 0);
+    if (fillerShare + 1e-12 < rarestPrize) {
+      throw new Error(`Case "${def.id}" makes filler rarer than the chase items`);
+    }
+  }
 
   const ev = odds.reduce((s, o) => s + o.probability * o.item.value, 0);
   return { odds, ev, rtp: ev / def.price };

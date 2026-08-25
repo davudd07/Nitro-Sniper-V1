@@ -36,9 +36,10 @@ export function ProvablyFairPanel({ compact = false }: { compact?: boolean }) {
           <p className="text-slate-400">
             Every roll is derived from a server seed (committed via its hash before you play), your client seed, and a
             round nonce — HMAC-SHA256, same pattern used across the industry. The float is mapped onto a{" "}
-            <span className="font-mono text-slate-300">1,000,000</span>-ticket pool; the rarest 1% of outcomes sit on
-            tickets 990,000–1,000,000. Because this is a client-only demo, the “server” lives in your browser too, but
-            the verification flow is real: you can re-derive any past roll below.
+            <span className="font-mono text-slate-300">1,000,000</span>-ticket pool; the rarest 1% of prize tickets sit
+            on 990,000–1,000,000 (Gold Spin — junk filler never occupies that band). Because this is a client-only demo,
+            the “server” lives in your browser too, but the verification flow is real: you can re-derive any past roll
+            below.
           </p>
           <div>
             <p className="mb-1 text-slate-500">Server seed hash (committed)</p>

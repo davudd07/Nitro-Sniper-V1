@@ -8,6 +8,18 @@ export interface TicketBand {
   ticketEnd: number;
 }
 
+export interface TicketLootRef {
+  id: string;
+  value: number;
+}
+
+/** Dirt, fireworks, and 0–1 WL placeholders — never Gold Spin prizes. */
+export function isFillerLoot(item: TicketLootRef | undefined | null): boolean {
+  if (!item) return false;
+  if (item.id === "dirt" || item.id === "firework") return true;
+  return item.value <= 1;
+}
+
 /** Map a fair float in [0, 1) onto tickets 1…1,000,000. */
 export function ticketFromRoll(roll: number): number {
   if (!Number.isFinite(roll) || roll <= 0) return 1;
@@ -43,16 +55,22 @@ export function allocateTickets(probabilities: number[], total = CASE_TICKET_COU
 }
 
 /**
- * Rarest items sit at the top of the ticket list, so the rarest 1% of outcomes
- * occupy tickets 990,000–1,000,000.
+ * Rarest *prizes* sit at the top of the ticket list, so the rarest 1% of
+ * outcomes occupy tickets 990,000–1,000,000 (Gold Spin). Junk filler always
+ * occupies the low tickets — even if a case accidentally makes dirt rare —
+ * so Gold Spin never pays Dirt / Firework / 0-WL placeholders.
  */
-export function stampTicketRanges<T extends { probability: number }>(
+export function stampTicketRanges<T extends { probability: number; item?: TicketLootRef }>(
   entries: T[],
 ): (T & TicketBand & { goldTier: boolean })[] {
   const tickets = allocateTickets(entries.map((e) => e.probability));
   const ranked = entries
     .map((entry, index) => ({ entry, index, tickets: tickets[index] ?? 0 }))
-    .sort((a, b) => a.entry.probability - b.entry.probability || b.tickets - a.tickets);
+    .sort((a, b) => {
+      const fill = Number(isFillerLoot(a.entry.item)) - Number(isFillerLoot(b.entry.item));
+      if (fill !== 0) return fill;
+      return a.entry.probability - b.entry.probability || b.tickets - a.tickets;
+    });
   let cursor = CASE_TICKET_COUNT;
   const byIndex = new Map<number, TicketBand & { goldTier: boolean }>();
   for (const row of ranked) {
@@ -64,7 +82,7 @@ export function stampTicketRanges<T extends { probability: number }>(
       tickets: count,
       ticketStart,
       ticketEnd,
-      goldTier: count > 0 && ticketEnd >= RARE_TICKET_START,
+      goldTier: count > 0 && ticketEnd >= RARE_TICKET_START && !isFillerLoot(row.entry.item),
     });
   }
   return entries.map((entry, i) => ({

@@ -1,4 +1,5 @@
 import type { RarityId } from "./rarities";
+import { HIGH_TIER_ITEMS, type HighTierItemId } from "./highTierItems";
 
 export type IconKey =
   | "maxxx"
@@ -33,7 +34,8 @@ export type IconKey =
   | "zombie_jammer"
   | "phoenix_hair"
   | "diamond_dragon"
-  | "party_blaster";
+  | "party_blaster"
+  | HighTierItemId;
 
 export interface CaseItem {
   id: string;
@@ -51,7 +53,7 @@ function rarityForValue(value: number): RarityId {
   return "mythic";
 }
 
-function item(id: Exclude<IconKey, "maxxx" | "sparkles">, name: string, value: number): CaseItem {
+function item(id: Exclude<IconKey, "maxxx" | "sparkles" | "removed">, name: string, value: number): CaseItem {
   return { id, name, value, rarity: rarityForValue(value), icon: id };
 }
 
@@ -87,6 +89,7 @@ export const ITEMS: Record<string, CaseItem> = {
   phoenix_hair: item("phoenix_hair", "Phoenix Hair", 9000),
   party_blaster: item("party_blaster", "Party Blaster", 10000),
   maxxx_win: { id: "maxxx_win", name: "MAXXX WIN", value: 500000, rarity: "mythic", icon: "maxxx" },
+  ...Object.fromEntries(HIGH_TIER_ITEMS.map((row) => [row.id, item(row.id, row.name, row.value)])),
 };
 
 /** Every catalog item, website prices only. MAXXX WIN is overlay-only and is omitted. */

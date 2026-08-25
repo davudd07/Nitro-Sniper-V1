@@ -245,7 +245,7 @@ export function CreateCommunityCaseForm({
                     </select>
                   </label>
                 </div>
-                <div className="grid max-h-64 grid-cols-2 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                <div className="grid max-h-[22rem] grid-cols-2 gap-2 overflow-y-auto scrollbar-thin sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                   {catalog.map((item) => {
                     const on = selected.has(item.id);
                     const full = !on && entries.length >= COMMUNITY_MAX_ITEMS;

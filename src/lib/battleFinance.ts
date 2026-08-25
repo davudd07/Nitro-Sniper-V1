@@ -1,5 +1,15 @@
-/** Max fraction of a seat a joiner can borrow. */
+/** Min / max fraction of a seat a player can borrow. Integer percents 1–90. */
+export const MIN_BORROW_PCT = 0.01;
 export const MAX_BORROW_PCT = 0.9;
+/** Whole-percent steps on borrow sliders (1, 2, … 90 — not 5/10/15). */
+export const BORROW_PCT_STEP = 0.01;
+
+/** Snap a borrow fraction onto an integer percent in [min, MAX]. */
+export function snapBorrowPct(n: number, allowZero = false): number {
+  const min = allowZero ? 0 : MIN_BORROW_PCT;
+  const clamped = clampPct(n, min, MAX_BORROW_PCT);
+  return Math.round(clamped * 100) / 100;
+}
 
 export function clampPct(n: number, min = 0, max = 1): number {
   if (Number.isNaN(n)) return min;

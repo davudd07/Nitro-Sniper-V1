@@ -37,6 +37,7 @@ import { useToastStore } from "../store/toastStore";
 import { formatCash } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
+import { BorrowPctSlider } from "../components/battles/BorrowPctSlider";
 import { consumeBattleDraft } from "../lib/battleDraft";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
 import { HOUSE_EDGE } from "../lib/rakeback";
@@ -623,7 +624,7 @@ export function CreateBattle() {
             <SideToggle
               icon={Handshake}
               label="Borrow"
-              hint={`Borrow up to ${pctLabel(MAX_BORROW_PCT)} of your own seat. You keep the unborrowed share of winnings. Disabled when the battle is sponsored.`}
+              hint={`Borrow any whole percent from 1–${pctLabel(MAX_BORROW_PCT)} of your own seat. You keep the unborrowed share of winnings. Disabled when the battle is sponsored.`}
               color="#38bdf8"
               checked={borrowOn}
               disabled={fundedOn}
@@ -634,16 +635,8 @@ export function CreateBattle() {
             >
               {borrowOn && !fundedOn && (
                 <div className="mt-2">
-                  <input
-                    type="range"
-                    min={5}
-                    max={Math.round(MAX_BORROW_PCT * 100)}
-                    step={5}
-                    value={Math.round(borrowPct * 100)}
-                    onChange={(e) => setBorrowPct(Number(e.target.value) / 100)}
-                    className="w-full accent-sky-400"
-                  />
-                  <p className="flex flex-wrap items-center gap-1 text-[11px] text-sky-200">
+                  <BorrowPctSlider value={borrowPct} onChange={setBorrowPct} />
+                  <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-sky-200">
                     Borrow {pctLabel(borrowPct)} · you pay{" "}
                     <CashAmount wl={Math.round(costPerPlayer * (1 - borrowPct))} iconClassName="h-3 w-3" /> · keep{" "}
                     {pctLabel(1 - borrowPct)} of winnings

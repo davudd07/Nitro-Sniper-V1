@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
-import { ArrowLeft, Handshake, Sparkles, Trash2, Zap } from "lucide-react";
+import { ArrowLeft, Handshake, Sparkles, Trash2, TriangleAlert, Zap } from "lucide-react";
 import { clsx } from "clsx";
 import { getCase, rollCaseItem } from "../data/cases";
 import { CaseReel } from "../components/cases/CaseReel";
@@ -17,6 +17,7 @@ import { useAdminViewStore } from "../store/adminViewStore";
 import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { takeStake } from "../lib/stake";
 import { keepPct, MAX_BORROW_PCT, pctLabel, winPayout } from "../lib/battleFinance";
+import { BorrowPctSlider } from "../components/battles/BorrowPctSlider";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
@@ -25,7 +26,8 @@ import { useAuthStore } from "../store/authStore";
 import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
 import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import type { CaseItem } from "../data/items";
-import { isMaxxxWin } from "../data/items";
+import { isMaxxxWin, ITEMS } from "../data/items";
+import { isMissingCatalogItem } from "../lib/communityCaseAudit";
 import type { CaseOddsEntry } from "../data/cases";
 import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 
@@ -69,6 +71,10 @@ export function CaseOpenPage() {
   const goldPool = useMemo(() => (c ? c.odds.filter((o) => o.goldTier).map((o) => o.item) : []), [c]);
   const goldIds = useMemo(() => new Set(goldPool.map((item) => item.id)), [goldPool]);
   const pool = useMemo(() => (c ? c.odds.map((o) => o.item) : []), [c]);
+  const missingCatalogRows = useMemo(
+    () => (c?.community ? c.raw.filter(([id]) => !ITEMS[id]) : []),
+    [c],
+  );
 
   if (!c) return <Navigate to="/cases" replace />;
 
@@ -159,6 +165,18 @@ export function CaseOpenPage() {
             </div>
             <p className="text-sm text-slate-400">{c.blurb}</p>
             <CaseCreatorLine c={c} />
+            {missingCatalogRows.length > 0 && (
+              <div className="mt-2 flex gap-2 rounded-lg border border-amber-400/30 bg-amber-500/10 px-3 py-2 text-[11px] leading-snug text-amber-100">
+                <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-300" />
+                <p>
+                  {missingCatalogRows.length === 1 ? "An item" : `${missingCatalogRows.length} items`} in this case{" "}
+                  {missingCatalogRows.length === 1 ? "was" : "were"} removed from the catalog (
+                  {missingCatalogRows.map(([id]) => id).join(", ")}). Those slots stay at their original chance as{" "}
+                  <span className="font-semibold">0 WL</span> — leftover odds are not stretched onto the remaining
+                  prizes, so the case price is unchanged.
+                </p>
+              </div>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             {isOwner && (
@@ -290,19 +308,10 @@ export function CaseOpenPage() {
             </div>
             {borrowOn && (
               <div className="rounded-xl border border-sky-400/20 bg-sky-500/5 px-3 py-2.5">
-                <input
-                  type="range"
-                  min={5}
-                  max={Math.round(MAX_BORROW_PCT * 100)}
-                  step={5}
-                  value={Math.round(borrowPct * 100)}
-                  disabled={spinning}
-                  onChange={(e) => setBorrowPct(Number(e.target.value) / 100)}
-                  className="w-full accent-sky-400"
-                />
+                <BorrowPctSlider value={borrowPct} onChange={setBorrowPct} disabled={spinning} />
                 <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-sky-200">
                   Borrow {pctLabel(borrowPct)} · you pay <CashAmount wl={paidTotal} iconClassName="h-3 w-3" /> · keep{" "}
-                  {pctLabel(keepPct(borrowPct))} of winnings (up to {pctLabel(MAX_BORROW_PCT)})
+                  {pctLabel(keepPct(borrowPct))} of winnings (any whole percent from 1–{pctLabel(MAX_BORROW_PCT)})
                 </p>
               </div>
             )}
@@ -337,18 +346,22 @@ export function CaseOpenPage() {
             <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-thin pr-1">
               {[...c.odds]
                 .sort((a, b) => b.probability - a.probability)
-                .map((o) => (
+                .map((o, i) => (
                   <div
-                    key={o.item.id}
+                    key={`${o.item.id}-${i}`}
                     className={clsx(
                       "flex items-center justify-between rounded px-2 py-1.5 text-xs",
                       adminView && o.goldTier
                         ? "bg-amber-400/15 ring-1 ring-amber-300/70"
                         : "bg-black/20",
                       adminView && !o.goldTier && "opacity-55",
+                      isMissingCatalogItem(o.item) && "text-slate-500",
                     )}
                   >
-                    <span className="truncate pr-2">{o.item.name}</span>
+                    <span className="truncate pr-2">
+                      {o.item.name}
+                      {isMissingCatalogItem(o.item) ? " · catalog removed" : ""}
+                    </span>
                     <span className="flex shrink-0 items-center gap-1.5 text-slate-400">
                       <span>{(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%</span>
                       <CashAmount wl={o.item.value} iconClassName="h-3 w-3" />

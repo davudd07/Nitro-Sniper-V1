@@ -3,6 +3,7 @@ import type { RarityId } from "./rarities";
 export type IconKey =
   | "maxxx"
   | "sparkles"
+  | "removed"
   | "dirt"
   | "firework"
   | "teeny_angel_wings"
@@ -98,12 +99,13 @@ export function isMaxxxWin(item: { id: string }): boolean {
 }
 
 export function isPixelItem(item: { id: string; icon: IconKey }): boolean {
-  return item.icon !== "sparkles";
+  return item.icon !== "sparkles" && item.icon !== "removed";
 }
 
 export function iconImageSrc(icon: IconKey): string {
   if (icon === "maxxx") return "/images/items/maxxx.png";
   if (icon === "sparkles") return "/images/items/gold-spin.png";
+  if (icon === "removed") return "/images/items/removed.svg";
   return `/images/items/${icon}.png`;
 }
 

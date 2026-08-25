@@ -4,6 +4,7 @@ import { houseEdgeForGame, sortedTiers, type VipTier } from "./loyalty";
 import { HOUSE_EDGE } from "./rakeback";
 import { stampTicketRanges } from "./caseTickets";
 import { pileStickers, type ChestSticker } from "./chest";
+import { catalogItemOrMissing } from "./communityCaseAudit";
 
 /**
  * Community case pricing matches official cases (EV stays below price by the
@@ -210,8 +211,10 @@ export function withGoldTiers(
 export function hydrateCommunityCase(rec: CommunityCaseRecord): Case {
   const built: Omit<CaseOddsEntry, "goldTier" | "tickets" | "ticketStart" | "ticketEnd">[] = [];
   for (const e of rec.entries) {
-    const item = ITEMS[e.itemId];
-    if (!item) continue;
+    // Keep deleted catalog rows at their original chance as 0-WL fillers.
+    // Dropping them would stretch leftover tickets onto the remaining prizes
+    // (50% miss + 50% MAXXX becomes 100% MAXXX at the old price).
+    const item = catalogItemOrMissing(e.itemId);
     const probability = Math.max(0, e.chancePct) / 100;
     built.push({ item, weight: Math.max(0, e.chancePct), probability });
   }

@@ -10,6 +10,7 @@ import {
   keepPct,
   pctLabel,
 } from "../../lib/battleFinance";
+import { BorrowPctSlider } from "./BorrowPctSlider";
 import { CashAmount } from "../ui/CurrencyIcon";
 import { sound } from "../../lib/sound";
 
@@ -74,18 +75,10 @@ export function JoinBattleModal({
               <Handshake className="h-4 w-4 text-sky-300" /> Borrow
             </p>
             <p className="text-xs text-slate-400">
-              Borrow up to {pctLabel(MAX_BORROW_PCT)} of the seat. You pay less now, but you only keep the unborrowed
-              share of any winnings.
+              Borrow any whole percent from 0–{pctLabel(MAX_BORROW_PCT)} of the seat. You pay less now, but you only
+              keep the unborrowed share of any winnings.
             </p>
-            <input
-              type="range"
-              min={0}
-              max={Math.round(MAX_BORROW_PCT * 100)}
-              step={5}
-              value={Math.round(borrowPct * 100)}
-              onChange={(e) => setBorrowPct(Number(e.target.value) / 100)}
-              className="w-full accent-sky-400"
-            />
+            <BorrowPctSlider allowZero value={borrowPct} onChange={setBorrowPct} />
             <div className="flex justify-between text-xs text-slate-400">
               <span>Borrow {pctLabel(borrowPct)}</span>
               <span>Keep {pctLabel(keep)} of winnings</span>

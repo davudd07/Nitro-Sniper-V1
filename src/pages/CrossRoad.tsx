@@ -83,7 +83,7 @@ export function CrossRoad() {
     const ahead = roundOver && seedDeathLane >= 0 && seedDeathLane + 1 > steps;
     const el = ahead ? deathLaneRef.current : walkerRef.current;
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
-  }, [steps, phase, roundId, seedDeathLane, roundOver]);
+  }, [steps, phase, roundId, seedDeathLane, roundOver, splat]);
 
   async function startGame() {
     if (phase === "playing" || busy) return;
@@ -125,10 +125,10 @@ export function CrossRoad() {
     await sleep(JUMP_MS);
     if (hits[index]) {
       setSplat(true);
-      await sleep(420);
+      sound.lose();
+      await sleep(480);
       setPhase("busted");
       recordRound(bet, 0, "road");
-      sound.lose();
       const maxM = roadSeedMaxMulti(hits, def.survive);
       const maxSteps = roadSeedMaxSteps(hits);
       push(
@@ -506,13 +506,13 @@ function Lane({
 
 function HitCar() {
   return (
-    <div className="relative h-12 w-[4.75rem] drop-shadow-[0_8px_10px_rgba(0,0,0,0.55)]">
-      <div className="absolute inset-x-0.5 top-2 h-7 rounded-md bg-gradient-to-r from-rose-600 via-orange-400 to-amber-300" />
-      <div className="absolute left-2.5 top-0.5 h-[18px] w-9 rounded-t-lg bg-rose-200/90" />
-      <span className="absolute left-1.5 top-3.5 h-2 w-2 rounded-full bg-amber-100" />
-      <span className="absolute right-1.5 top-3.5 h-2 w-2 rounded-full bg-amber-100" />
-      <span className="absolute left-1.5 bottom-0 h-3 w-3 rounded-full bg-slate-950 ring-2 ring-amber-200" />
-      <span className="absolute right-1.5 bottom-0 h-3 w-3 rounded-full bg-slate-950 ring-2 ring-amber-200" />
+    <div className="relative h-14 w-[5.5rem] drop-shadow-[0_8px_12px_rgba(0,0,0,0.65)]">
+      <div className="absolute inset-x-0 top-3 h-8 rounded-md bg-gradient-to-r from-rose-700 via-orange-400 to-amber-200" />
+      <div className="absolute left-3 top-0.5 h-5 w-11 rounded-t-lg bg-rose-100/95" />
+      <span className="absolute left-2 top-5 h-2.5 w-2.5 rounded-full bg-amber-100" />
+      <span className="absolute right-1.5 top-5 h-2.5 w-2.5 rounded-full bg-amber-100" />
+      <span className="absolute left-1.5 bottom-0 h-3.5 w-3.5 rounded-full bg-slate-950 ring-2 ring-amber-200" />
+      <span className="absolute right-1 bottom-0 h-3.5 w-3.5 rounded-full bg-slate-950 ring-2 ring-amber-200" />
     </div>
   );
 }

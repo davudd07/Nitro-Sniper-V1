@@ -198,7 +198,9 @@ export function Dice() {
             {DICE_MAX_MULTI}×.
           </p>
         </div>
-        <InfoButton title="Dice — RTP & House Edge">
+        <div className="flex flex-wrap items-center gap-2">
+          <WinLeaderStageMark game="dice" inline />
+          <InfoButton title="Dice — RTP & House Edge">
           <StatRow label="RTP" value={formatPercent(DICE_RTP)} />
           <StatRow label="House edge" value={formatPercent(DICE_HOUSE_EDGE)} />
           <StatRow label="Max multiplier" value={`${DICE_MAX_MULTI}×`} />
@@ -208,6 +210,7 @@ export function Dice() {
             edge, not player losses. Bet 0 is a demo roll.
           </p>
         </InfoButton>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
@@ -287,7 +290,6 @@ export function Dice() {
         </div>
 
         <div className="relative surface space-y-8 overflow-hidden p-5 pb-12 sm:p-8">
-          <WinLeaderStageMark game="dice" anchor="top-right" />
           <div className="flex items-center justify-center gap-2 text-sm font-semibold text-slate-300">
             <Dices className="h-4 w-4 text-cyan-300" />
             {status}
@@ -335,7 +337,7 @@ export function Dice() {
               className="pointer-events-none absolute top-1/2 z-10 -translate-x-1/2 -translate-y-1/2"
               style={{ left: `${sliderPct}%` }}
             >
-              <div className="flex h-9 w-[18px] flex-col items-center justify-center rounded-full border-2 border-cyan-100/90 bg-gradient-to-b from-cyan-200 via-teal-400 to-emerald-600 shadow-[0_4px_10px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.55)]">
+              <div className="flex h-10 w-6 flex-col items-center justify-center rounded-full border-2 border-cyan-100/90 bg-gradient-to-b from-cyan-200 via-teal-400 to-emerald-600 shadow-[0_4px_10px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.55)]">
                 <span className="mb-0.5 h-0.5 w-2 rounded-full bg-white/80" />
                 <span className="mb-0.5 h-0.5 w-2 rounded-full bg-white/55" />
                 <span className="h-0.5 w-2 rounded-full bg-white/80" />
@@ -349,7 +351,7 @@ export function Dice() {
               disabled={locked}
               value={clampTarget(target, condition)}
               onChange={(e) => applyTarget(Number(e.target.value))}
-              className="dice-slider absolute inset-x-0 -top-2 z-20 h-8 w-full cursor-grab active:cursor-grabbing disabled:cursor-not-allowed"
+              className="dice-slider absolute inset-x-0 -top-3 z-20 h-10 w-full cursor-grab active:cursor-grabbing disabled:cursor-not-allowed"
               aria-label="Roll target"
             />
 

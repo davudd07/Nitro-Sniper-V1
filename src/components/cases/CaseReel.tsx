@@ -153,22 +153,29 @@ type GoldTeaseCurve = {
   hold: number;
   creepEnd: number;
   holdT: number;
+  pauseT: number;
   slipT: number;
 };
 
-/** Slow onto the gold bait, linger, then ease-in over the line onto the land slot. */
-function goldTeaseTiming(dur: number): { holdT: number; slipT: number } {
+/** Slow onto the gold bait, dead-stop, then ease-in over the line onto the land slot. */
+function goldTeaseTiming(dur: number): { holdT: number; pauseT: number; slipT: number } {
   const ms = Math.max(1, dur);
-  const tail = Math.min(1100, Math.max(ms * 0.18, Math.min(420, ms * 0.28)));
-  const creep = Math.min(520, tail * 0.45);
-  return { holdT: 1 - tail / ms, slipT: 1 - (tail - creep) / ms };
+  const tail = Math.min(1400, Math.max(ms * 0.21, Math.min(500, ms * 0.3)));
+  const pause = Math.min(380, tail * 0.32);
+  const creep = Math.min(160, tail * 0.14);
+  return {
+    holdT: 1 - tail / ms,
+    pauseT: 1 - (tail - pause) / ms,
+    slipT: 1 - (tail - pause - creep) / ms,
+  };
 }
 
 function spinOffsetAt(t: number, target: number, tease: GoldTeaseCurve | null): number {
   if (!tease) return target * easeOutQuart(t);
   if (t <= tease.holdT) return tease.hold * easeOutQuart(t / Math.max(1e-6, tease.holdT));
+  if (t <= tease.pauseT) return tease.hold;
   if (t <= tease.slipT) {
-    const u = (t - tease.holdT) / Math.max(1e-6, tease.slipT - tease.holdT);
+    const u = (t - tease.pauseT) / Math.max(1e-6, tease.slipT - tease.pauseT);
     return tease.hold + (tease.creepEnd - tease.hold) * u;
   }
   const u = (t - tease.slipT) / Math.max(1e-6, 1 - tease.slipT);
@@ -300,10 +307,10 @@ export function CaseReel({
     const targetOffset = landCenter + jitter;
     const tease: GoldTeaseCurve | null = goldTease
       ? (() => {
-          const { holdT, slipT } = goldTeaseTiming(dur);
+          const { holdT, pauseT, slipT } = goldTeaseTiming(dur);
           const hold = (LAND_INDEX - 1) * itemSize + itemSize * 0.58 - containerDim / 2;
-          const creepEnd = hold + (targetOffset - hold) * 0.14;
-          return { hold, creepEnd, holdT, slipT };
+          const creepEnd = hold + (targetOffset - hold) * 0.1;
+          return { hold, creepEnd, holdT, pauseT, slipT };
         })()
       : null;
     lastTickIndexRef.current = -1;
@@ -359,6 +366,7 @@ export function CaseReel({
           [
             { transform: stripTransform(isHorizontal, 0), offset: 0, easing: EASE_OUT_QUART_CSS },
             { transform: stripTransform(isHorizontal, tease.hold), offset: tease.holdT, easing: "linear" },
+            { transform: stripTransform(isHorizontal, tease.hold), offset: tease.pauseT, easing: "linear" },
             {
               transform: stripTransform(isHorizontal, tease.creepEnd),
               offset: tease.slipT,

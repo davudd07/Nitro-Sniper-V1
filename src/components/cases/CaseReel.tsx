@@ -261,6 +261,8 @@ export function CaseReel({
   const lastTickIndexRef = useRef(-1);
   const cfg = SIZE_CONFIG[size][orientation];
   const isHorizontal = orientation === "horizontal";
+  /** Side-by-side battle columns must share easing + travel distance. */
+  const lockstep = !isHorizontal;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goldSeedRef = useRef(0);
   const resultRef = useRef(result);
@@ -289,16 +291,25 @@ export function CaseReel({
   function startWaapi(seed: number, dur: number, done: () => void, goldTease = false) {
     cancelMotion();
     const el = stripRef.current;
-    const containerDim = isHorizontal
-      ? (containerRef.current?.clientWidth || cfg.boxSize)
-      : (containerRef.current?.clientHeight || cfg.boxSize);
-    const rng = mulberry32(seed);
+    // Battle columns sit side-by-side. Measuring each box independently (or
+    // adding per-lane rest jitter) makes one reel travel farther in the same
+    // duration — it looks faster, then they still stop together. Lockstep
+    // uses the shared size config so every lane covers the same distance.
+    const containerDim = lockstep
+      ? cfg.boxSize
+      : isHorizontal
+        ? (containerRef.current?.clientWidth || cfg.boxSize)
+        : (containerRef.current?.clientHeight || cfg.boxSize);
     const itemSize = cfg.itemSize;
     const landCenter = LAND_INDEX * itemSize + itemSize / 2 - containerDim / 2;
     // Tease rests just past the gold→land boundary so the winner is clearly
     // selected but gold is still hugging the pointer. Normal spins keep the
-    // wider rest jitter.
-    const jitter = goldTease ? (rng() - 0.78) * itemSize * 0.28 : (rng() - 0.5) * itemSize * 0.55;
+    // wider rest jitter. Battles skip jitter so columns stay in lockstep.
+    let jitter = 0;
+    if (!lockstep) {
+      const rng = mulberry32(seed);
+      jitter = goldTease ? (rng() - 0.78) * itemSize * 0.28 : (rng() - 0.5) * itemSize * 0.55;
+    }
     const targetOffset = landCenter + jitter;
     lastTickIndexRef.current = -1;
     applyOffset(0);
@@ -431,7 +442,12 @@ export function CaseReel({
     // Normal reel: GOLD SPIN flies past as bait (including when MAXXX is in the
     // gold pool). Landing stays the real result (or the GOLD SPIN indicator).
     const mainStrip = buildStrip(pool, targetForMain, rand, goldPool, true);
+    // Gold near-miss uses a shallower ease than a normal stop. Fine on a
+    // solo reel; in a battle it makes one column crawl while the other rips,
+    // then they still land together. Battles keep the GOLD SPIN bait slot
+    // but share ease-out quart with every other lane.
     const goldTease =
+      !lockstep &&
       Boolean(goldPool.length) &&
       !isGoldIndicator(targetForMain) &&
       isGoldIndicator(mainStrip[LAND_INDEX - 1]);

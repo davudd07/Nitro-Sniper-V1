@@ -390,6 +390,35 @@ body {
   cursor: grabbing;
 }
 
+.keno-risk-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #164e63, #22d3ee 50%, #f43f5e);
+  outline: none;
+}
+.keno-risk-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  border: 2px solid #ecfeff;
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+  cursor: grab;
+}
+.keno-risk-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ecfeff;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+  cursor: grab;
+}
+
 .lobby-tile-lift {
   transition: transform 300ms ease, filter 300ms ease;
 }

@@ -21,19 +21,19 @@ export const LOBBY_GAMES: LobbyGame[] = [
   { id: "coinflip", name: "Coin Flip", image: "/lobby/coinflip.png", to: "/coinflip", painted: true, isNew: true, subtitle: "SeedBET Originals" },
   { id: "upgrader", name: "Upgrader", image: "/lobby/upgrader.png", to: "/upgrader", painted: true, isNew: true, subtitle: "SeedBET Originals" },
   { id: "crash", name: "Crash", image: "/lobby/crash.png", to: "/crash", painted: true, isNew: true, subtitle: "SeedBET Originals" },
-  { id: "keno", name: "Keno", image: "/lobby/keno.png", comingSoon: true, painted: true, isNew: true, subtitle: "SeedBET Originals" },
+  { id: "keno", name: "Keno", image: "/lobby/keno.png", to: "/keno", painted: true, isNew: true, subtitle: "SeedBET Originals" },
   { id: "plinko", name: "Plinko", image: "/lobby/plinko.png", comingSoon: true, painted: true, subtitle: "Coming soon" },
   { id: "roulette", name: "Roulette", image: "/lobby/roulette.png", comingSoon: true, painted: true, subtitle: "Coming soon" },
   { id: "baccarat", name: "Baccarat", image: "/lobby/baccarat.png", comingSoon: true, painted: true, subtitle: "Coming soon" },
 ];
 
 /** Sprite-sheet tiles shown as the homepage grid (sheet order: 4 + 3). */
-export const PAINTED_IDS = ["battles", "cases", "mines", "jackpot", "road", "dice", "blackjack", "coinflip", "upgrader", "crash"];
+export const PAINTED_IDS = ["battles", "cases", "mines", "jackpot", "road", "dice", "blackjack", "coinflip", "upgrader", "crash", "keno"];
 
 export const ORIGINAL_IDS = ["mines", "blackjack", "cases", "battles", "jackpot", "coinflip", "upgrader", "dice", "crash", "road", "keno"];
 export const POPULAR_IDS = ["crash", "road", "battles", "dice", "upgrader", "coinflip", "blackjack", "jackpot", "mines", "cases"];
 export const MORE_PLAYABLE_IDS = ["coinflip", "upgrader", "crash"];
-export const SOON_IDS = ["keno", "plinko", "roulette", "baccarat"];
+export const SOON_IDS = ["plinko", "roulette", "baccarat"];
 
 export const PATH_TO_GAME: Record<string, string> = {
   "/mines": "mines",
@@ -46,6 +46,7 @@ export const PATH_TO_GAME: Record<string, string> = {
   "/dice": "dice",
   "/crash": "crash",
   "/road": "road",
+  "/keno": "keno",
 };
 
 export function gameById(id: string): LobbyGame | undefined {

@@ -26,7 +26,7 @@ import { Upgrader } from "./pages/Upgrader";
 import { Dice } from "./pages/Dice";
 import { Crash } from "./pages/Crash";
 import { CrossRoad } from "./pages/CrossRoad";
-import { ComingSoon } from "./pages/ComingSoon";
+import { Keno } from "./pages/Keno";
 import { ChatRainController } from "./components/chat/ChatRainController";
 import { VaultEventsController } from "./components/layout/VaultEventsController";
 import { SupportWidget } from "./components/support/SupportWidget";
@@ -138,7 +138,7 @@ export default function App() {
               <Route path="/dice" element={<Dice />} />
               <Route path="/crash" element={<Crash />} />
               <Route path="/road" element={<CrossRoad />} />
-              <Route path="/keno" element={<ComingSoon title="Keno" />} />
+              <Route path="/keno" element={<Keno />} />
             </Routes>
           </div>
           <LiveBetStrip />

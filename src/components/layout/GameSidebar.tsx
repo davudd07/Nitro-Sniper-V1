@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from "react-router-dom";
+import { NavLink } from "react-router-dom";
 import {
   Gem,
   Bomb,
@@ -38,6 +38,7 @@ const GAMES = [
   { to: "/dice", label: "Dice", icon: Dices },
   { to: "/crash", label: "Crash", icon: TrendingUp },
   { to: "/road", label: "Cross the Road", icon: Bird },
+  { to: "/keno", label: "Keno", icon: Hash },
 ];
 
 // Mirrored chat chevron: full square tab on the outside of the rail (`left-full`).
@@ -55,7 +56,6 @@ export function GameSidebar() {
   const pendingRakeback = useEconomyStore((s) => s.pendingRakeback);
   const pendingDailyRakeback = useEconomyStore((s) => s.pendingDailyRakeback);
   const hasClaim = (pendingRakeback ?? 0) > 0 || (pendingDailyRakeback ?? 0) > 0;
-  const navigate = useNavigate();
   const gamesExpanded = gamesOpen !== false;
 
   return (
@@ -208,28 +208,6 @@ export function GameSidebar() {
                   {open && <span className="truncate">{label}</span>}
                 </NavLink>
               ))}
-              <button
-                type="button"
-                title="Keno — coming soon"
-                onClick={() => {
-                  sound.click();
-                  navigate("/keno");
-                }}
-                className={clsx(
-                  "flex items-center gap-2.5 rounded-md border-2 border-transparent px-2.5 py-2 text-[13px] font-semibold text-slate-500 hover:bg-white/[0.03]",
-                  open ? "justify-start" : "justify-center px-0",
-                )}
-              >
-                <Hash className="h-4 w-4 shrink-0" />
-                {open && (
-                  <span className="flex min-w-0 items-center gap-1 truncate">
-                    Keno
-                    <span className="rounded bg-white/10 px-1 text-[9px] font-bold uppercase tracking-wide text-slate-400">
-                      Soon
-                    </span>
-                  </span>
-                )}
-              </button>
             </>
           )}
         </nav>

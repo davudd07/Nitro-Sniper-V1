@@ -78,7 +78,7 @@ export interface XpTransaction {
 
 export interface LoyaltyConfig {
   mode: XpMode;
-  /** XP per 1 SH wagered, by category (flat mode). */
+  /** XP per 1 WL wagered, by category (flat mode). */
   flatRates: Record<XpCategory, number>;
   /** Multiplier on house-edge XP, by category. */
   categoryMultipliers: Record<XpCategory, number>;
@@ -113,16 +113,16 @@ export const GAME_CATEGORY: Record<string, XpCategory> = Object.fromEntries(
 ) as Record<string, XpCategory>;
 
 export const DEFAULT_FLAT_RATES: Record<XpCategory, number> = {
-  originals: 0.2,
-  slots: 0.2,
-  live_casino: 0.2,
-  sports: 0.2,
+  originals: 0.04,
+  slots: 0.04,
+  live_casino: 0.04,
+  sports: 0.04,
 };
 
 export const DEFAULT_CATEGORY_MULTIPLIERS: Record<XpCategory, number> = {
   originals: 1,
   slots: 1,
-  live_casino: 3,
+  live_casino: 1,
   sports: 1,
 };
 
@@ -134,9 +134,9 @@ export const DEFAULT_HOUSE_EDGES: Record<string, number> = Object.fromEntries(
 export const LEGACY_DEFAULT_TIER_IDS = ["bronze", "silver", "gold", "platinum", "diamond", "obsidian"] as const;
 
 /**
- * Lifetime XP thresholds (flat mode ≈ 0.2 XP per 1 SH wagered).
- * Unranked is 0. The rest is an increasing curve through mid (Diamond ~55k–130k)
- * into prestige (Emperor 2.6M ≈ 13M SH wagered).
+ * Lifetime XP thresholds. House-edge mode awards wager × (1 − RTP) × category
+ * multiplier, so a 4% house game yields 0.04 XP per 1 WL. Silver 1 is ~25k WL
+ * at that edge; Emperor is ~65M WL.
  */
 export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
@@ -324,7 +324,7 @@ export const DEFAULT_MISSIONS: LoyaltyMission[] = [
 ];
 
 export const DEFAULT_LOYALTY_CONFIG: LoyaltyConfig = {
-  mode: "flat",
+  mode: "house_edge",
   flatRates: { ...DEFAULT_FLAT_RATES },
   categoryMultipliers: { ...DEFAULT_CATEGORY_MULTIPLIERS },
   houseEdges: { ...DEFAULT_HOUSE_EDGES },
@@ -357,8 +357,9 @@ export function houseEdgeForGame(gameType: string, overrides: Record<string, num
 }
 
 /**
- * Flat: wager × category rate.
- * House-edge: wager × house_edge × 100 × category_multiplier.
+ * Flat: wager × category rate (default 0.04, matching a 4% house game).
+ * House-edge: wager × (1 − RTP) × category_multiplier, i.e. wager × house_edge.
+ * High-RTP games grant less XP per WL; high-edge games grant more.
  * Boosts apply after the base formula.
  */
 export function calculateWagerXp(input: {
@@ -387,7 +388,7 @@ export function calculateWagerXp(input: {
   const base =
     input.config.mode === "flat"
       ? input.wagered * flatRate
-      : input.wagered * houseEdge * 100 * categoryMultiplier;
+      : input.wagered * houseEdge * categoryMultiplier;
   return {
     xp: roundXp(base * boostMultiplier + extra),
     category,
@@ -502,10 +503,16 @@ export function combineBoosts(boosts: XpBoost[]): { multiplier: number; extraXpP
 
 export function mergeLoyaltyConfig(partial?: Partial<LoyaltyConfig> | null): LoyaltyConfig {
   const src = partial ?? {};
+  const legacyFlat =
+    src.flatRates != null && XP_CATEGORIES.every((cat) => src.flatRates![cat] === 0.2);
+  const legacyLiveMul = src.categoryMultipliers?.live_casino === 3;
   return {
-    mode: src.mode === "house_edge" ? "house_edge" : "flat",
-    flatRates: { ...DEFAULT_FLAT_RATES, ...src.flatRates },
-    categoryMultipliers: { ...DEFAULT_CATEGORY_MULTIPLIERS, ...src.categoryMultipliers },
+    mode: src.mode === "flat" && !legacyFlat ? "flat" : "house_edge",
+    flatRates: legacyFlat || !src.flatRates ? { ...DEFAULT_FLAT_RATES } : { ...DEFAULT_FLAT_RATES, ...src.flatRates },
+    categoryMultipliers:
+      legacyLiveMul || !src.categoryMultipliers
+        ? { ...DEFAULT_CATEGORY_MULTIPLIERS }
+        : { ...DEFAULT_CATEGORY_MULTIPLIERS, ...src.categoryMultipliers },
     houseEdges: { ...DEFAULT_HOUSE_EDGES, ...src.houseEdges },
     tiers: migrateVipTiers(src.tiers),
     missions: Array.isArray(src.missions) && src.missions.length > 0 ? src.missions.map((m) => ({ ...m })) : DEFAULT_MISSIONS.map((m) => ({ ...m })),

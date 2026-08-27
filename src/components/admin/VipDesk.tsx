@@ -43,7 +43,8 @@ export function VipDesk() {
           <Crown className="h-3.5 w-3.5" /> XP calculation
         </p>
         <p className="mb-4 text-xs text-slate-500">
-          World Lock wagers only. Shards and demo (0) stakes never grant XP. Switch modes without touching lifetime totals.
+          World Lock wagers only. Shards and demo (0) stakes never grant XP. XP scales with the amount bet and
+          the game's house edge (1 − RTP), so high-RTP tables rank up slower than high-edge games.
         </p>
         <div className="flex flex-wrap items-center gap-3">
           <span className={clsx("text-sm font-semibold", !houseEdgeMode ? "text-white" : "text-slate-500")}>
@@ -56,14 +57,14 @@ export function VipDesk() {
         </div>
         <p className="mt-3 font-mono text-xs text-slate-400">
           {houseEdgeMode
-            ? "XP = wager × house_edge × 100 × category_multiplier"
-            : "XP = wager × category_rate (originals default 0.2 / 1 SH)"}
+            ? "XP = wager × (1 − RTP) × category_multiplier  ·  RTP = 1 − house edge"
+            : "XP = wager × category_rate (originals default 0.04 / 1 WL)"}
         </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="surface p-5">
-          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Flat rates (XP / 1 SH)</p>
+          <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Flat rates (XP / 1 WL)</p>
           <div className="space-y-2">
             {XP_CATEGORIES.map((cat) => (
               <RateRow

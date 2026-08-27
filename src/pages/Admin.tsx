@@ -26,7 +26,7 @@ import { useAuthStore } from "../store/authStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { VipDesk } from "../components/admin/VipDesk";
 import { CasesDesk } from "../components/admin/CasesDesk";
-import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
+import { LOCAL_XP_USER, resolveVip, sortedTiers } from "../lib/loyalty";
 import { useIdentityStore } from "../store/identityStore";
 import { VISUAL_ROLE_LIST, type VisualRole } from "../lib/identity";
 import { RoleBadge } from "../components/identity/RoleBadge";
@@ -112,6 +112,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const [filter, setFilter] = useState("");
   const [lookup, setLookup] = useState("");
   const [amount, setAmount] = useState(1000);
+  const [rankTarget, setRankTarget] = useState("");
   const [confirmView, setConfirmView] = useState(false);
   const [deskTab, setDeskTab] = useState<"players" | "support" | "vip" | "cases">("players");
   const [gameFilter, setGameFilter] = useState<ActivityGame | "all">("all");
@@ -153,6 +154,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const accounts = useAuthStore((s) => s.accounts);
   const session = useAuthStore((s) => s.session);
   const grantXp = useLoyaltyStore((s) => s.grantXp);
+  const setRank = useLoyaltyStore((s) => s.setRank);
   const xpByUser = useLoyaltyStore((s) => s.xpByUser);
   const loyaltyConfig = useLoyaltyStore((s) => s.config);
   const setRole = useIdentityStore((s) => s.setRole);
@@ -531,6 +533,45 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 >
                   Reset player
                 </button>
+              </div>
+              <div className="mt-3 flex flex-wrap items-end gap-2">
+                <label className="text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                  Set rank
+                  <select
+                    value={rankTarget || vip.current.id}
+                    onChange={(e) => setRankTarget(e.target.value)}
+                    className="mt-1 block min-w-[14rem] rounded-md border-2 border-white/10 bg-black/30 px-3 py-2 text-sm font-semibold normal-case tracking-normal text-white outline-none focus:border-cyan-400/40"
+                  >
+                    {sortedTiers(loyaltyConfig.tiers).map((t) => (
+                      <option key={t.id} value={t.id}>
+                        {t.name} · {formatXp(t.minXp)} XP
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1.5 rounded-md border-2 border-rose-400/40 bg-rose-400/10 px-3 py-2 text-xs font-bold uppercase text-rose-100"
+                  onClick={() => {
+                    const id = rankTarget || vip.current.id;
+                    const tier = loyaltyConfig.tiers.find((t) => t.id === id);
+                    if (!tier) return;
+                    if (
+                      !window.confirm(
+                        `Set ${selected} to ${tier.name}? Lifetime XP becomes ${formatXp(tier.minXp)} (was ${formatXp(lifetimeXp)}). Rank drops and keys are not granted.`,
+                      )
+                    ) {
+                      return;
+                    }
+                    act(`${selected} → ${tier.name}`, () => setRank(xpUser, tier.id));
+                  }}
+                >
+                  Apply rank
+                </button>
+                <p className="w-full text-[11px] text-slate-500">
+                  Use this for wager-abuse demotions (Emperor → Silver 1, Unranked, etc.). It replaces lifetime XP; it
+                  does not delete rank keys already opened.
+                </p>
               </div>
               {selected !== LOCAL_PLAYER && (
                 <p className="mt-3 text-[11px] text-slate-500">

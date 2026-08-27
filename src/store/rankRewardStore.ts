@@ -23,6 +23,7 @@ interface RankRewardState {
   keyOpenedAt: Record<KeyBand, number>;
   ensureCaughtUp: () => void;
   grantRankUpKeys: (fromRankId: string, toRankId: string, tiers: VipTier[]) => KeyBand[];
+  syncLastRank: (rankId: string) => void;
   beginOpen: (caseId: string) => { ok: true } | { ok: false; reason: string };
   dailyReadyAt: (rankId: string) => number;
   keyReadyAt: (band: KeyBand) => number;
@@ -80,6 +81,10 @@ export const useRankRewardStore = create<RankRewardState>()(
         );
         useToastStore.getState().push(`Rank-up keys: ${parts.join(", ")}.`, "success");
         return bands;
+      },
+      syncLastRank: (rankId) => {
+        if (!rankId) return;
+        set({ lastRankId: rankId, caughtUp: true });
       },
       dailyReadyAt: (rankId) => {
         const last = get().dailyClaimedAt[rankId] ?? 0;

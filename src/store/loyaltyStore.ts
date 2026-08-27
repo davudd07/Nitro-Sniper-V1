@@ -34,6 +34,7 @@ interface LoyaltyState {
     currency?: WagerCurrency;
   }) => number;
   grantXp: (userId: string, amount: number, reason: string, source?: XpSource) => number;
+  setRank: (userId: string, tierId: string) => string | null;
   lifetimeXp: (userId?: string) => number;
   historyFor: (userId?: string) => XpTransaction[];
   playerSnapshot: (userId?: string) => {
@@ -159,6 +160,42 @@ export const useLoyaltyStore = create<LoyaltyState>()(
         }));
         maybeRankUp(before, before + xp, get().config.tiers, id);
         return xp;
+      },
+      setRank: (userId, tierId) => {
+        const id = ledgerUser(userId);
+        const tiers = get().config.tiers;
+        const tier = tiers.find((t) => t.id === tierId);
+        if (!tier) return null;
+        const before = get().xpByUser[id] ?? 0;
+        const xp = Math.max(0, tier.minXp);
+        const delta = roundXp(xp - before);
+        const row: XpTransaction = {
+          id: shortId("xp"),
+          userId: id,
+          betId: "",
+          amountWagered: 0,
+          gameType: "",
+          category: "originals",
+          mode: get().config.mode,
+          houseEdge: 0,
+          categoryMultiplier: 1,
+          flatRate: 0,
+          boostMultiplier: 1,
+          calculatedXp: delta,
+          source: "admin",
+          reason: `Warden set rank to ${tier.name}`,
+          timestamp: Date.now(),
+        };
+        set((s) => ({
+          xpByUser: { ...s.xpByUser, [id]: xp },
+          ledger: pushLedger(s.ledger, row),
+        }));
+        if (id === LOCAL_XP_USER || id === useAuthStore.getState().session) {
+          void import("./rankRewardStore").then(({ useRankRewardStore }) => {
+            useRankRewardStore.getState().syncLastRank(tier.id);
+          });
+        }
+        return tier.name;
       },
       awardWagerXp: (input) => {
         if ((input.currency ?? "shard") !== "shard") return 0;

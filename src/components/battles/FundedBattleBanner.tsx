@@ -5,7 +5,6 @@ import { formatDropCountdown } from "../../lib/xp";
 import { fundedTemplateLabel } from "../../lib/fundedBattle";
 import { liveFundedBattleId, nextFundedSpawnAt, useFundedBattleStore } from "../../store/fundedBattleStore";
 import { useBattleStore } from "../../store/battleStore";
-import { CashAmount } from "../ui/CurrencyIcon";
 import { sound } from "../../lib/sound";
 
 export function FundedBattleBanner() {
@@ -37,14 +36,10 @@ export function FundedBattleBanner() {
         </p>
         {open && live ? (
           <p className="mt-1 text-sm text-white">
-            Live {fundedTemplateLabel(live)} · 4 seats ·{" "}
-            <CashAmount wl={live.costPerPlayer} iconClassName="h-3.5 w-3.5" /> pot per seat · join free
+            Live {fundedTemplateLabel(live)} · 4 seats · join free
           </p>
         ) : (
-          <p className="mt-1 text-sm text-emerald-50/90">
-            Next free 4-slot battle in {formatDropCountdown(Math.max(0, nextAt - now))}. Stake rolls 100–250 WL. Windows
-            stay 3 hours even if the last fight ends early.
-          </p>
+          <p className="mt-1 text-sm text-emerald-50/90">Next free 4-slot battle</p>
         )}
       </div>
       {open && live ? (

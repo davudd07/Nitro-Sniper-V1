@@ -1,7 +1,7 @@
 import { clsx } from "clsx";
 import { BATTLE_MODES } from "../../data/battleModes";
 import { ModeGlyph } from "./ModeGlyph";
-import { Shuffle, Coins, Sparkles, Flag } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag, Dices } from "lucide-react";
 import { sound } from "../../lib/sound";
 
 export function ModeSelector({ modeId, onChange }: { modeId: string; onChange: (id: string) => void }) {
@@ -36,25 +36,30 @@ export function ToggleRow({
   jackpot,
   goldSpin,
   terminal,
+  wildcard,
   onCrazy,
   onJackpot,
   onGoldSpin,
   onTerminal,
+  onWildcard,
 }: {
   crazy: boolean;
   jackpot: boolean;
   goldSpin: boolean;
   terminal: boolean;
+  wildcard: boolean;
   onCrazy: (v: boolean) => void;
   onJackpot: (v: boolean) => void;
   onGoldSpin: (v: boolean) => void;
   onTerminal: (v: boolean) => void;
+  onWildcard: (v: boolean) => void;
 }) {
   const items = [
     { key: "crazy", label: "Crazy Mode", desc: "Lowest total wins instead of highest", icon: Shuffle, value: crazy, set: onCrazy, color: "#f97316" },
     { key: "jackpot", label: "Jackpot Mode", desc: "Ticket-weighted spin decides the winner", icon: Coins, value: jackpot, set: onJackpot, color: "#facc15" },
     { key: "terminal", label: "Terminal Mode", desc: "Only the LAST case decides the winner", icon: Flag, value: terminal, set: onTerminal, color: "#f472b6" },
     { key: "gold", label: "Gold Spin", desc: "Rare pulls trigger a bonus gold reel", icon: Sparkles, value: goldSpin, set: onGoldSpin, color: "#fbbf24" },
+    { key: "wild", label: "Wildcard", desc: "Each player rolls their own end multiplier", icon: Dices, value: wildcard, set: onWildcard, color: "#4ade80" },
   ];
   return (
     <div>

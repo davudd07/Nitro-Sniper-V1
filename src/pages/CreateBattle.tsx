@@ -20,6 +20,7 @@ import {
   Circle,
   ArrowDownUp,
   ChevronDown,
+  Dices,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
@@ -66,6 +67,7 @@ export function CreateBattle() {
   const [terminal, setTerminal] = useState(false);
   const [coinflip, setCoinflip] = useState(false);
   const [goldSpin, setGoldSpin] = useState(true);
+  const [wildcard, setWildcard] = useState(false);
   const [rounds, setRounds] = useState<string[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
   const [previewId, setPreviewId] = useState<string | null>(null);
@@ -93,6 +95,7 @@ export function CreateBattle() {
       jackpot: draft.jackpot,
       terminal: draft.terminal,
       goldSpin: draft.goldSpin,
+      wildcard: draft.wildcard,
     });
     setShared(mods.shared);
     setCrazy(mods.crazy);
@@ -100,6 +103,7 @@ export function CreateBattle() {
     setTerminal(mods.terminal);
     setCoinflip(mods.coinflip);
     setGoldSpin(mods.goldSpin);
+    setWildcard(mods.wildcard);
     setFastSpin(draft.fastSpin);
     setRounds(flatten(draft.cases));
     setFundedOn(draft.fundedPct > 0);
@@ -229,7 +233,7 @@ export function CreateBattle() {
       return;
     }
     if (youPay > 0 && currency === "wl") applyTipWager(youPay);
-    const mods = sanitizeBattleModifiers({ coinflip, crazy, jackpot, terminal, goldSpin, shared });
+    const mods = sanitizeBattleModifiers({ coinflip, crazy, jackpot, terminal, goldSpin, shared, wildcard });
     const id = createBattle({
       modeId,
       ...mods,
@@ -588,6 +592,14 @@ export function CreateBattle() {
               color="#fbbf24"
               checked={goldSpin}
               onChange={setGoldSpin}
+            />
+            <SideToggle
+              icon={Dices}
+              label="Wildcard"
+              hint="After the last case, every player rolls their own multiplier: 2x (28%), 0.75x (20%), 0.5x (29%), 0x (15%), 5x (5%), 10x (3%). Green on 2/5/10x, red on the rest. Not shared across a team."
+              color="#4ade80"
+              checked={wildcard}
+              onChange={setWildcard}
             />
           </div>
 

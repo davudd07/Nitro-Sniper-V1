@@ -15,11 +15,12 @@ export interface BattleModifierFlags {
   terminal: boolean;
   goldSpin: boolean;
   shared: boolean;
+  wildcard: boolean;
 }
 
 /**
  * Coinflip is exclusive with Shared, Crazy, Jackpot, and Terminal.
- * Gold Spin stacks with Coinflip (cases still open, including gold reels).
+ * Gold Spin and Wildcard stack with every other flag (including Coinflip).
  * Borrow / sponsor are not flags here.
  */
 export function sanitizeBattleModifiers(flags: Partial<BattleModifierFlags>): BattleModifierFlags {
@@ -32,6 +33,7 @@ export function sanitizeBattleModifiers(flags: Partial<BattleModifierFlags>): Ba
     jackpot: Boolean(flags.jackpot) && !shared && !coinflip,
     terminal: Boolean(flags.terminal) && !shared && !coinflip,
     goldSpin: Boolean(flags.goldSpin),
+    wildcard: Boolean(flags.wildcard),
   };
 }
 

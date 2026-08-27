@@ -10,6 +10,7 @@ export interface BattleDraft {
   terminal: boolean;
   shared: boolean;
   coinflip: boolean;
+  wildcard: boolean;
   fastSpin: boolean;
   cases: BattleCaseEntry[];
   fundedPct: number;
@@ -30,7 +31,7 @@ export function consumeBattleDraft(): BattleDraft | null {
   sessionStorage.removeItem(KEY);
   try {
     const parsed = JSON.parse(raw) as BattleDraft;
-    return { ...parsed, coinflip: Boolean(parsed.coinflip) };
+    return { ...parsed, coinflip: Boolean(parsed.coinflip), wildcard: Boolean(parsed.wildcard) };
   } catch {
     return null;
   }

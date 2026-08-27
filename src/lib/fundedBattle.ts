@@ -23,20 +23,22 @@ export interface FundedBattleTemplate {
   crazy: boolean;
   jackpot: boolean;
   goldSpin: boolean;
+  wildcard: boolean;
   terminal: boolean;
   label: string;
 }
 
 const TEMPLATES: FundedBattleTemplate[] = [
-  { modeId: "2v2", crazy: false, jackpot: false, goldSpin: true, terminal: false, label: "2v2" },
-  { modeId: "2v2", crazy: true, jackpot: false, goldSpin: true, terminal: false, label: "2v2 Crazy" },
-  { modeId: "2v2", crazy: false, jackpot: true, goldSpin: true, terminal: false, label: "2v2 Jackpot" },
-  { modeId: "2v2", crazy: true, jackpot: true, goldSpin: true, terminal: false, label: "2v2 Crazy JP" },
-  { modeId: "1v1v1v1", crazy: false, jackpot: false, goldSpin: true, terminal: false, label: "FFA" },
-  { modeId: "1v1v1v1", crazy: true, jackpot: false, goldSpin: true, terminal: false, label: "FFA Crazy" },
-  { modeId: "1v1v1v1", crazy: false, jackpot: true, goldSpin: true, terminal: false, label: "FFA Jackpot" },
-  { modeId: "1v1v1v1", crazy: true, jackpot: true, goldSpin: false, terminal: false, label: "FFA Crazy JP" },
-  { modeId: "2v2", crazy: false, jackpot: false, goldSpin: true, terminal: true, label: "2v2 Terminal" },
+  { modeId: "2v2", crazy: false, jackpot: false, goldSpin: true, terminal: false, wildcard: false, label: "2v2" },
+  { modeId: "2v2", crazy: true, jackpot: false, goldSpin: true, terminal: false, wildcard: false, label: "2v2 Crazy" },
+  { modeId: "2v2", crazy: false, jackpot: true, goldSpin: true, terminal: false, wildcard: false, label: "2v2 Jackpot" },
+  { modeId: "2v2", crazy: true, jackpot: true, goldSpin: true, terminal: false, wildcard: false, label: "2v2 Crazy JP" },
+  { modeId: "1v1v1v1", crazy: false, jackpot: false, goldSpin: true, terminal: false, wildcard: false, label: "FFA" },
+  { modeId: "1v1v1v1", crazy: true, jackpot: false, goldSpin: true, terminal: false, wildcard: false, label: "FFA Crazy" },
+  { modeId: "1v1v1v1", crazy: false, jackpot: true, goldSpin: true, terminal: false, wildcard: false, label: "FFA Jackpot" },
+  { modeId: "1v1v1v1", crazy: true, jackpot: true, goldSpin: false, terminal: false, wildcard: true, label: "FFA Crazy JP Wild" },
+  { modeId: "2v2", crazy: false, jackpot: false, goldSpin: true, terminal: true, wildcard: false, label: "2v2 Terminal" },
+  { modeId: "2v2", crazy: false, jackpot: false, goldSpin: true, terminal: false, wildcard: true, label: "2v2 Wildcard" },
 ];
 
 export function mulberry32(seed: number): () => number {
@@ -117,6 +119,7 @@ export function rollFundedBattle(windowStart: number): Omit<BattleConfig, "statu
     jackpot: template.jackpot,
     goldSpin: template.goldSpin,
     terminal: template.terminal,
+    wildcard: template.wildcard,
     cases,
     costPerPlayer,
     fundedPct: 1,
@@ -133,13 +136,14 @@ export function rollFundedBattle(windowStart: number): Omit<BattleConfig, "statu
   };
 }
 
-export function fundedTemplateLabel(battle: Pick<BattleConfig, "modeId" | "crazy" | "jackpot" | "terminal">): string {
+export function fundedTemplateLabel(battle: Pick<BattleConfig, "modeId" | "crazy" | "jackpot" | "terminal" | "wildcard">): string {
   const hit = TEMPLATES.find(
     (t) =>
       t.modeId === battle.modeId &&
       t.crazy === battle.crazy &&
       t.jackpot === battle.jackpot &&
-      t.terminal === battle.terminal,
+      t.terminal === battle.terminal &&
+      t.wildcard === battle.wildcard,
   );
   return hit?.label ?? battle.modeId;
 }

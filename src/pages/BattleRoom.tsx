@@ -1,7 +1,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useParams, Navigate, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, Swords, Flag, Link2, Handshake, Banknote, Eye, Circle } from "lucide-react";
+import { ArrowLeft, Bot, Sparkles, Shuffle, Coins, Swords, Flag, Link2, Handshake, Banknote, Eye, Circle, Dices } from "lucide-react";
 import { clsx } from "clsx";
 import { useBattleStore, type BattleReplay, type BattleRosterSeat } from "../store/battleStore";
 import { BATTLE_MODES, TEAM_COLORS, totalPlayers } from "../data/battleModes";
@@ -38,6 +38,8 @@ import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import { isMaxxxWin } from "../data/items";
 import { shouldCelebrateMaxxxWin, useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
+import { WildcardReel } from "../components/battles/WildcardReel";
+import { applyWildcard, formatWildcard, pickWildcard, wildcardMapFromUnknown, wildcardTone, type WildcardMulti } from "../lib/wildcard";
 import { useGoldSpinStore } from "../store/goldSpinStore";
 
 type BattlePlayer = BattleRosterSeat;
@@ -67,7 +69,7 @@ function rebuildRoundStates(
   return init;
 }
 
-type Phase = "filling" | "countdown" | "running" | "jackpot" | "finished";
+type Phase = "filling" | "countdown" | "running" | "wildcard" | "jackpot" | "finished";
 
 export function BattleRoom() {
   const { battleId } = useParams();
@@ -129,6 +131,9 @@ export function BattleRoom() {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [payout, setPayout] = useState<BattlePayout | null>(null);
   const [resultOpen, setResultOpen] = useState(false);
+  const [wildcardBySlot, setWildcardBySlot] = useState<Record<number, WildcardMulti>>({});
+  const [wildcardTargets, setWildcardTargets] = useState<Record<number, WildcardMulti>>({});
+  const [wildcardSpinToken, setWildcardSpinToken] = useState(0);
   const [borrowSeat, setBorrowSeat] = useState<number | null>(null);
   const borrowPct =
     battle?.source === "you"
@@ -176,6 +181,10 @@ export function BattleRoom() {
   const roundStatesRef = useRef<Record<number, PlayerRoundState>>({});
   const replayLogRef = useRef<Record<number, CaseOddsEntry | null>[]>([]);
   const replayJackpotRef = useRef<{ tickets: JackpotTicket[]; winnerId: string; tieBreak: boolean } | null>(null);
+  const replayWildcardRef = useRef<Record<number, WildcardMulti>>({});
+  const wildcardRef = useRef<Record<number, WildcardMulti>>({});
+  const wildcardDoneRef = useRef(false);
+  const wildcardLandedRef = useRef<Set<number>>(new Set());
   const isReplayRef = useRef(Boolean(wantReplay || battle?.replay));
   const rosterEpochRef = useRef<string>("");
   const lastPayoutRef = useRef<BattlePayout | null>(null);
@@ -192,8 +201,16 @@ export function BattleRoom() {
   }
 
   function showResult(next: BattlePayout) {
-    lastPayoutRef.current = next;
-    setPayout(next);
+    const you = players.find((p) => p.kind === "you");
+    const wildcardMulti =
+      next.wildcardMulti !== undefined
+        ? next.wildcardMulti
+        : battle?.wildcard && you
+          ? (wildcardRef.current[you.slotIndex] ?? null)
+          : null;
+    const payload = { ...next, wildcardMulti };
+    lastPayoutRef.current = payload;
+    setPayout(payload);
     setResultOpen(true);
   }
 
@@ -221,6 +238,7 @@ export function BattleRoom() {
         .map(({ slotIndex, teamIndex, kind, name, color }) => ({ slotIndex, teamIndex, kind, name, color })),
       openings: replayLogRef.current,
       jackpot,
+      wildcard: Object.keys(replayWildcardRef.current).length ? replayWildcardRef.current : null,
     };
     patchBattle(battleId, { replay: snapshot, roster: snapshot.seats });
   }
@@ -260,6 +278,13 @@ export function BattleRoom() {
     isReplayRef.current = Boolean(wantReplay || (battle.status === "finished" && battle.replay));
     replayLogRef.current = battle.replay?.openings ?? [];
     replayJackpotRef.current = battle.replay?.jackpot ?? null;
+    replayWildcardRef.current = wildcardMapFromUnknown(battle.replay?.wildcard);
+    wildcardRef.current = replayWildcardRef.current;
+    setWildcardBySlot(replayWildcardRef.current);
+    setWildcardTargets({});
+    setWildcardSpinToken(0);
+    wildcardDoneRef.current = false;
+    wildcardLandedRef.current = new Set();
     setResultOpen(false);
     setPayout(null);
     hydratedFinishedRef.current = "";
@@ -349,7 +374,8 @@ export function BattleRoom() {
     const decisionValue = (slotIndex: number) => {
       const state = states[slotIndex];
       if (!state) return 0;
-      return battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+      const raw = battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+      return applyWildcard(raw, wildcardRef.current[slotIndex]);
     };
     const teamTotals = mode.teamSizes.map((_, teamIdx) =>
       players.filter((p) => p.teamIndex === teamIdx).reduce((s, p) => s + decisionValue(p.slotIndex), 0),
@@ -494,6 +520,10 @@ export function BattleRoom() {
   }
 
   function finishBattle() {
+    if (battle?.wildcard && !wildcardDoneRef.current) {
+      beginWildcard();
+      return;
+    }
     if (isReplayRef.current) {
       const jp = replayJackpotRef.current;
       if (jp) {
@@ -521,6 +551,67 @@ export function BattleRoom() {
       return;
     }
     resolveOutcome(roundStatesRef.current, { payout: true });
+  }
+
+  function beginWildcard() {
+    const seated = players.filter((p) => p.kind !== "empty" && p.kind !== "joining");
+    const stored = wildcardMapFromUnknown(replayWildcardRef.current);
+    wildcardLandedRef.current = new Set();
+    const apply = (next: Record<number, WildcardMulti>) => {
+      replayWildcardRef.current = next;
+      wildcardRef.current = next;
+      setWildcardTargets(next);
+      setWildcardBySlot({});
+      persistReplay();
+      setPhase("wildcard");
+      setWildcardSpinToken((t) => t + 1);
+    };
+    const storedComplete =
+      seated.length > 0 && seated.every((p) => stored[p.slotIndex] !== undefined);
+    if (storedComplete) {
+      apply(stored);
+      return;
+    }
+    void play(Math.max(1, seated.length)).then((rolls) => {
+      const next: Record<number, WildcardMulti> = {};
+      seated.forEach((p, i) => {
+        next[p.slotIndex] = pickWildcard(rolls[i] ?? 0);
+      });
+      apply(next);
+    });
+  }
+
+  function handleWildcardLanded(slotIndex: number) {
+    const seat = players.find((p) => p.slotIndex === slotIndex);
+    if (!seat || seat.kind === "empty" || seat.kind === "joining") return;
+    const multi = wildcardRef.current[slotIndex];
+    if (multi !== undefined) {
+      setWildcardBySlot((prev) => (prev[slotIndex] === multi ? prev : { ...prev, [slotIndex]: multi }));
+    }
+    if (wildcardLandedRef.current.has(slotIndex)) return;
+    wildcardLandedRef.current.add(slotIndex);
+    const need = players.filter((p) => p.kind !== "empty" && p.kind !== "joining").length;
+    if (wildcardLandedRef.current.size < need) return;
+    window.setTimeout(() => continueAfterWildcard(), battle?.fastSpin ? 280 : 720);
+  }
+
+  function continueAfterWildcard() {
+    if (wildcardDoneRef.current) return;
+    wildcardDoneRef.current = true;
+    if (battle?.jackpot) {
+      const entries = players.map((p) => {
+        const state = roundStatesRef.current[p.slotIndex];
+        const raw = battle.terminal ? (state?.history[0]?.item.value ?? 0) : (state?.total ?? 0);
+        return { key: String(p.slotIndex), value: applyWildcard(raw, wildcardRef.current[p.slotIndex]) };
+      });
+      const weights = computeJackpotWeights(entries, battle.crazy);
+      const next: Record<number, number> = {};
+      players.forEach((p, i) => {
+        next[p.slotIndex] = weights[i] * 100;
+      });
+      setLiveOdds(next);
+    }
+    finishBattle();
   }
 
   function battlePayoutPot() {
@@ -584,7 +675,8 @@ export function BattleRoom() {
     const decisionValue = (slotIndex: number) => {
       const state = finalStates[slotIndex];
       if (!state) return 0;
-      return battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+      const raw = battle.terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+      return applyWildcard(raw, wildcardRef.current[slotIndex]);
     };
     const totals = players.map((p) => ({ p, value: decisionValue(p.slotIndex) }));
 
@@ -799,6 +891,7 @@ export function BattleRoom() {
       terminal: battle.terminal,
       shared: battle.shared,
       coinflip: battle.coinflip,
+      wildcard: battle.wildcard,
       fastSpin: battle.fastSpin,
       cases: battle.cases,
       fundedPct: battle.fundedPct,
@@ -841,6 +934,13 @@ export function BattleRoom() {
     setJackpotWinnerId(null);
     setWinningTeam(null);
     setTieBreak(false);
+    setWildcardBySlot({});
+    setWildcardTargets({});
+    wildcardRef.current = {};
+    wildcardDoneRef.current = false;
+    wildcardLandedRef.current = new Set();
+    setWildcardSpinToken(0);
+    replayWildcardRef.current = wildcardMapFromUnknown(battle?.replay?.wildcard);
     setPhase("countdown");
   }
 
@@ -862,7 +962,7 @@ export function BattleRoom() {
   const headerCasePos =
     caseSequence.length === 0
       ? 0
-      : phase === "jackpot" || phase === "finished"
+      : phase === "jackpot" || phase === "finished" || phase === "wildcard"
         ? caseSequence.length
         : Math.min(caseSequence.length, Math.max(1, caseIndex + 1));
   const headerCase = caseSequence.length > 0 ? getCase(caseSequence[headerCasePos - 1]) : undefined;
@@ -907,6 +1007,11 @@ export function BattleRoom() {
             {battle.goldSpin && (
               <span className="flex items-center gap-1 rounded-full bg-yellow-500/15 px-2 py-0.5 text-xs font-medium text-yellow-300">
                 <Sparkles className="h-3 w-3" /> Gold Spin
+              </span>
+            )}
+            {battle.wildcard && (
+              <span className="flex items-center gap-1 rounded-full bg-emerald-500/15 px-2 py-0.5 text-xs font-medium text-emerald-300">
+                <Dices className="h-3 w-3" /> Wildcard
               </span>
             )}
             {battle.shared && (
@@ -1044,7 +1149,7 @@ export function BattleRoom() {
           {caseSequence.map((id, i) => {
             const c = getCase(id)!;
             const activeIdx = i === caseIndex && phase === "running";
-            const doneIdx = i < caseIndex || phase === "finished" || phase === "jackpot";
+            const doneIdx = i < caseIndex || phase === "finished" || phase === "jackpot" || phase === "wildcard";
             return (
               <button
                 key={i}
@@ -1069,6 +1174,13 @@ export function BattleRoom() {
 
         <div className="relative min-w-0 w-full">
           {phase === "countdown" && <BattleCountdown countdown={countdown} />}
+          {phase === "wildcard" && (
+            <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center px-3">
+              <p className="wildcard-banner rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-50 shadow-[0_0_22px_rgba(52,211,153,0.35)]">
+                Wildcard · every player rolls their own multiplier
+              </p>
+            </div>
+          )}
           <div className="min-w-0 w-full overflow-x-auto scrollbar-thin">
             <div className="min-w-full">
           <div className="flex w-full items-stretch">
@@ -1122,6 +1234,13 @@ export function BattleRoom() {
                             grouped={isTeam}
                             borrowPct={p.kind === "you" ? borrowPct : 0}
                             compact={crowded}
+                            wildcardMulti={wildcardBySlot[p.slotIndex]}
+                            wildcardPending={
+                              phase === "wildcard" &&
+                              wildcardBySlot[p.slotIndex] == null &&
+                              p.kind !== "empty" &&
+                              p.kind !== "joining"
+                            }
                           />
                         </div>
                       ))}
@@ -1186,6 +1305,10 @@ export function BattleRoom() {
                               compact={crowded}
                               fastSpin={battle.fastSpin}
                               fundedPct={battle.fundedPct}
+                              wildcardActive={phase === "wildcard"}
+                              wildcardResult={wildcardTargets[p.slotIndex] ?? null}
+                              wildcardSpinToken={wildcardSpinToken}
+                              onWildcardLanded={() => handleWildcardLanded(p.slotIndex)}
                               canManageSeats={
                                 !spectating &&
                                 phase === "filling" &&
@@ -1300,6 +1423,8 @@ function PlayerHeader({
   borrowPct = 0,
   compact = false,
   hidePullTotal = false,
+  wildcardMulti,
+  wildcardPending = false,
 }: {
   player: BattlePlayer;
   state: PlayerRoundState;
@@ -1310,10 +1435,16 @@ function PlayerHeader({
   borrowPct?: number;
   compact?: boolean;
   hidePullTotal?: boolean;
+  wildcardMulti?: WildcardMulti;
+  wildcardPending?: boolean;
 }) {
   const label = player.kind === "you" ? "You" : player.name || `Player ${player.slotIndex + 1}`;
   const avatar = useIdentityStore((s) => s.avatarFor(player.kind === "you" ? "You" : label));
   const role = useIdentityStore((s) => s.roleFor(player.kind === "you" ? "You" : label));
+  const raw = terminal ? (state.history[0]?.item.value ?? 0) : state.total;
+  const shown = applyWildcard(raw, wildcardMulti);
+  const up = wildcardMulti != null && wildcardTone(wildcardMulti) === "up";
+  const down = wildcardMulti != null && wildcardTone(wildcardMulti) === "down";
   return (
     <div
       className={clsx("w-full", compact ? "px-1.5 pt-2 pb-1.5" : "px-3 pt-3 pb-2", !grouped && "rounded-t-xl border border-b-0 border-white/10 bg-black/20")}
@@ -1346,25 +1477,64 @@ function PlayerHeader({
             Player {player.slotIndex + 1} · Team {player.teamIndex + 1}
           </p>
         </div>
-        {!hidePullTotal && (
-          <span className="ml-auto shrink-0 text-right">
+        {!hidePullTotal ? (
+          <span className="ml-auto flex shrink-0 flex-col items-end text-right">
+            {wildcardMulti != null && (
+              <span
+                className={clsx(
+                  "mb-0.5 inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-black tracking-wide",
+                  up ? "bg-emerald-400/20 text-emerald-200" : down ? "bg-rose-400/20 text-rose-200" : "text-slate-300",
+                )}
+              >
+                {formatWildcard(wildcardMulti)}
+              </span>
+            )}
+            {wildcardPending && wildcardMulti == null && (
+              <span className="mb-0.5 inline-flex animate-pulse rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-black tracking-wide text-white/70">
+                rolling
+              </span>
+            )}
             <CashAmount
-              wl={terminal ? (state.history[0]?.item.value ?? 0) : state.total}
+              wl={shown}
               currency={currency}
               className={clsx(
                 "inline-flex rounded-md px-1.5 py-0.5 font-mono font-bold",
                 compact ? "text-xs" : "text-sm",
-                terminal ? "bg-pink-500/15 text-pink-300" : "text-emerald-300",
+                wildcardMulti != null
+                  ? up
+                    ? "bg-emerald-500/15 text-emerald-300"
+                    : "bg-rose-500/15 text-rose-300"
+                  : terminal
+                    ? "bg-pink-500/15 text-pink-300"
+                    : "text-emerald-300",
               )}
               iconClassName={compact ? "h-3 w-3" : "h-3.5 w-3.5"}
             />
-            {terminal && (
+            {wildcardMulti != null && (
+              <span className="mt-0.5 flex items-center justify-end gap-1 text-[9px] font-semibold uppercase tracking-wide text-slate-500">
+                was <CashAmount wl={raw} currency={currency} iconClassName="h-3 w-3" />
+              </span>
+            )}
+            {terminal && wildcardMulti == null && (
               <span className="mt-0.5 flex items-center justify-end gap-1 text-[9px] font-semibold uppercase tracking-wide text-pink-400/80">
                 last case · pot <CashAmount wl={state.total} currency={currency} iconClassName="h-3 w-3" />
               </span>
             )}
           </span>
-        )}
+        ) : wildcardMulti != null ? (
+          <span
+            className={clsx(
+              "ml-auto inline-flex rounded-full px-1.5 py-0.5 text-[10px] font-black tracking-wide",
+              up ? "bg-emerald-400/20 text-emerald-200" : "bg-rose-400/20 text-rose-200",
+            )}
+          >
+            {formatWildcard(wildcardMulti)}
+          </span>
+        ) : wildcardPending ? (
+          <span className="ml-auto inline-flex animate-pulse rounded-full bg-white/10 px-1.5 py-0.5 text-[10px] font-black tracking-wide text-white/70">
+            rolling
+          </span>
+        ) : null}
       </div>
     </div>
   );
@@ -1387,6 +1557,10 @@ function PlayerStage({
   fundedPct = 0,
   canManageSeats = true,
   canJoinSeat = false,
+  wildcardActive = false,
+  wildcardResult = null,
+  wildcardSpinToken = 0,
+  onWildcardLanded,
   onLanded,
   onCallBot,
   onJoinBattle,
@@ -1408,6 +1582,10 @@ function PlayerStage({
   fundedPct?: number;
   canManageSeats?: boolean;
   canJoinSeat?: boolean;
+  wildcardActive?: boolean;
+  wildcardResult?: WildcardMulti | null;
+  wildcardSpinToken?: number;
+  onWildcardLanded?: (multi: WildcardMulti) => void;
   onLanded: (item: CaseOddsEntry["item"]) => void;
   onCallBot: () => void;
   onJoinBattle?: () => void;
@@ -1418,7 +1596,16 @@ function PlayerStage({
 
   return (
     <div className={clsx("flex h-full w-full flex-col", compact ? "px-1.5 pb-2" : "px-3 pb-3", !grouped && "rounded-b-xl border border-t-0 border-white/10 bg-black/20")}>
-      {player.kind === "empty" || player.kind === "joining" ? (
+      {wildcardActive && player.kind !== "empty" && player.kind !== "joining" ? (
+        <WildcardReel
+          result={wildcardResult}
+          spinToken={wildcardSpinToken}
+          size={reelSize}
+          laneSeed={player.slotIndex}
+          duration={fastSpin ? 1800 : 3400}
+          onLanded={onWildcardLanded}
+        />
+      ) : player.kind === "empty" || player.kind === "joining" ? (
         <div
           className="flex h-full flex-col items-center justify-center gap-2 rounded-lg bg-black/25 p-3 text-center"
           style={{ minHeight: BATTLE_REEL_HEIGHT[reelSize] }}

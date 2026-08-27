@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Eye, Circle } from "lucide-react";
+import { Shuffle, Coins, Sparkles, Flag, Users, Plus, Banknote, Lock, Eye, Circle, Dices } from "lucide-react";
 import { clsx } from "clsx";
 import { sound } from "../lib/sound";
 import { useBattleStore, type BattleConfig } from "../store/battleStore";
@@ -348,6 +348,11 @@ export function CaseBattlesLobby() {
                     {b.goldSpin && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-yellow-500/15 px-1.5 py-0.5 text-[10px] font-medium text-yellow-300">
                         <Sparkles className="h-2.5 w-2.5" /> Gold
+                      </span>
+                    )}
+                    {b.wildcard && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-300">
+                        <Dices className="h-2.5 w-2.5" /> Wild
                       </span>
                     )}
                     {b.shared && (

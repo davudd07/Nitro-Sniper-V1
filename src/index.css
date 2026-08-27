@@ -407,3 +407,81 @@ body {
     filter: none;
   }
 }
+
+@keyframes wildcard-banner {
+  0%, 100% { box-shadow: 0 0 14px rgba(52, 211, 153, 0.22); transform: translateY(0); }
+  50% { box-shadow: 0 0 28px rgba(52, 211, 153, 0.55); transform: translateY(-1px); }
+}
+.wildcard-banner {
+  animation: wildcard-banner 1.1s ease-in-out infinite;
+}
+
+@keyframes wildcard-scan {
+  0% { transform: translateY(-120%); opacity: 0; }
+  12% { opacity: 0.85; }
+  100% { transform: translateY(280%); opacity: 0; }
+}
+.wildcard-scan {
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.22), transparent);
+  animation: wildcard-scan 0.55s linear infinite;
+}
+
+@keyframes wildcard-flash {
+  0% { opacity: 0.9; }
+  100% { opacity: 0; }
+}
+.wildcard-flash {
+  animation: wildcard-flash 0.55s ease-out both;
+}
+.wildcard-flash-up {
+  background: radial-gradient(circle at 50% 45%, rgba(167, 243, 208, 0.7), rgba(16, 185, 129, 0.12) 55%, transparent 72%);
+}
+.wildcard-flash-down {
+  background: radial-gradient(circle at 50% 45%, rgba(254, 205, 211, 0.7), rgba(244, 63, 94, 0.14) 55%, transparent 72%);
+}
+
+@keyframes wildcard-shock {
+  0% { transform: translate(-50%, -50%) scale(0.2); opacity: 0.85; }
+  100% { transform: translate(-50%, -50%) scale(2.4); opacity: 0; }
+}
+.wildcard-shock {
+  animation: wildcard-shock 0.7s cubic-bezier(0.16, 0.84, 0.44, 1) both;
+}
+.wildcard-shock-up {
+  border: 2px solid rgba(52, 211, 153, 0.85);
+  box-shadow: 0 0 18px rgba(16, 185, 129, 0.5);
+}
+.wildcard-shock-down {
+  border: 2px solid rgba(251, 113, 133, 0.85);
+  box-shadow: 0 0 18px rgba(244, 63, 94, 0.5);
+}
+
+@keyframes wildcard-chip-pop {
+  0% { transform: scale(0.82); }
+  55% { transform: scale(1.16); }
+  100% { transform: scale(1.08); }
+}
+.wildcard-chip-pop {
+  animation: wildcard-chip-pop 0.42s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@keyframes wildcard-spark {
+  0% { transform: scale(0.2); opacity: 0; }
+  35% { transform: scale(1.35); opacity: 1; }
+  100% { transform: scale(0.4); opacity: 0; }
+}
+.wildcard-spark {
+  animation: wildcard-spark 0.7s ease-out both;
+}
+
+@keyframes wildcard-land-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-2px); }
+  40% { transform: translateX(2px); }
+  60% { transform: translateX(-1px); }
+  80% { transform: translateX(1px); }
+}
+.wildcard-land-up,
+.wildcard-land-down {
+  animation: wildcard-land-shake 0.28s ease-out both;
+}

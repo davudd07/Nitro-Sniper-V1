@@ -4,6 +4,7 @@ import { pctLabel } from "../../lib/battleFinance";
 import { sound } from "../../lib/sound";
 import { CashAmount } from "../ui/CurrencyIcon";
 import type { PlayCurrency } from "../../lib/playWallet";
+import { formatWildcard, wildcardTone } from "../../lib/wildcard";
 
 export interface BattlePayout {
   shared: boolean;
@@ -14,6 +15,7 @@ export interface BattlePayout {
   borrowPct: number;
   winningTeam: number | null;
   winners: { name: string; color: string }[];
+  wildcardMulti?: number | null;
 }
 
 export function BattleResultOverlay({
@@ -91,6 +93,17 @@ export function BattleResultOverlay({
           <p className="mt-2 flex flex-wrap items-center justify-center gap-1 text-[11px] text-sky-300">
             After {pctLabel(result.borrowPct)} borrow · full share was{" "}
             <CashAmount wl={result.share} currency={currency} iconClassName="h-3.5 w-3.5" />
+          </p>
+        )}
+        {result.wildcardMulti != null && (
+          <p
+            className={
+              wildcardTone(result.wildcardMulti) === "up"
+                ? "mt-2 text-sm font-black tracking-wide text-emerald-300"
+                : "mt-2 text-sm font-black tracking-wide text-rose-300"
+            }
+          >
+            Your wildcard {formatWildcard(result.wildcardMulti)}
           </p>
         )}
 

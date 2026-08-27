@@ -25,6 +25,8 @@ export interface BattleReplay {
   seats: BattleRosterSeat[];
   openings: Record<number, CaseOddsEntry | null>[];
   jackpot: BattleJackpotReplay | null;
+  /** Per-seat wildcard multiplier after the last case. */
+  wildcard?: Record<number, number> | null;
 }
 
 export interface BattleCaseEntry {
@@ -40,6 +42,8 @@ export interface BattleConfig {
   crazy: boolean;
   jackpot: boolean;
   goldSpin: boolean;
+  /** After the last case, every player rolls their own score multiplier. */
+  wildcard: boolean;
   /** Only the value pulled on the LAST case decides the winner, not the running total. */
   terminal: boolean;
   cases: BattleCaseEntry[];
@@ -105,7 +109,7 @@ function costOf(cases: BattleCaseEntry[]): number {
 }
 
 function seedBattle(
-  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct" | "status" | "coinflip"> & {
+  partial: Omit<BattleConfig, "id" | "createdAt" | "costPerPlayer" | "source" | "fundedPct" | "isPrivate" | "shared" | "fastSpin" | "creatorBorrowPct" | "status" | "coinflip" | "wildcard"> & {
     id: string;
     createdAt: number;
     fundedPct?: number;
@@ -113,6 +117,7 @@ function seedBattle(
     shared?: boolean;
     fastSpin?: boolean;
     coinflip?: boolean;
+    wildcard?: boolean;
     creatorBorrowPct?: number;
     status?: BattleLobbyStatus;
     payout?: number;
@@ -126,6 +131,7 @@ function seedBattle(
     jackpot: partial.jackpot,
     terminal: partial.terminal,
     goldSpin: partial.goldSpin,
+    wildcard: partial.wildcard,
     shared: partial.shared,
   });
   return {
@@ -162,6 +168,7 @@ function seedBattles(): Record<string, BattleConfig> {
       crazy: false,
       jackpot: true,
       goldSpin: true,
+      wildcard: true,
       terminal: false,
       cases: [{ caseId: "starter", count: 2 }],
       prefillBots: 1,

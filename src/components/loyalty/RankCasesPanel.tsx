@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
-import { Gift, KeyRound, Lock } from "lucide-react";
+import { Eye, Gift, KeyRound, Lock } from "lucide-react";
 import { getCase } from "../../data/cases";
 import { CaseThumb } from "../cases/CaseThumb";
 import { CashAmount } from "../ui/CurrencyIcon";
+import { VolatilitySlider } from "../ui/VolatilitySlider";
 import { formatDropCountdown } from "../../lib/xp";
 import {
   KEY_BANDS,
@@ -13,10 +14,23 @@ import {
   dailyCaseId,
   keyBandForRankId,
   keyCaseId,
+  type DailyVolatility,
 } from "../../lib/rankRewards";
 import { sortedTiers, type VipTier } from "../../lib/loyalty";
 import { sound } from "../../lib/sound";
 import { useRankRewardStore } from "../../store/rankRewardStore";
+
+const VOL_STORAGE_KEY = "prism-daily-case-vol";
+
+function readStoredVol(): DailyVolatility {
+  try {
+    const raw = sessionStorage.getItem(VOL_STORAGE_KEY);
+    if (raw === "low" || raw === "medium" || raw === "high") return raw;
+  } catch {
+    /* ignore */
+  }
+  return "medium";
+}
 
 export function RankCasesPanel({
   tiers,
@@ -34,6 +48,7 @@ export function RankCasesPanel({
   const dailyReadyAt = useRankRewardStore((s) => s.dailyReadyAt);
   const keyReadyAt = useRankRewardStore((s) => s.keyReadyAt);
   const [now, setNow] = useState(() => Date.now());
+  const [volatility, setVolatility] = useState<DailyVolatility>(readStoredVol);
   void dailyClaimedAt;
   void keyOpenedAt;
 
@@ -42,14 +57,23 @@ export function RankCasesPanel({
     return () => window.clearInterval(id);
   }, []);
 
+  function selectVol(next: DailyVolatility) {
+    setVolatility(next);
+    try {
+      sessionStorage.setItem(VOL_STORAGE_KEY, next);
+    } catch {
+      /* ignore */
+    }
+  }
+
   return (
     <section className="space-y-4">
       <div>
         <h2 className="text-lg font-semibold text-white">Rank cases</h2>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-400">
-          Every unlocked rank has a free daily case (24h cooldown). Rank-ups grant a key for that new band — Silver 2 →
-          Silver 3 is a Silver key, Silver 3 → Gold 1 is a Gold key. Key cases are better than dailies and sit on a 2
-          hour cooldown.
+          Every rank has a free daily case (24h cooldown). Pick Low, Medium, or High volatility — one claim per rank
+          per day. Rank-ups grant a key for that new band. Key cases sit on a 2 hour cooldown. Locked ranks still
+          preview and demo.
         </p>
       </div>
 
@@ -90,14 +114,19 @@ export function RankCasesPanel({
         })}
       </div>
 
+      <div className="rounded-xl border border-white/10 bg-[#0c1414] px-4 py-3">
+        <VolatilitySlider value={volatility} onChange={selectVol} />
+      </div>
+
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
         {list.map((tier) => {
           const unlocked = lifetimeXp >= tier.minXp;
           const current = tier.id === currentId;
-          const c = getCase(dailyCaseId(tier.id));
+          const c = getCase(dailyCaseId(tier.id, volatility));
           const ready = dailyReadyAt(tier.id);
           const cooling = now < ready;
           const band = keyBandForRankId(tier.id);
+          const href = c ? `/cases/${c.id}` : `/cases/${dailyCaseId(tier.id, volatility)}`;
           return (
             <article
               key={tier.id}
@@ -129,12 +158,21 @@ export function RankCasesPanel({
               )}
               {unlocked && c ? (
                 cooling ? (
-                  <p className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-400">
-                    {formatDropCountdown(ready - now)}
-                  </p>
+                  <div className="mt-3 space-y-2">
+                    <p className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-400">
+                      {formatDropCountdown(ready - now)}
+                    </p>
+                    <Link
+                      to={href}
+                      onClick={() => sound.click()}
+                      className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/15 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-300 hover:bg-white/5"
+                    >
+                      <Eye className="h-3.5 w-3.5" /> Preview
+                    </Link>
+                  </div>
                 ) : (
                   <Link
-                    to={`/cases/${c.id}`}
+                    to={href}
                     onClick={() => sound.click()}
                     className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-full border-2 border-lime-300/50 bg-gradient-to-b from-lime-400 to-green-700 px-3 py-2 text-xs font-black uppercase tracking-wide text-[#052e16] shadow-[0_3px_0_#14532d]"
                   >
@@ -142,9 +180,18 @@ export function RankCasesPanel({
                   </Link>
                 )
               ) : (
-                <p className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-500">
-                  <Lock className="h-3.5 w-3.5" /> Locked
-                </p>
+                <div className="mt-3 space-y-2">
+                  <p className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-white/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-slate-500">
+                    <Lock className="h-3.5 w-3.5" /> Locked
+                  </p>
+                  <Link
+                    to={href}
+                    onClick={() => sound.click()}
+                    className="inline-flex w-full items-center justify-center gap-1 rounded-full border border-cyan-300/35 bg-cyan-400/10 px-3 py-2 text-xs font-black uppercase tracking-wide text-cyan-100 hover:bg-cyan-400/20"
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Preview / demo
+                  </Link>
+                </div>
               )}
             </article>
           );

@@ -1,24 +1,45 @@
-import type { CaseDef } from "./cases";
-import { KEY_BANDS, KEY_BAND_LABEL, type KeyBand } from "../lib/rankRewards";
+import type { CaseDef, RiskLevel } from "./cases";
+import {
+  DAILY_VOLATILITIES,
+  KEY_BANDS,
+  KEY_BAND_LABEL,
+  dailyCaseId,
+  type DailyVolatility,
+  type KeyBand,
+} from "../lib/rankRewards";
 
 type Prize = [string, number];
+
+const VOL_RTP: Record<DailyVolatility, number> = {
+  low: 0.78,
+  medium: 0.72,
+  high: 0.62,
+};
+
+const VOL_BLURB: Record<DailyVolatility, string> = {
+  low: "Low vol — frequent small hits, capped tops.",
+  medium: "Medium vol — balanced table.",
+  high: "High vol — mostly dead, rare chase.",
+};
 
 function dailyDef(
   rankId: string,
   name: string,
+  volatility: DailyVolatility,
   price: number,
   color: string,
   prizes: Prize[],
 ): CaseDef {
+  const volTag = volatility === "medium" ? "" : ` · ${volatility[0]!.toUpperCase()}${volatility.slice(1)}`;
   return {
-    id: `daily_${rankId}`,
-    name: `${name} Daily`,
+    id: dailyCaseId(rankId, volatility),
+    name: `${name} Daily${volTag}`,
     price,
-    blurb: `Free once every 24 hours at ${name}. Junk-heavy — the chase lane is thin on purpose.`,
+    blurb: `${VOL_BLURB[volatility]} Free once every 24 hours at ${name}.`,
     from: color,
     to: "#0c1414",
-    targetRtp: 0.72,
-    risk: price < 12 ? "low" : price < 80 ? "medium" : "high",
+    targetRtp: VOL_RTP[volatility],
+    risk: volatility as RiskLevel,
     raw: [...prizes, ["dirt", 0]],
   };
 }
@@ -38,11 +59,46 @@ function keyDef(band: KeyBand, price: number, color: string, prizes: Prize[]): C
   };
 }
 
+function volPrice(price: number, vol: DailyVolatility): number {
+  if (vol === "low") return Math.max(2, Math.round(price * 0.82));
+  if (vol === "high") return Math.max(2, Math.round(price * 1.06));
+  return price;
+}
+
+/** Low: drop the top chase, pad commons. High: thin the cheap lane, keep/add a rare top. */
+function prizesForVol(prizes: Prize[], vol: DailyVolatility, highChase?: Prize): Prize[] {
+  if (vol === "medium") return prizes.map(([id, w]) => [id, w]);
+  if (vol === "low") {
+    const body = prizes.length > 2 ? prizes.slice(0, -1) : prizes;
+    return body.map(([id, w], i) => {
+      const last = i === body.length - 1;
+      const scale = last ? 0.9 : 1.9 - i * 0.15;
+      return [id, Math.max(last ? 4 : 12, Math.round(w * scale))] as Prize;
+    });
+  }
+  const next: Prize[] = prizes.map(([id, w], i) => {
+    const last = i === prizes.length - 1;
+    const scale = last ? 0.28 : Math.max(0.1, 0.38 - i * 0.06);
+    return [id, Math.max(1, Math.round(w * scale))] as Prize;
+  });
+  if (highChase && !next.some(([id]) => id === highChase[0])) next.push([highChase[0], Math.max(1, highChase[1])]);
+  return next;
+}
+
+interface DailyRankSpec {
+  rankId: string;
+  name: string;
+  price: number;
+  color: string;
+  prizes: Prize[];
+  highChase?: Prize;
+}
+
 /**
- * Heavy weight on the cheapest prize so dirt stays the common miss.
- * Prices climb slowly — beginner dailies are trash, later ranks are merely less trash.
+ * Medium tables are the source of truth. Lower ranks stay junk-heavy; Sapphire+
+ * jump several tiers in EV and chase items.
  */
-const DAILY_SPECS: { rankId: string; name: string; price: number; color: string; prizes: Prize[] }[] = [
+const DAILY_SPECS: DailyRankSpec[] = [
   {
     rankId: "unranked",
     name: "Unranked",
@@ -52,6 +108,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["pet_turtle", 80],
       ["teeny_angel_wings", 12],
     ],
+    highChase: ["skeletal_horsie", 2],
   },
   {
     rankId: "silver_1",
@@ -63,6 +120,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["teeny_angel_wings", 18],
       ["skeletal_horsie", 8],
     ],
+    highChase: ["zombie_jammer", 2],
   },
   {
     rankId: "silver_2",
@@ -74,6 +132,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["skeletal_horsie", 20],
       ["zombie_jammer", 8],
     ],
+    highChase: ["pegasus", 2],
   },
   {
     rankId: "silver_3",
@@ -85,6 +144,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["zombie_jammer", 22],
       ["pegasus", 8],
     ],
+    highChase: ["double_growsaber", 2],
   },
   {
     rankId: "gold_1",
@@ -96,6 +156,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["pegasus", 20],
       ["double_growsaber", 8],
     ],
+    highChase: ["black_growsaber", 2],
   },
   {
     rankId: "gold_2",
@@ -107,6 +168,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["double_growsaber", 20],
       ["black_growsaber", 8],
     ],
+    highChase: ["neon_cape", 2],
   },
   {
     rankId: "gold_3",
@@ -118,6 +180,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["black_growsaber", 20],
       ["neon_cape", 8],
     ],
+    highChase: ["dragon_hand", 2],
   },
   {
     rankId: "diamond_1",
@@ -129,6 +192,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["neon_cape", 22],
       ["dragon_hand", 8],
     ],
+    highChase: ["floating_leaf", 2],
   },
   {
     rankId: "diamond_2",
@@ -140,6 +204,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["dragon_hand", 22],
       ["floating_leaf", 8],
     ],
+    highChase: ["angel_wings", 2],
   },
   {
     rankId: "diamond_3",
@@ -151,6 +216,7 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["floating_leaf", 22],
       ["angel_wings", 8],
     ],
+    highChase: ["cosmic_cape", 2],
   },
   {
     rankId: "emerald",
@@ -162,73 +228,96 @@ const DAILY_SPECS: { rankId: string; name: string; price: number; color: string;
       ["angel_wings", 22],
       ["cosmic_cape", 8],
     ],
+    highChase: ["burning_hands", 2],
   },
   {
     rankId: "sapphire",
     name: "Sapphire",
-    price: 70,
+    price: 400,
     color: "#3b82f6",
     prizes: [
-      ["angel_wings", 70],
-      ["cosmic_cape", 22],
-      ["burning_hands", 8],
+      ["burning_hands", 40],
+      ["winter_frost_bow", 24],
+      ["neon_nerves", 12],
+      ["flaming_aura", 5],
+      ["riding_comet", 2],
     ],
+    highChase: ["phoenix_hair", 1],
   },
   {
     rankId: "ruby",
     name: "Ruby",
-    price: 95,
+    price: 650,
     color: "#f43f5e",
     prizes: [
-      ["cosmic_cape", 70],
-      ["burning_hands", 22],
-      ["winter_frost_bow", 8],
+      ["winter_frost_bow", 36],
+      ["neon_nerves", 20],
+      ["flaming_aura", 10],
+      ["riding_comet", 5],
+      ["golden_apple", 2],
+      ["phoenix_hair", 1],
     ],
+    highChase: ["party_blaster", 1],
   },
   {
     rankId: "elite",
     name: "Elite",
-    price: 130,
+    price: 1100,
     color: "#a78bfa",
     prizes: [
-      ["burning_hands", 70],
-      ["winter_frost_bow", 22],
-      ["neon_nerves", 8],
+      ["neon_nerves", 32],
+      ["flaming_aura", 18],
+      ["riding_comet", 10],
+      ["golden_apple", 5],
+      ["twin_swords", 2],
+      ["phoenix_hair", 1],
     ],
+    highChase: ["magplant_5000", 1],
   },
   {
     rankId: "grandmaster",
     name: "Grandmaster",
-    price: 180,
+    price: 1900,
     color: "#f97316",
     prizes: [
-      ["winter_frost_bow", 70],
-      ["neon_nerves", 22],
-      ["flaming_aura", 8],
+      ["flaming_aura", 28],
+      ["riding_comet", 16],
+      ["love_eyes", 8],
+      ["twin_swords", 4],
+      ["phoenix_hair", 2],
+      ["party_blaster", 1],
     ],
+    highChase: ["phoenix_crown", 1],
   },
   {
     rankId: "obsidian",
     name: "Obsidian",
-    price: 240,
+    price: 5000,
     color: "#2dd4bf",
     prizes: [
-      ["neon_nerves", 70],
-      ["flaming_aura", 22],
-      ["riding_comet", 8],
+      ["riding_comet", 24],
+      ["twin_swords", 12],
+      ["phoenix_hair", 6],
+      ["party_blaster", 3],
+      ["phoenix_sword", 2],
+      ["magplant_5000", 1],
     ],
+    highChase: ["dragon_of_legend", 1],
   },
   {
     rankId: "emperor",
     name: "Emperor",
-    price: 320,
+    price: 18000,
     color: "#fbbf24",
     prizes: [
-      ["flaming_aura", 70],
-      ["riding_comet", 20],
-      ["golden_apple", 8],
-      ["love_eyes", 4],
+      ["phoenix_hair", 20],
+      ["party_blaster", 12],
+      ["phoenix_sword", 6],
+      ["phoenix_crown", 3],
+      ["dragon_of_legend", 2],
+      ["royal_lock", 1],
     ],
+    highChase: ["heavenly_scythe", 1],
   },
 ];
 
@@ -274,70 +363,79 @@ const KEY_SPECS: Record<KeyBand, { price: number; color: string; prizes: Prize[]
     ],
   },
   sapphire: {
-    price: 160,
+    price: 1100,
     color: "#3b82f6",
     prizes: [
-      ["cosmic_cape", 70],
-      ["burning_hands", 22],
-      ["winter_frost_bow", 10],
-      ["neon_nerves", 4],
+      ["neon_nerves", 30],
+      ["flaming_aura", 16],
+      ["riding_comet", 8],
+      ["golden_apple", 4],
+      ["phoenix_hair", 2],
     ],
   },
   ruby: {
-    price: 230,
+    price: 1900,
     color: "#f43f5e",
     prizes: [
-      ["burning_hands", 70],
-      ["winter_frost_bow", 22],
-      ["neon_nerves", 10],
-      ["flaming_aura", 4],
+      ["flaming_aura", 28],
+      ["riding_comet", 14],
+      ["twin_swords", 6],
+      ["phoenix_hair", 3],
+      ["party_blaster", 1],
     ],
   },
   elite: {
-    price: 320,
+    price: 3600,
     color: "#a78bfa",
     prizes: [
-      ["winter_frost_bow", 70],
-      ["neon_nerves", 22],
-      ["flaming_aura", 10],
-      ["riding_comet", 4],
+      ["riding_comet", 24],
+      ["twin_swords", 10],
+      ["phoenix_hair", 5],
+      ["party_blaster", 2],
+      ["phoenix_sword", 1],
     ],
   },
   grandmaster: {
-    price: 450,
+    price: 13000,
     color: "#f97316",
     prizes: [
-      ["neon_nerves", 70],
-      ["flaming_aura", 22],
-      ["riding_comet", 10],
-      ["love_eyes", 4],
+      ["phoenix_hair", 18],
+      ["party_blaster", 10],
+      ["phoenix_sword", 5],
+      ["magplant_5000", 2],
+      ["phoenix_crown", 1],
     ],
   },
   obsidian: {
-    price: 650,
+    price: 22000,
     color: "#2dd4bf",
     prizes: [
-      ["flaming_aura", 70],
-      ["riding_comet", 22],
-      ["golden_apple", 10],
-      ["shadow_crown", 4],
+      ["party_blaster", 16],
+      ["phoenix_sword", 8],
+      ["phoenix_crown", 4],
+      ["dragon_of_legend", 2],
+      ["royal_lock", 1],
     ],
   },
   emperor: {
-    price: 900,
+    price: 58000,
     color: "#fbbf24",
     prizes: [
-      ["riding_comet", 70],
-      ["golden_apple", 20],
-      ["love_eyes", 10],
-      ["twin_swords", 5],
-      ["phoenix_hair", 2],
+      ["phoenix_crown", 12],
+      ["dragon_of_legend", 8],
+      ["royal_lock", 4],
+      ["heavenly_scythe", 2],
+      ["golden_angel_wings", 1],
     ],
   },
 };
 
 export const RANK_CASE_DEFS: CaseDef[] = [
-  ...DAILY_SPECS.map((s) => dailyDef(s.rankId, s.name, s.price, s.color, s.prizes)),
+  ...DAILY_SPECS.flatMap((s) =>
+    DAILY_VOLATILITIES.map((vol) =>
+      dailyDef(s.rankId, s.name, vol, volPrice(s.price, vol), s.color, prizesForVol(s.prizes, vol, s.highChase)),
+    ),
+  ),
   ...KEY_BANDS.map((band) => {
     const spec = KEY_SPECS[band];
     return keyDef(band, spec.price, spec.color, spec.prizes);

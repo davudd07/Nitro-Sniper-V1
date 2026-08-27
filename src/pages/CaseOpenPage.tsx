@@ -31,11 +31,14 @@ import type { CaseItem } from "../data/items";
 import { isMaxxxWin, ITEMS } from "../data/items";
 import type { CaseOddsEntry } from "../data/cases";
 import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
-import { parseRankCaseId } from "../lib/rankRewards";
+import { parseRankCaseId, dailyCaseId, type DailyVolatility } from "../lib/rankRewards";
 import { useRankRewardStore } from "../store/rankRewardStore";
 import { formatDropCountdown } from "../lib/xp";
 import { useGoldSpinStore } from "../store/goldSpinStore";
 import { CaseContentsGrid } from "../components/cases/CaseContentsGrid";
+import { VolatilitySlider } from "../components/ui/VolatilitySlider";
+import { LOCAL_XP_USER } from "../lib/loyalty";
+import { useLoyaltyStore } from "../store/loyaltyStore";
 
 const MAX_OPENS = 4;
 const SOLO_SPIN_MS = 6800;
@@ -86,6 +89,8 @@ export function CaseOpenPage() {
   const deleteCase = useCommunityCaseStore((s) => s.deleteCase);
   const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
   const isOwner = Boolean(c?.community && c.creatorId && c.creatorId === session);
+  const lifetimeXp = useLoyaltyStore((s) => s.xpByUser[LOCAL_XP_USER] ?? 0);
+  const vipTiers = useLoyaltyStore((s) => s.config.tiers);
 
   const goldPool = useMemo(() => {
     const live = caseId ? getCase(caseId) : undefined;
@@ -116,7 +121,15 @@ export function CaseOpenPage() {
     if (!reward) return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, [reward]);
+  }, [reward?.caseId]);
+
+  useLayoutEffect(() => {
+    setPendingResults([null]);
+    setSpinToken(0);
+    setSpinning(false);
+    landedRef.current = 0;
+    roundItemsRef.current = [];
+  }, [caseId]);
 
   if (!c) return <Navigate to={reward ? "/rewards" : "/cases"} replace />;
   if (!c.community && !reward && hiddenOfficialIds.includes(c.id) && !adminView) return <Navigate to="/cases" replace />;
@@ -125,11 +138,15 @@ export function CaseOpenPage() {
   const reelSize = openCount >= 3 ? "md" : "lg";
   const effectiveBorrow = borrowOn ? borrowPct : 0;
   const paidTotal = Math.round(totalPrice * keepPct(effectiveBorrow));
+  const dailyTier = reward?.kind === "daily" ? vipTiers.find((t) => t.id === reward.rankId) : undefined;
+  const dailyRankLocked = Boolean(reward?.kind === "daily" && dailyTier && lifetimeXp < dailyTier.minXp);
   const rewardBlocked = reward
     ? reward.kind === "daily"
-      ? now < useRankRewardStore.getState().dailyReadyAt(reward.rankId)
-        ? formatDropCountdown(useRankRewardStore.getState().dailyReadyAt(reward.rankId) - now)
-        : ""
+      ? dailyRankLocked
+        ? `Reach ${dailyTier?.name ?? "this rank"} to claim`
+        : now < useRankRewardStore.getState().dailyReadyAt(reward.rankId)
+          ? formatDropCountdown(useRankRewardStore.getState().dailyReadyAt(reward.rankId) - now)
+          : ""
       : (keys[reward.band] ?? 0) < 1
         ? `Need a ${reward.band} key`
         : now < useRankRewardStore.getState().keyReadyAt(reward.band)
@@ -138,15 +155,28 @@ export function CaseOpenPage() {
     : "";
   const rewardOpenCount = reward ? 1 : openCount;
 
+  function setDailyVolatility(next: DailyVolatility) {
+    if (!reward || reward.kind !== "daily" || spinning) return;
+    if (reward.volatility === next) return;
+    try {
+      sessionStorage.setItem("prism-daily-case-vol", next);
+    } catch {
+      /* ignore */
+    }
+    navigate(`/cases/${dailyCaseId(reward.rankId, next)}`, { replace: true });
+  }
+
   async function openCase(demo = false) {
     if (spinning || !c) return;
     if (reward) {
-      const result = useRankRewardStore.getState().beginOpen(c.id);
-      if (!result.ok) {
-        push(result.reason, "warning");
-        return;
+      if (!demo) {
+        const result = useRankRewardStore.getState().beginOpen(c.id);
+        if (!result.ok) {
+          push(result.reason, "warning");
+          return;
+        }
       }
-      demoRoundRef.current = false;
+      demoRoundRef.current = demo;
       roundBorrowRef.current = 0;
       setSpinning(true);
       landedRef.current = 0;
@@ -361,15 +391,25 @@ export function CaseOpenPage() {
                   </>
                 )}
                 {reward && (
-                  <p className="text-sm text-slate-400">
-                    {reward.kind === "daily"
-                      ? "Free daily rank case · once every 24 hours"
-                      : "Rank-up key case · 2 hour cooldown · consumes one key"}
-                  </p>
+                  <div className="min-w-[220px] space-y-2">
+                    {reward.kind === "daily" ? (
+                      <VolatilitySlider
+                        value={reward.volatility}
+                        onChange={setDailyVolatility}
+                        disabled={spinning}
+                      />
+                    ) : null}
+                    <p className="text-sm text-slate-400">
+                      {reward.kind === "daily"
+                        ? dailyRankLocked
+                          ? "Preview this rank’s daily — demo does not claim."
+                          : "Free daily · one claim per 24 hours, any volatility"
+                        : "Rank-up key case · 2 hour cooldown · consumes one key"}
+                    </p>
+                  </div>
                 )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
-                {!reward && (
                 <button
                   type="button"
                   onClick={() => void openCase(true)}
@@ -379,7 +419,6 @@ export function CaseOpenPage() {
                 >
                   {spinning ? "Opening…" : "Demo spin"}
                 </button>
-                )}
                 <button
                   onClick={() => void openCase(false)}
                   disabled={spinning || Boolean(rewardBlocked)}

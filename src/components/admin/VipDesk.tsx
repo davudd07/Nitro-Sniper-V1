@@ -233,8 +233,8 @@ function TierEditor({ tiers, onSave }: { tiers: VipTier[]; onSave: (tiers: VipTi
         <div>
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">VIP tiers & benefits</p>
           <p className="mt-1 text-[11px] text-slate-500">
-            Default ladder: Unranked (0 XP) through Emperor. Min XP, rakeback bonus, and one-time rank drops are
-            editable. Cosmetic titles are play-money only.
+            Default ladder: Unranked → Emperor. Silver is close; Sapphire–Emperor sit much farther. Min XP,
+            rakeback, and rank drops are editable.
           </p>
         </div>
         <div className="flex gap-2">

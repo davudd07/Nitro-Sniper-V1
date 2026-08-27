@@ -5,6 +5,7 @@ import { OFFICIAL_CHEST_COLORS, pileStickers, type ChestSticker } from "../lib/c
 import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useAdminViewStore } from "../store/adminViewStore";
 import { RANK_CASE_DEFS } from "./rankCases";
+import { parseRankCaseId } from "../lib/rankRewards";
 import { withGoldSpin } from "../store/goldSpinStore";
 
 export interface CaseOddsEntry {
@@ -577,7 +578,11 @@ export const RANK_CASES: Case[] = RANK_CASE_DEFS.map(compileCase);
 
 /** Compiled case without Gold Spin admin overrides. */
 export function getRawCase(id: string): Case | undefined {
-  return CASES.find((c) => c.id === id) ?? RANK_CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
+  const direct = CASES.find((c) => c.id === id) ?? RANK_CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
+  if (direct) return direct;
+  const meta = parseRankCaseId(id);
+  if (meta?.kind === "daily") return RANK_CASES.find((c) => c.id === meta.caseId);
+  return undefined;
 }
 
 export function getCase(id: string): Case | undefined {

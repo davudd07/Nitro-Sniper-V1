@@ -134,9 +134,33 @@ export const DEFAULT_HOUSE_EDGES: Record<string, number> = Object.fromEntries(
 export const LEGACY_DEFAULT_TIER_IDS = ["bronze", "silver", "gold", "platinum", "diamond", "obsidian"] as const;
 
 /**
+ * Previous 17-rank default min XP (pre slower grind). Replaced on rehydrate
+ * when the persisted ladder still matches these exact thresholds.
+ */
+export const PREVIOUS_DEFAULT_TIER_MIN_XP: Record<string, number> = {
+  unranked: 0,
+  silver_1: 1_000,
+  silver_2: 2_500,
+  silver_3: 5_000,
+  gold_1: 10_000,
+  gold_2: 20_000,
+  gold_3: 35_000,
+  diamond_1: 55_000,
+  diamond_2: 85_000,
+  diamond_3: 130_000,
+  emerald: 200_000,
+  sapphire: 300_000,
+  ruby: 450_000,
+  elite: 700_000,
+  grandmaster: 1_100_000,
+  obsidian: 1_700_000,
+  emperor: 2_600_000,
+};
+
+/**
  * Lifetime XP thresholds. House-edge mode awards wager × (1 − RTP) × category
- * multiplier, so a 4% house game yields 0.04 XP per 1 WL. Silver 1 is ~25k WL
- * at that edge; Emperor is ~65M WL.
+ * multiplier, so a 4% house game yields 0.04 XP per 1 WL. Silver 1 is ~37.5k WL
+ * at that edge; Sapphire ~35M WL; Emperor ~1.2B WL.
  */
 export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
@@ -152,7 +176,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "silver_1",
     name: "Silver 1",
-    minXp: 1_000,
+    minXp: 1_500,
     color: "#94a3b8",
     benefits: "+2% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.02,
@@ -162,7 +186,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "silver_2",
     name: "Silver 2",
-    minXp: 2_500,
+    minXp: 4_000,
     color: "#cbd5e1",
     benefits: "+4% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.04,
@@ -172,7 +196,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "silver_3",
     name: "Silver 3",
-    minXp: 5_000,
+    minXp: 8_500,
     color: "#e2e8f0",
     benefits: "+6% Instant Drop and Daily rakeback. One-time 25 SH rank drop.",
     rakebackBonusPct: 0.06,
@@ -182,7 +206,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "gold_1",
     name: "Gold 1",
-    minXp: 10_000,
+    minXp: 18_000,
     color: "#ca8a04",
     benefits: "+8% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.08,
@@ -192,7 +216,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "gold_2",
     name: "Gold 2",
-    minXp: 20_000,
+    minXp: 38_000,
     color: "#eab308",
     benefits: "+10% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.1,
@@ -202,7 +226,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "gold_3",
     name: "Gold 3",
-    minXp: 35_000,
+    minXp: 75_000,
     color: "#facc15",
     benefits: "+12% Instant Drop and Daily rakeback. One-time 75 SH rank drop.",
     rakebackBonusPct: 0.12,
@@ -212,7 +236,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "diamond_1",
     name: "Diamond 1",
-    minXp: 55_000,
+    minXp: 130_000,
     color: "#67e8f9",
     benefits: "+14% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.14,
@@ -222,7 +246,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "diamond_2",
     name: "Diamond 2",
-    minXp: 85_000,
+    minXp: 220_000,
     color: "#22d3ee",
     benefits: "+16% Instant Drop and Daily rakeback.",
     rakebackBonusPct: 0.16,
@@ -232,7 +256,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "diamond_3",
     name: "Diamond 3",
-    minXp: 130_000,
+    minXp: 380_000,
     color: "#a5f3fc",
     benefits: "+18% Instant Drop and Daily rakeback. One-time 150 SH rank drop.",
     rakebackBonusPct: 0.18,
@@ -242,7 +266,7 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "emerald",
     name: "Emerald",
-    minXp: 200_000,
+    minXp: 650_000,
     color: "#34d399",
     benefits: "+20% Instant Drop and Daily rakeback. One-time 200 SH rank drop.",
     rakebackBonusPct: 0.2,
@@ -252,62 +276,62 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
   {
     id: "sapphire",
     name: "Sapphire",
-    minXp: 300_000,
+    minXp: 1_400_000,
     color: "#3b82f6",
-    benefits: "+22% Instant Drop and Daily rakeback. Warden queue priority (demo copy).",
-    rakebackBonusPct: 0.22,
-    rankDropSh: 0,
-    cosmetic: "Sapphire vault title",
+    benefits: "+30% Instant Drop and Daily rakeback. One-time 2,000 SH rank drop. Warden queue priority.",
+    rakebackBonusPct: 0.3,
+    rankDropSh: 2_000,
+    cosmetic: "Sapphire vault crest",
   },
   {
     id: "ruby",
     name: "Ruby",
-    minXp: 450_000,
+    minXp: 3_000_000,
     color: "#f43f5e",
-    benefits: "+24% Instant Drop and Daily rakeback. One-time 300 SH rank drop.",
-    rakebackBonusPct: 0.24,
-    rankDropSh: 300,
-    cosmetic: "Ruby vault title",
+    benefits: "+36% Instant Drop and Daily rakeback. One-time 5,000 SH rank drop.",
+    rakebackBonusPct: 0.36,
+    rankDropSh: 5_000,
+    cosmetic: "Ruby blood title",
   },
   {
     id: "elite",
     name: "Elite",
-    minXp: 700_000,
+    minXp: 6_000_000,
     color: "#a78bfa",
-    benefits: "+26% Instant Drop and Daily rakeback. One-time 400 SH rank drop.",
-    rakebackBonusPct: 0.26,
-    rankDropSh: 400,
-    cosmetic: "Elite banner",
+    benefits: "+42% Instant Drop and Daily rakeback. One-time 12,000 SH rank drop.",
+    rakebackBonusPct: 0.42,
+    rankDropSh: 12_000,
+    cosmetic: "Elite war banner",
   },
   {
     id: "grandmaster",
     name: "Grandmaster",
-    minXp: 1_100_000,
+    minXp: 12_000_000,
     color: "#f97316",
-    benefits: "+28% Instant Drop and Daily rakeback. One-time 500 SH rank drop.",
-    rakebackBonusPct: 0.28,
-    rankDropSh: 500,
-    cosmetic: "Grandmaster title",
+    benefits: "+50% Instant Drop and Daily rakeback. One-time 25,000 SH rank drop.",
+    rakebackBonusPct: 0.5,
+    rankDropSh: 25_000,
+    cosmetic: "Grandmaster sigil",
   },
   {
     id: "obsidian",
     name: "Obsidian",
-    minXp: 1_700_000,
+    minXp: 24_000_000,
     color: "#2dd4bf",
-    benefits: "+30% Instant Drop and Daily rakeback. One-time 750 SH rank drop.",
-    rakebackBonusPct: 0.3,
-    rankDropSh: 750,
-    cosmetic: "Obsidian vault chrome",
+    benefits: "+60% Instant Drop and Daily rakeback. One-time 50,000 SH rank drop.",
+    rakebackBonusPct: 0.6,
+    rankDropSh: 50_000,
+    cosmetic: "Obsidian eclipse chrome",
   },
   {
     id: "emperor",
     name: "Emperor",
-    minXp: 2_600_000,
+    minXp: 48_000_000,
     color: "#fbbf24",
-    benefits: "+35% Instant Drop and Daily rakeback. Emperor vault status. One-time 1,000 SH rank drop.",
-    rakebackBonusPct: 0.35,
-    rankDropSh: 1_000,
-    cosmetic: "Emperor crown (cosmetic)",
+    benefits: "+80% Instant Drop and Daily rakeback. Emperor vault status. One-time 120,000 SH rank drop.",
+    rakebackBonusPct: 0.8,
+    rankDropSh: 120_000,
+    cosmetic: "Emperor crown + vault aura",
   },
 ];
 
@@ -417,8 +441,20 @@ export function isLegacyDefaultVipTiers(tiers: VipTier[]): boolean {
   return tiers.every((t, i) => t.id === LEGACY_DEFAULT_TIER_IDS[i]);
 }
 
+/** True when the ladder is the previous 17-rank default (faster XP). */
+export function isPreviousDefaultVipTiers(tiers: VipTier[]): boolean {
+  const ids = Object.keys(PREVIOUS_DEFAULT_TIER_MIN_XP);
+  if (tiers.length !== ids.length) return false;
+  return tiers.every((t) => PREVIOUS_DEFAULT_TIER_MIN_XP[t.id] === t.minXp);
+}
+
 export function migrateVipTiers(tiers?: VipTier[] | null): VipTier[] {
-  if (!Array.isArray(tiers) || tiers.length === 0 || isLegacyDefaultVipTiers(tiers)) {
+  if (
+    !Array.isArray(tiers) ||
+    tiers.length === 0 ||
+    isLegacyDefaultVipTiers(tiers) ||
+    isPreviousDefaultVipTiers(tiers)
+  ) {
     return DEFAULT_VIP_TIERS.map((t) => ({ ...t }));
   }
   return tiers.map((t) => normalizeVipTier(t));

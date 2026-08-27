@@ -58,8 +58,22 @@ export function keyBandForRankId(rankId: string): KeyBand | null {
   return null;
 }
 
-export function dailyCaseId(rankId: string): string {
-  return `daily_${rankId}`;
+export const DAILY_VOLATILITIES = ["low", "medium", "high"] as const;
+export type DailyVolatility = (typeof DAILY_VOLATILITIES)[number];
+
+export const DAILY_VOLATILITY_LABEL: Record<DailyVolatility, string> = {
+  low: "Low",
+  medium: "Medium",
+  high: "High",
+};
+
+export function isDailyVolatility(value: string): value is DailyVolatility {
+  return (DAILY_VOLATILITIES as readonly string[]).includes(value);
+}
+
+export function dailyCaseId(rankId: string, volatility: DailyVolatility = "medium"): string {
+  if (volatility === "medium") return `daily_${rankId}`;
+  return `daily_${rankId}_${volatility}`;
 }
 
 export function keyCaseId(band: KeyBand): string {
@@ -67,13 +81,22 @@ export function keyCaseId(band: KeyBand): string {
 }
 
 export type RankCaseMeta =
-  | { kind: "daily"; rankId: string; caseId: string }
+  | { kind: "daily"; rankId: string; caseId: string; volatility: DailyVolatility }
   | { kind: "key"; band: KeyBand; caseId: string };
 
 export function parseRankCaseId(id: string): RankCaseMeta | null {
   if (id.startsWith("daily_")) {
-    const rankId = id.slice("daily_".length);
-    if (rankId) return { kind: "daily", rankId, caseId: id };
+    let rest = id.slice("daily_".length);
+    let volatility: DailyVolatility = "medium";
+    for (const vol of DAILY_VOLATILITIES) {
+      const suffix = `_${vol}`;
+      if (rest.endsWith(suffix)) {
+        volatility = vol;
+        rest = rest.slice(0, -suffix.length);
+        break;
+      }
+    }
+    if (rest) return { kind: "daily", rankId: rest, caseId: dailyCaseId(rest, volatility), volatility };
     return null;
   }
   if (id.startsWith("key_")) {

@@ -66,7 +66,7 @@ export function RankRewardsGrid({
                 ) : (
                   <li className="text-slate-500">No rank Shard drop at this step.</li>
                 )}
-                <li>Daily case once every 24 hours (unlocked ranks).</li>
+                <li>Daily case once every 24 hours — Low / Medium / High volatility.</li>
                 {i > 0 ? <li>Rank-up grants a key for this band’s 2 hour case.</li> : <li>No key until Silver 1.</li>}
                 {tier.cosmetic ? (
                   <li className="inline-flex items-start gap-1 text-amber-100/90">

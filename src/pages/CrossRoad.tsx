@@ -59,7 +59,7 @@ export function CrossRoad() {
   const [splatLane, setSplatLane] = useState<number | null>(null);
   const [panning, setPanning] = useState(false);
 
-  const credit = useEconomyStore((s) => s.credit);
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);

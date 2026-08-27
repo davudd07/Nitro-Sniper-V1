@@ -26,7 +26,7 @@ export function CasesDesk() {
                   {c.name}
                 </Link>
                 <p className="flex items-center gap-2 text-[11px] text-slate-500">
-                  <CashAmount wl={c.price} iconClassName="h-3 w-3" />
+                  <CashAmount currency="wl" wl={c.price} iconClassName="h-3 w-3" />
                   {hiddenSet.has(c.id) && <span className="font-bold uppercase text-amber-300">Hidden</span>}
                 </p>
               </div>

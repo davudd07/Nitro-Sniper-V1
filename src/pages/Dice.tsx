@@ -60,7 +60,7 @@ export function Dice() {
   const rollingRef = useRef(false);
   const autoRunningRef = useRef(false);
 
-  const credit = useEconomyStore((s) => s.credit);
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);

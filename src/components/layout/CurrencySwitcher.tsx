@@ -110,14 +110,17 @@ export function CurrencySwitcher() {
             <span className="min-w-0 flex-1">
               <span className="block text-[10px] font-bold uppercase tracking-wide text-slate-400">{SHARD_META.name}</span>
               <span className="font-mono text-sm font-semibold tabular-nums text-white">{formatShards(funCoins ?? 0)}</span>
+              <span className="mt-0.5 block text-[9px] font-medium normal-case tracking-normal text-slate-500">
+                10 WL wagered = 1 Shard · separate pots
+              </span>
             </span>
           </button>
         </div>
       )}
       {(lockedTips ?? 0) > 0 && (
         <p className="mt-1 flex flex-wrap items-center justify-center gap-1 text-center text-[9px] font-semibold uppercase tracking-wide text-amber-300/90">
-          <CashAmount wl={lockedTips} iconClassName="h-3 w-3" /> locked · wager{" "}
-          <CashAmount wl={tipWagerLeft ?? 0} iconClassName="h-3 w-3" /> to unlock
+          <CashAmount currency="wl" wl={lockedTips} iconClassName="h-3 w-3" /> locked · wager{" "}
+          <CashAmount currency="wl" wl={tipWagerLeft ?? 0} iconClassName="h-3 w-3" /> to unlock
         </p>
       )}
     </div>

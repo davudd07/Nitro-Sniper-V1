@@ -4,15 +4,18 @@ import { Coins } from "lucide-react";
 import { clsx } from "clsx";
 import { easeOutQuart } from "../../lib/easing";
 import { CashAmount } from "./CurrencyIcon";
+import type { PlayCurrency } from "../../lib/playWallet";
 
 export function AnimatedPot({
   value,
   label = "Jackpot pot",
   size = "md",
+  currency,
 }: {
   value: number;
   label?: string;
   size?: "md" | "lg";
+  currency?: PlayCurrency;
 }) {
   const [shown, setShown] = useState(value);
   const [pulse, setPulse] = useState(0);
@@ -58,7 +61,11 @@ export function AnimatedPot({
           size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl",
         )}
       >
-        <CashAmount wl={shown} iconClassName={size === "lg" ? "h-8 w-8 sm:h-10 sm:w-10" : "h-6 w-6"} />
+        <CashAmount
+          wl={shown}
+          currency={currency}
+          iconClassName={size === "lg" ? "h-8 w-8 sm:h-10 sm:w-10" : "h-6 w-6"}
+        />
       </motion.div>
     </div>
   );

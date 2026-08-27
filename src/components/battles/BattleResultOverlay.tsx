@@ -3,6 +3,7 @@ import { Crown, RotateCcw, Users, X } from "lucide-react";
 import { pctLabel } from "../../lib/battleFinance";
 import { sound } from "../../lib/sound";
 import { CashAmount } from "../ui/CurrencyIcon";
+import type { PlayCurrency } from "../../lib/playWallet";
 
 export interface BattlePayout {
   shared: boolean;
@@ -17,11 +18,13 @@ export interface BattlePayout {
 
 export function BattleResultOverlay({
   result,
+  currency,
   onClose,
   onRecreate,
   onReplay,
 }: {
   result: BattlePayout;
+  currency?: PlayCurrency;
   onClose: () => void;
   onRecreate: () => void;
   onReplay: () => void;
@@ -66,6 +69,7 @@ export function BattleResultOverlay({
         <div className="mt-4 flex items-center justify-center">
           <CashAmount
             wl={result.pot}
+            currency={currency}
             className="text-3xl font-black text-white sm:text-4xl"
             iconClassName="h-7 w-7 sm:h-8 sm:w-8"
           />
@@ -75,18 +79,18 @@ export function BattleResultOverlay({
             "Pot split equally"
           ) : result.youWon ? (
             <>
-              You received <CashAmount wl={shown} iconClassName="h-3.5 w-3.5" />
+              You received <CashAmount wl={shown} currency={currency} iconClassName="h-3.5 w-3.5" />
             </>
           ) : (
             <>
-              Winners received <CashAmount wl={shown} iconClassName="h-3.5 w-3.5" /> each
+              Winners received <CashAmount wl={shown} currency={currency} iconClassName="h-3.5 w-3.5" /> each
             </>
           )}
         </p>
         {result.youWon && result.borrowPct > 0 && (
           <p className="mt-2 flex flex-wrap items-center justify-center gap-1 text-[11px] text-sky-300">
             After {pctLabel(result.borrowPct)} borrow · full share was{" "}
-            <CashAmount wl={result.share} iconClassName="h-3.5 w-3.5" />
+            <CashAmount wl={result.share} currency={currency} iconClassName="h-3.5 w-3.5" />
           </p>
         )}
 

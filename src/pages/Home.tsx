@@ -59,7 +59,7 @@ export function Home() {
       </label>
 
       <p className="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-emerald-300/90">
-        <ShieldCheck className="h-3.5 w-3.5" /> Bet 0 to demo. Stakes above 0 spend Shards. Claim rakeback on Rewards.
+        <ShieldCheck className="h-3.5 w-3.5" /> Bet 0 to demo. Stakes spend the wallet in the header. Wager 10 World Locks to earn 1 Shard. Claim rakeback on Rewards.
       </p>
 
       {filtered ? (

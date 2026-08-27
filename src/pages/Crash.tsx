@@ -86,7 +86,7 @@ export function Crash() {
   const [youPlaced, setYouPlaced] = useState(false);
   const [youCashed, setYouCashed] = useState(false);
 
-  const credit = useEconomyStore((s) => s.credit);
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);

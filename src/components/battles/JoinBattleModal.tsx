@@ -12,6 +12,7 @@ import {
 } from "../../lib/battleFinance";
 import { BorrowPctSlider } from "./BorrowPctSlider";
 import { CashAmount } from "../ui/CurrencyIcon";
+import { battlePlayCurrency } from "../../lib/playWallet";
 import { sound } from "../../lib/sound";
 
 export function JoinBattleModal({
@@ -32,6 +33,7 @@ export function JoinBattleModal({
   const seatAfterFund = fundedSeatCost(battle.costPerPlayer, battle.fundedPct);
   const pay = joinCost(battle.costPerPlayer, battle.fundedPct, funded ? 0 : borrowPct);
   const keep = keepPct(funded ? 0 : borrowPct);
+  const ledger = battlePlayCurrency(battle);
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
@@ -43,7 +45,8 @@ export function JoinBattleModal({
           <div>
             <h3 className="text-lg font-semibold text-white">{heading}</h3>
             <p className="flex flex-wrap items-center gap-1 text-sm text-slate-400">
-              {mode?.label ?? "Battle"} · {seats} seats · <CashAmount wl={battle.costPerPlayer} iconClassName="h-3.5 w-3.5" /> / seat
+              {mode?.label ?? "Battle"} · {seats} seats ·{" "}
+              <CashAmount wl={battle.costPerPlayer} currency={ledger} iconClassName="h-3.5 w-3.5" /> / seat
             </p>
           </div>
           <button
@@ -64,8 +67,8 @@ export function JoinBattleModal({
               <Banknote className="h-4 w-4" /> Creator funded {pctLabel(battle.fundedPct)}
             </p>
             <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-emerald-200/80">
-              You pay <CashAmount wl={seatAfterFund} iconClassName="h-3 w-3" /> instead of{" "}
-              <CashAmount wl={battle.costPerPlayer} iconClassName="h-3 w-3" />.
+              You pay <CashAmount wl={seatAfterFund} currency={ledger} iconClassName="h-3 w-3" /> instead of{" "}
+              <CashAmount wl={battle.costPerPlayer} currency={ledger} iconClassName="h-3 w-3" />.
               Borrow is disabled on funded battles.
             </p>
           </div>
@@ -89,7 +92,7 @@ export function JoinBattleModal({
         <div className="rounded-xl bg-black/30 px-3 py-2.5 text-center">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">You pay</p>
           <p className="flex items-center justify-center font-black text-amber-200">
-            <CashAmount wl={pay} className="text-2xl" iconClassName="h-6 w-6" />
+            <CashAmount wl={pay} currency={ledger} className="text-2xl" iconClassName="h-6 w-6" />
           </p>
         </div>
 
@@ -114,7 +117,7 @@ export function JoinBattleModal({
           >
             <span className="inline-flex items-center justify-center gap-1">
               Join{pay > 0 ? " ·" : " free"}
-              {pay > 0 ? <CashAmount wl={pay} iconClassName="h-4 w-4" /> : null}
+              {pay > 0 ? <CashAmount wl={pay} currency={ledger} iconClassName="h-4 w-4" /> : null}
             </span>
           </button>
         </div>

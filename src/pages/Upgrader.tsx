@@ -251,7 +251,7 @@ export function Upgrader() {
   const arcTargetRef = useRef(0);
 
   const balance = useEconomyStore((s) => s.balance);
-  const credit = useEconomyStore((s) => s.credit);
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);

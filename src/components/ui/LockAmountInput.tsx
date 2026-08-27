@@ -2,8 +2,9 @@ import { clsx } from "clsx";
 import { displayToWorldLocks, inputStepFor, worldLocksToDisplay } from "../../lib/money";
 import { useSettingsStore } from "../../store/settingsStore";
 import { CurrencyIcon } from "./CurrencyIcon";
+import { usePlayCurrency } from "../../lib/playWallet";
 
-/** Number field that shows the active lock unit but always reports World Locks. */
+/** Number field for the active play wallet. Lock units convert; Shards are 1:1. */
 export function LockAmountInput({
   valueWl,
   onChangeWl,
@@ -22,15 +23,17 @@ export function LockAmountInput({
   showIcon?: boolean;
 }) {
   const unit = useSettingsStore((s) => s.lockUnit);
-  const display = worldLocksToDisplay(valueWl, unit);
-  const minDisplay = worldLocksToDisplay(minWl, unit);
+  const play = usePlayCurrency();
+  const shards = play === "shards";
+  const display = shards ? valueWl : worldLocksToDisplay(valueWl, unit);
+  const minDisplay = shards ? minWl : worldLocksToDisplay(minWl, unit);
 
   return (
     <div className={clsx("flex min-w-0 items-center gap-1.5", className)}>
       <input
         type="number"
         min={minDisplay}
-        step={inputStepFor(unit)}
+        step={shards ? "1" : inputStepFor(unit)}
         disabled={disabled}
         value={Number.isFinite(display) ? display : 0}
         onChange={(e) => {
@@ -39,11 +42,11 @@ export function LockAmountInput({
             onChangeWl(0);
             return;
           }
-          onChangeWl(displayToWorldLocks(n, unit));
+          onChangeWl(shards ? Math.round(n) : displayToWorldLocks(n, unit));
         }}
         className={inputClassName}
       />
-      {showIcon && <CurrencyIcon kind={unit} className="h-5 w-5" />}
+      {showIcon && <CurrencyIcon kind={shards ? "shards" : unit} className="h-5 w-5" />}
     </div>
   );
 }

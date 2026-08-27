@@ -13,13 +13,12 @@ import { CaseThumb } from "../components/cases/CaseThumb";
 import { CasePreviewModal } from "../components/cases/CasePreviewModal";
 import { CaseSearchInput } from "../components/cases/CaseSearchInput";
 import { JoinBattleModal } from "../components/battles/JoinBattleModal";
-import { formatCash } from "../lib/format";
 import { matchesCaseName } from "../lib/caseSearch";
 import { fundedSeatCost, joinCost, pctLabel } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { firstEmptySeat, occupiedCount, occupiedSeatFlags } from "../lib/battleSeats";
-import { requireAccount } from "../lib/stake";
-import { awardAffiliateOnWager } from "../store/affiliateStore";
+import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
+import { battlePlayCurrency, playCurrency, playCurrencyLabel, usePlayCurrency } from "../lib/playWallet";
 import { BattleCost, BorrowBadge, FinishedBattleCostPaid } from "../components/battles/BattleCost";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { WinLeaderBadge } from "../components/layout/WinLeaderBadge";
@@ -43,14 +42,14 @@ export function CaseBattlesLobby() {
     () => Object.values(battlesMap).sort((a, b) => b.createdAt - a.createdAt),
     [battlesMap],
   );
-  const spend = useEconomyStore((s) => s.spend);
   const applyTipWager = useEconomyStore((s) => s.applyTipWager);
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const push = useToastStore((s) => s.push);
+  const currency = usePlayCurrency();
 
   const rows = useMemo(() => {
     const q = caseQuery.trim();
     const visible = battles.filter((b) => {
+      if (battlePlayCurrency(b) !== currency) return false;
       if (b.isPrivate && b.source !== "you") return false;
       const status = b.status ?? "open";
       if (filter === "finished") {
@@ -72,7 +71,7 @@ export function CaseBattlesLobby() {
         .slice(0, 10);
     }
     return visible;
-  }, [battles, filter, caseQuery]);
+  }, [battles, filter, caseQuery, currency]);
 
   function occupied(b: BattleConfig) {
     return occupiedCount(occupiedSeatFlags(b, joinIntents[b.id]));
@@ -105,14 +104,17 @@ export function CaseBattlesLobby() {
     const b = joinTarget;
     if (!b) return;
     if (!requireAccount()) return;
-    const cost = joinCost(b.costPerPlayer, b.fundedPct, b.fundedPct > 0 ? 0 : borrowPct);
-    if (!spend(cost)) {
-      push(`You need ${formatCash(cost)} to join that battle.`, "danger");
+    const ledger = battlePlayCurrency(b);
+    if (ledger !== playCurrency()) {
+      push(`Switch to ${playCurrencyLabel(ledger)} to join. Shards and World Locks don’t mix.`, "warning");
       return;
     }
-    if (cost > 0) applyTipWager(cost);
-    awardRakeback(cost, HOUSE_EDGE.battles);
-    awardAffiliateOnWager(cost, HOUSE_EDGE.battles);
+    const cost = joinCost(b.costPerPlayer, b.fundedPct, b.fundedPct > 0 ? 0 : borrowPct);
+    if (!takeStakeFor(cost, HOUSE_EDGE.battles, ledger)) {
+      push(stakeNeedMessage(cost, ledger), "danger");
+      return;
+    }
+    if (cost > 0 && ledger === "wl") applyTipWager(cost);
     const seat = firstEmptySeat(occupiedSeatFlags(b, joinIntents[b.id]));
     setJoinIntent(b.id, { borrowPct: b.fundedPct > 0 ? 0 : borrowPct, seat });
     setJoinTarget(null);
@@ -128,8 +130,22 @@ export function CaseBattlesLobby() {
     <div className="space-y-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Case Battles</h1>
-          <p className="mt-1 text-sm text-slate-400">Join a live room or create one. Everyone pays their own seat.</p>
+          <h1 className="flex flex-wrap items-center gap-2 text-2xl font-semibold tracking-tight text-white">
+            Case Battles
+            <span
+              className={clsx(
+                "rounded-full px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide",
+                currency === "shards"
+                  ? "bg-cyan-400/15 text-cyan-200"
+                  : "bg-amber-400/15 text-amber-200",
+              )}
+            >
+              {playCurrencyLabel(currency)} only
+            </span>
+          </h1>
+          <p className="mt-1 text-sm text-slate-400">
+            Join a live {playCurrencyLabel(currency)} room or create one. Shards and World Locks never sit in the same pot.
+          </p>
         </div>
         <Link to="/battles/create" onClick={() => sound.click()} className="btn-primary inline-flex items-center gap-1.5 px-5 py-2.5">
           <Plus className="h-4 w-4" /> Create Battle
@@ -178,7 +194,7 @@ export function CaseBattlesLobby() {
               ? "No battles use a case matching that search."
               : filter === "finished"
                 ? "No finished battles yet."
-                : "No battles in this filter. Create one to get started."}
+              : `No ${playCurrencyLabel(currency)} battles in this filter. Switch wallets in the header or create one.`}
           </p>
         ) : (
           <div className="divide-y divide-white/6">
@@ -258,8 +274,8 @@ export function CaseBattlesLobby() {
                         {b.status === "finished" && (
                           <>
                             {" "}
-                            · cost <CashAmount wl={b.costPerPlayer * seats} iconClassName="h-3 w-3" /> · paid{" "}
-                            <CashAmount wl={b.payout ?? 0} iconClassName="h-3 w-3" />
+                            · cost <CashAmount wl={b.costPerPlayer * seats} currency={battlePlayCurrency(b)} iconClassName="h-3 w-3" /> · paid{" "}
+                            <CashAmount wl={b.payout ?? 0} currency={battlePlayCurrency(b)} iconClassName="h-3 w-3" />
                           </>
                         )}
                       </p>
@@ -274,19 +290,26 @@ export function CaseBattlesLobby() {
                         costPerPlayer={b.costPerPlayer}
                         seats={seats}
                         payout={b.payout ?? 0}
+                        currency={battlePlayCurrency(b)}
                       />
                     ) : b.source === "you" ? (
-                      <BattleCost costPerPlayer={b.costPerPlayer} borrowPct={b.creatorBorrowPct} align="left" compact />
+                      <BattleCost
+                        costPerPlayer={b.costPerPlayer}
+                        borrowPct={b.creatorBorrowPct}
+                        align="left"
+                        compact
+                        currency={battlePlayCurrency(b)}
+                      />
                     ) : b.fundedPct > 0 ? (
                       <p className="flex flex-wrap items-center gap-1.5 font-semibold text-amber-200">
                         <span className="text-[11px] font-normal text-slate-500 line-through">
-                          <CashAmount wl={b.costPerPlayer} iconClassName="h-3 w-3" />
+                          <CashAmount wl={b.costPerPlayer} currency={battlePlayCurrency(b)} iconClassName="h-3 w-3" />
                         </span>
-                        <CashAmount wl={joinerPrice} iconClassName="h-3.5 w-3.5" />
+                        <CashAmount wl={joinerPrice} currency={battlePlayCurrency(b)} iconClassName="h-3.5 w-3.5" />
                       </p>
                     ) : (
                       <p className="font-semibold text-amber-200">
-                        <CashAmount wl={b.costPerPlayer} iconClassName="h-3.5 w-3.5" />
+                        <CashAmount wl={b.costPerPlayer} currency={battlePlayCurrency(b)} iconClassName="h-3.5 w-3.5" />
                       </p>
                     )}
                   </div>

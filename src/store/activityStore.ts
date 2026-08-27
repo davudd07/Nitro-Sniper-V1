@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { BOT_NAMES } from "../data/botNames";
 import { shortId } from "../lib/format";
+import type { PlayCurrency } from "../lib/playWallet";
 
 export const ACTIVITY_GAMES = [
   "mines",
@@ -40,6 +41,8 @@ export interface PlayRecord {
   game: ActivityGame;
   wagered: number;
   won: number;
+  /** Missing on old rows = World Locks. */
+  currency?: PlayCurrency;
 }
 
 const MAX_PLAYS = 400;
@@ -72,11 +75,14 @@ function mulberry(seed: number) {
   };
 }
 
-function fakePlay(rnd: () => number, at: number, name: string): PlayRecord {
+function fakePlay(rnd: () => number, at: number, name: string, currency: PlayCurrency = "wl"): PlayRecord {
   const game = ACTIVITY_GAMES[Math.floor(rnd() * ACTIVITY_GAMES.length)]!;
   const roll = rnd();
   let wagered: number;
-  if (roll > 0.94) wagered = Math.round(100_000 + rnd() * 900_000);
+  if (currency === "shards") {
+    if (roll > 0.9) wagered = Math.round(80 + rnd() * 400);
+    else wagered = Math.round(4 + rnd() * 40);
+  } else if (roll > 0.94) wagered = Math.round(100_000 + rnd() * 900_000);
   else if (roll > 0.8) wagered = Math.round(2_000 + rnd() * 40_000);
   else wagered = Math.round(20 + rnd() * 1800);
   const lucky = rnd() > 0.88;
@@ -89,6 +95,7 @@ function fakePlay(rnd: () => number, at: number, name: string): PlayRecord {
     game,
     wagered,
     won,
+    currency,
   };
 }
 
@@ -99,7 +106,7 @@ function seedBotPlays(): PlayRecord[] {
     const rnd = mulberry(hashName(name) ^ 0x51eed);
     const count = 8 + Math.floor(rnd() * 8);
     for (let i = 0; i < count; i++) {
-      plays.push(fakePlay(rnd, now - Math.round((i + 1) * (4 + rnd() * 50) * 1_000), name));
+      plays.push(fakePlay(rnd, now - Math.round((i + 1) * (4 + rnd() * 50) * 1_000), name, rnd() > 0.72 ? "shards" : "wl"));
     }
   }
   return plays.sort((a, b) => b.at - a.at).slice(0, MAX_PLAYS);
@@ -118,6 +125,7 @@ export const useActivityStore = create<ActivityState>()(
           game: entry.game,
           wagered: entry.wagered,
           won: entry.won,
+          currency: entry.currency ?? "wl",
         };
         set((s) => ({ plays: [rec, ...s.plays].slice(0, MAX_PLAYS) }));
       },
@@ -128,7 +136,7 @@ export const useActivityStore = create<ActivityState>()(
         const extra: PlayRecord[] = [];
         for (let i = 0; i < n; i++) {
           const name = BOT_NAMES[Math.floor(rnd() * BOT_NAMES.length)]!;
-          extra.push(fakePlay(rnd, now - i * 400, name));
+          extra.push(fakePlay(rnd, now - i * 400, name, rnd() > 0.82 ? "shards" : "wl"));
         }
         set((s) => ({ plays: [...extra, ...s.plays].slice(0, MAX_PLAYS) }));
       },
@@ -148,7 +156,7 @@ export const useActivityStore = create<ActivityState>()(
       },
     }),
     {
-      name: "prism-vault-activity-v2",
+      name: "prism-vault-activity-v3",
       merge: (persisted, current) => {
         const p = persisted as { plays?: PlayRecord[] } | undefined;
         if (p?.plays && p.plays.length > 0) return { ...current, ...p };

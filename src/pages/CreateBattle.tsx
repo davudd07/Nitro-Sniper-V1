@@ -34,15 +34,14 @@ import type { BattleCaseEntry } from "../store/battleStore";
 import { useBattleStore } from "../store/battleStore";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { formatCash } from "../lib/format";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { creatorCreateCost, MAX_BORROW_PCT, pctLabel } from "../lib/battleFinance";
 import { BorrowPctSlider } from "../components/battles/BorrowPctSlider";
 import { consumeBattleDraft } from "../lib/battleDraft";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { requireAccount } from "../lib/stake";
-import { awardAffiliateOnWager } from "../store/affiliateStore";
+import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
+import { playCurrencyLabel, usePlayCurrency } from "../lib/playWallet";
 
 function flatten(entries: BattleCaseEntry[]): string[] {
   return entries.flatMap((e) => Array.from({ length: e.count }, () => e.caseId));
@@ -124,10 +123,9 @@ export function CreateBattle() {
 
   const createBattle = useBattleStore((s) => s.createBattle);
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
-  const spend = useEconomyStore((s) => s.spend);
   const applyTipWager = useEconomyStore((s) => s.applyTipWager);
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
   const push = useToastStore((s) => s.push);
+  const currency = usePlayCurrency();
 
   const mode = BATTLE_MODES.find((m) => m.id === modeId)!;
   const players = totalPlayers(mode);
@@ -226,13 +224,11 @@ export function CreateBattle() {
       return;
     }
     if (!requireAccount()) return;
-    if (!spend(youPay)) {
-      push(`You need ${formatCash(youPay)} to create this battle.`, "danger");
+    if (!takeStakeFor(youPay, HOUSE_EDGE.battles, currency)) {
+      push(stakeNeedMessage(youPay, currency), "danger");
       return;
     }
-    if (youPay > 0) applyTipWager(youPay);
-    awardRakeback(youPay, HOUSE_EDGE.battles);
-    awardAffiliateOnWager(youPay, HOUSE_EDGE.battles);
+    if (youPay > 0 && currency === "wl") applyTipWager(youPay);
     const mods = sanitizeBattleModifiers({ coinflip, crazy, jackpot, terminal, goldSpin, shared });
     const id = createBattle({
       modeId,
@@ -247,6 +243,7 @@ export function CreateBattle() {
       creatorSeat: youSeat,
       botSeats: [...botSeats],
       creatorBorrowPct: effectiveBorrow,
+      currency,
     });
     setJoinIntent(id, { borrowPct: effectiveBorrow, seat: youSeat });
     push(
@@ -271,6 +268,9 @@ export function CreateBattle() {
             <ArrowLeft className="h-4 w-4" /> Back
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Create Battle</h1>
+          <p className="mt-1 text-xs text-slate-500">
+            This room uses {playCurrencyLabel(currency)} only — Shards and World Locks never mix.
+          </p>
         </div>
 
         <section>

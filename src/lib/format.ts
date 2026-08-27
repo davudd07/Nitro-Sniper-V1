@@ -40,6 +40,11 @@ export function formatShards(value: number): string {
   return formatShardsAmount(value);
 }
 
+/** Amount in the given play wallet, with ticker. */
+export function formatPlayCash(value: number, currency: "wl" | "shards"): string {
+  return currency === "shards" ? formatShards(value) : formatCash(value);
+}
+
 export function formatPercent(value: number, digits = 2): string {
   return `${(value * 100).toFixed(digits)}%`;
 }

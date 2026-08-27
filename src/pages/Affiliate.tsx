@@ -181,7 +181,7 @@ export function Affiliate() {
             label="Referred players all time"
           />
           <HeroStat
-            value={<CashAmount wl={PROGRAM_STATS.earnedAllTimeWl} iconClassName="h-5 w-5" />}
+            value={<CashAmount currency="wl" wl={PROGRAM_STATS.earnedAllTimeWl} iconClassName="h-5 w-5" />}
             label="Total earned all time"
           />
         </div>
@@ -192,7 +192,7 @@ export function Affiliate() {
         <div className="surface flex flex-col p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Available to claim</p>
           <p className="mt-3 text-3xl font-black text-white">
-            <CashAmount wl={available} iconClassName="h-7 w-7" />
+            <CashAmount currency="wl" wl={available} iconClassName="h-7 w-7" />
           </p>
           <button
             type="button"
@@ -207,7 +207,7 @@ export function Affiliate() {
         <div className="surface p-5">
           <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Total earnings</p>
           <p className="mt-3 text-3xl font-black text-white">
-            <CashAmount wl={lifetime} iconClassName="h-7 w-7" />
+            <CashAmount currency="wl" wl={lifetime} iconClassName="h-7 w-7" />
           </p>
           <p className="mt-3 text-xs text-slate-400">All-time commissions on this browser</p>
         </div>
@@ -390,11 +390,11 @@ export function Affiliate() {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-slate-200">
-                        <CashAmount wl={row.wagerWl} />
+                        <CashAmount currency="wl" wl={row.wagerWl} />
                       </td>
                       <td className="px-3 py-3 font-mono text-slate-300">{row.bets.toLocaleString("en-US")}</td>
                       <td className="px-3 py-3 text-emerald-200">
-                        <CashAmount wl={referralCommission(row)} iconClassName="h-4 w-4" />
+                        <CashAmount currency="wl" wl={referralCommission(row)} iconClassName="h-4 w-4" />
                       </td>
                       <td className="px-5 py-3">
                         <span
@@ -466,10 +466,10 @@ export function Affiliate() {
                           </span>
                         </td>
                         <td className="py-2.5 pr-3">
-                          <CashAmount wl={row.wagerWl} />
+                          <CashAmount currency="wl" wl={row.wagerWl} />
                         </td>
                         <td className="py-2.5 text-amber-200">
-                          <CashAmount wl={row.prizeWl} iconClassName="h-4 w-4" />
+                          <CashAmount currency="wl" wl={row.prizeWl} iconClassName="h-4 w-4" />
                         </td>
                       </tr>
                     ))}

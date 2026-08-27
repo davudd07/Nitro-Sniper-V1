@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { shortId } from "../lib/format";
 import { getCase, type CaseOddsEntry } from "../data/cases";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
+import type { PlayCurrency } from "../lib/playWallet";
 
 export type BattleRosterKind = "you" | "empty" | "joining" | "bot" | "player";
 
@@ -55,8 +56,9 @@ export interface BattleConfig {
    * The pot is the live pull total, not the seat buy-in.
    */
   coinflip: boolean;
-  /** Shorter reel duration in the battle room. */
+  /** Faster reel duration. */
   fastSpin: boolean;
+  currency?: PlayCurrency;
   createdAt: number;
   /** "you" = created in this session; "lobby" = seeded active room. */
   source: "you" | "lobby";
@@ -112,6 +114,7 @@ function seedBattle(
     status?: BattleLobbyStatus;
     payout?: number;
     finishedAt?: number;
+    currency?: PlayCurrency;
   },
 ): BattleConfig {
   const mods = sanitizeBattleModifiers({
@@ -131,6 +134,7 @@ function seedBattle(
     fastSpin: partial.fastSpin ?? false,
     creatorBorrowPct: partial.creatorBorrowPct ?? 0,
     status: partial.status ?? "open",
+    currency: partial.currency === "shards" ? "shards" : "wl",
     costPerPlayer: costOf(partial.cases),
   };
 }
@@ -269,6 +273,31 @@ function seedBattles(): Record<string, BattleConfig> {
       prefillBots: 2,
       botSeats: [1, 2],
       createdAt: now - 2800,
+    }),
+    seedBattle({
+      id: "lobby_1v1_shard_pocket",
+      modeId: "1v1",
+      crazy: false,
+      jackpot: false,
+      goldSpin: true,
+      terminal: false,
+      currency: "shards",
+      cases: [{ caseId: "pocket", count: 2 }],
+      prefillBots: 0,
+      createdAt: now - 9000,
+    }),
+    seedBattle({
+      id: "lobby_2v2_shard_starter",
+      modeId: "2v2",
+      crazy: false,
+      jackpot: true,
+      goldSpin: true,
+      terminal: false,
+      currency: "shards",
+      cases: [{ caseId: "starter", count: 1 }],
+      prefillBots: 2,
+      botSeats: [1, 2],
+      createdAt: now - 5000,
     }),
     seedBattle({
       id: "hist_whale",
@@ -497,6 +526,7 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
       id,
       createdAt: Date.now(),
       status: cfg.status ?? "open",
+      currency: cfg.currency === "shards" ? "shards" : "wl",
     };
     set((s) => ({ battles: { ...s.battles, [id]: battle } }));
     return id;

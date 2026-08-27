@@ -26,11 +26,10 @@ import { buildBattleRoster, communityPaidOpenCredits } from "../lib/battleSeats"
 import { BattleCost } from "../components/battles/BattleCost";
 import { BattleResultOverlay, type BattlePayout } from "../components/battles/BattleResultOverlay";
 import { CashAmount } from "../components/ui/CurrencyIcon";
-import { formatCredits, formatCash } from "../lib/format";
 import { creatorCreateCost, fundedSeatCost, humanSeatPaidFraction, joinCost, pctLabel, winPayout } from "../lib/battleFinance";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { requireAccount } from "../lib/stake";
-import { awardAffiliateOnWager } from "../store/affiliateStore";
+import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
+import { battlePlayCurrency, playCurrency, playCurrencyLabel, type PlayCurrency } from "../lib/playWallet";
 import { sound } from "../lib/sound";
 import { computeJackpotWeights } from "../lib/jackpotOdds";
 import { coinflipTicketsFor, pickWeightedTicketIndex } from "../lib/battleCoinflip";
@@ -74,6 +73,7 @@ export function BattleRoom() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const battle = useBattleStore((s) => (battleId ? s.getBattle(battleId) : undefined));
+  const ledger = battlePlayCurrency(battle);
   const joinIntent = useBattleStore((s) => (battleId ? s.joinIntents[battleId] : undefined));
   const setJoinIntent = useBattleStore((s) => s.setJoinIntent);
   const setBattleStatus = useBattleStore((s) => s.setBattleStatus);
@@ -86,10 +86,8 @@ export function BattleRoom() {
       (searchParams.get("spectate") === "1" || wantReplay || battle.status === "finished"),
   );
   const play = useFairnessStore((s) => s.play);
-  const spend = useEconomyStore((s) => s.spend);
   const applyTipWager = useEconomyStore((s) => s.applyTipWager);
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
-  const credit = useEconomyStore((s) => s.credit);
+  const creditLedger = useEconomyStore((s) => s.creditLedger);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
 
@@ -145,14 +143,17 @@ export function BattleRoom() {
   function payAndJoin(seat: number, pct: number) {
     if (!battle) return false;
     if (!requireAccount()) return false;
-    const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
-    if (!spend(cost)) {
-      push(`You need ${formatCash(cost)} to join that battle.`, "danger");
+    const ledger = battlePlayCurrency(battle);
+    if (ledger !== playCurrency()) {
+      push(`Switch to ${playCurrencyLabel(ledger)} to join. Shards and World Locks don’t mix.`, "warning");
       return false;
     }
-    if (cost > 0) applyTipWager(cost);
-    awardRakeback(cost, HOUSE_EDGE.battles);
-    awardAffiliateOnWager(cost, HOUSE_EDGE.battles);
+    const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);
+    if (!takeStakeFor(cost, HOUSE_EDGE.battles, ledger)) {
+      push(stakeNeedMessage(cost, ledger), "danger");
+      return false;
+    }
+    if (cost > 0 && ledger === "wl") applyTipWager(cost);
     setJoinIntent(battle.id, { borrowPct: battle.fundedPct > 0 ? 0 : pct, seat });
     navigate(`/battles/${battle.id}`, { replace: true });
     return true;
@@ -590,10 +591,10 @@ export function BattleRoom() {
       const youPlayed = players.some((p) => p.kind === "you");
       const paid = youPlayed ? winPayout(share, borrowPct) : 0;
       if (settle && youPlayed && share > 0) {
-        credit(paid);
+        creditLedger(paid, battlePlayCurrency(battle));
         sound.win("big");
       }
-      if (settle && youPlayed) recordRound(youStakeAmount(), paid, "battles");
+      if (settle && youPlayed) recordRound(youStakeAmount(), paid, "battles", battlePlayCurrency(battle));
       if (settle && battle.id) {
         considerBattleLeaders({
           battleId: battle.id,
@@ -721,12 +722,12 @@ export function BattleRoom() {
     const youWon = teamMembers.some((p) => p.kind === "you");
     const paid = youWon ? winPayout(share, borrowPct) : 0;
     if (settle && youWon && share > 0) {
-      credit(paid);
+      creditLedger(paid, battlePlayCurrency(battle));
       sound.win("big");
     } else if (settle) {
       sound.lose();
     }
-    if (settle && players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles");
+    if (settle && players.some((p) => p.kind === "you")) recordRound(youStakeAmount(), paid, "battles", battlePlayCurrency(battle));
     if (settle && battle?.id) {
       considerBattleLeaders({
         battleId: battle.id,
@@ -949,7 +950,7 @@ export function BattleRoom() {
                 <Link2 className="h-3.5 w-3.5" /> Copy link
               </button>
             )}
-            <BattleCost costPerPlayer={battle.costPerPlayer} borrowPct={borrowPct} />
+            <BattleCost costPerPlayer={battle.costPerPlayer} borrowPct={borrowPct} currency={ledger} />
             {phase === "finished" && (
               <button
                 type="button"
@@ -992,6 +993,7 @@ export function BattleRoom() {
               <div className={clsx("flex justify-center", caseSequence.length > 0 && "mt-2")}>
                 <AnimatedPot
                   value={pot}
+                  currency={ledger}
                   label={
                     tieBreak && phase === "jackpot"
                       ? "Tie-breaker pot"
@@ -1102,6 +1104,7 @@ export function BattleRoom() {
                           <PlayerHeader
                             player={p}
                             state={roundStates[p.slotIndex] ?? { total: 0, history: [] }}
+                            currency={ledger}
                             jackpotOdds={
                               battle.coinflip
                                 ? liveOdds[p.slotIndex]
@@ -1128,6 +1131,7 @@ export function BattleRoom() {
             {resultOpen && payout && (
               <BattleResultOverlay
                 result={payout}
+                currency={ledger}
                 onClose={() => setResultOpen(false)}
                 onRecreate={recreateBattle}
                 onReplay={replayBattle}
@@ -1171,6 +1175,7 @@ export function BattleRoom() {
                               battleActive={phase === "running"}
                               activeCase={currentCase ?? CASES[0]}
                               costPerPlayer={battle.costPerPlayer}
+                              currency={ledger}
                               grouped={isTeam}
                               reelSize={reelSize}
                               compact={crowded}
@@ -1277,6 +1282,7 @@ function BattleCountdown({ countdown }: { countdown: number }) {
 function PlayerHeader({
   player,
   state,
+  currency,
   jackpotOdds,
   terminal = false,
   grouped = false,
@@ -1286,6 +1292,7 @@ function PlayerHeader({
 }: {
   player: BattlePlayer;
   state: PlayerRoundState;
+  currency?: PlayCurrency;
   jackpotOdds?: number;
   terminal?: boolean;
   grouped?: boolean;
@@ -1329,22 +1336,23 @@ function PlayerHeader({
           </p>
         </div>
         {!hidePullTotal && (
-        <span className="ml-auto shrink-0 text-right">
-          <span
-            className={clsx(
-              "inline-block rounded-md px-1.5 py-0.5 font-mono font-bold",
-              compact ? "text-xs" : "text-sm",
-              terminal ? "bg-pink-500/15 text-pink-300" : "text-emerald-300",
+          <span className="ml-auto shrink-0 text-right">
+            <CashAmount
+              wl={terminal ? (state.history[0]?.item.value ?? 0) : state.total}
+              currency={currency}
+              className={clsx(
+                "inline-flex rounded-md px-1.5 py-0.5 font-mono font-bold",
+                compact ? "text-xs" : "text-sm",
+                terminal ? "bg-pink-500/15 text-pink-300" : "text-emerald-300",
+              )}
+              iconClassName={compact ? "h-3 w-3" : "h-3.5 w-3.5"}
+            />
+            {terminal && (
+              <span className="mt-0.5 flex items-center justify-end gap-1 text-[9px] font-semibold uppercase tracking-wide text-pink-400/80">
+                last case · pot <CashAmount wl={state.total} currency={currency} iconClassName="h-3 w-3" />
+              </span>
             )}
-          >
-            {formatCredits(terminal ? (state.history[0]?.item.value ?? 0) : state.total)}
           </span>
-          {terminal && (
-            <span className="mt-0.5 block text-[9px] font-semibold uppercase tracking-wide text-pink-400/80">
-              last case · pot {formatCredits(state.total)}
-            </span>
-          )}
-        </span>
         )}
       </div>
     </div>
@@ -1360,6 +1368,7 @@ function PlayerStage({
   battleActive,
   activeCase,
   costPerPlayer,
+  currency,
   grouped = false,
   reelSize = "lg",
   compact = false,
@@ -1380,6 +1389,7 @@ function PlayerStage({
   battleActive: boolean;
   activeCase: (typeof CASES)[number];
   costPerPlayer: number;
+  currency?: PlayCurrency;
   grouped?: boolean;
   reelSize?: BattleReelSize;
   compact?: boolean;
@@ -1407,7 +1417,7 @@ function PlayerStage({
           ) : (
             <>
               <p className="text-xs text-slate-500">
-                Empty seat · <CashAmount wl={fundedSeatCost(costPerPlayer, fundedPct)} iconClassName="h-3 w-3" /> to join
+                Empty seat · <CashAmount wl={fundedSeatCost(costPerPlayer, fundedPct)} currency={currency} iconClassName="h-3 w-3" /> to join
                 {fundedPct > 0 ? ` (${pctLabel(fundedPct)} funded)` : ""}
               </p>
               {canJoinSeat && (

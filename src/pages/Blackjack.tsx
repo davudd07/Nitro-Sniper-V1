@@ -221,7 +221,7 @@ export function Blackjack() {
   const customBetValue = Math.max(1, Math.round(displayToWorldLocks(Number(customBetInput) || 0, lockUnit)) || 1);
   const customChip: ChipDef = { value: customBetValue, ...CUSTOM_CHIP_STYLE, custom: true };
 
-  const credit = useEconomyStore((s) => s.credit);
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const playRoll = useFairnessStore((s) => s.play);

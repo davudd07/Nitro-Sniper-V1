@@ -4,6 +4,7 @@ import { clsx } from "clsx";
 import { JackpotCircleWheel } from "../components/jackpot/JackpotCircleWheel";
 import type { JackpotTicket } from "../components/battles/JackpotWheel";
 import { AnimatedPot } from "../components/ui/AnimatedPot";
+import { CashAmount } from "../components/ui/CurrencyIcon";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
@@ -20,14 +21,22 @@ import { considerWinLeader } from "../store/winLeaderStore";
 import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
-import { formatCredits, formatCash, formatPercent } from "../lib/format";
+import { formatPercent, formatPlayCash } from "../lib/format";
 import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { requireAccount } from "../lib/stake";
-import { awardAffiliateOnWager } from "../store/affiliateStore";
+import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
+import { usePlayCurrency, playCurrencyLabel } from "../lib/playWallet";
 import { useIdentityStore } from "../store/identityStore";
 import { PlayerTag } from "../components/identity/PlayerTag";
+
+function potRangeLabel(id: JackpotPotId, shards: boolean): string {
+  const unit = shards ? "Shards" : "WL";
+  if (id === "small") return `5–1,000 ${unit}`;
+  if (id === "medium") return `1,000–10,000 ${unit}`;
+  if (id === "large") return `10,000–50,000 ${unit}`;
+  return `50,000–1,000,000 ${unit}`;
+}
 
 function jackpotPresets(id: JackpotPotId): number[] {
   if (id === "small") return [5, 50, 100, 250, 500, 1000];
@@ -37,18 +46,17 @@ function jackpotPresets(id: JackpotPotId): number[] {
 }
 
 export function JackpotPage() {
+  const ledger = usePlayCurrency();
   const [potId, setPotId] = useState<JackpotPotId>("small");
   const def = JACKPOT_POTS.find((p) => p.id === potId)!;
   const [amount, setAmount] = useState<number>(def.min);
-  const pot = useJackpotStore((s) => s.pots[potId]);
+  const pot = useJackpotStore((s) => s.tables[ledger][potId]);
   const join = useJackpotStore((s) => s.join);
   const callBot = useJackpotStore((s) => s.callBot);
   const beginSpin = useJackpotStore((s) => s.beginSpin);
   const finishSpin = useJackpotStore((s) => s.finishSpin);
   const resetPot = useJackpotStore((s) => s.resetPot);
-  const spend = useEconomyStore((s) => s.spend);
-  const awardRakeback = useEconomyStore((s) => s.awardRakeback);
-  const credit = useEconomyStore((s) => s.credit);
+  const creditLedger = useEconomyStore((s) => s.creditLedger);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
@@ -87,23 +95,21 @@ export function JackpotPage() {
   function handleJoin() {
     const bet = Math.round(amount);
     if (bet < def.min || bet > def.max) {
-      push(`Bet must be ${formatCredits(def.min)}–${formatCash(def.max)} in this pot.`, "warning");
+      push(`Bet must be ${formatPlayCash(def.min, ledger)}–${formatPlayCash(def.max, ledger)} in this pot.`, "warning");
       return;
     }
     if (!requireAccount()) return;
-    if (!spend(bet)) {
-      push("Not enough Shards for that bet.", "danger");
+    if (!takeStakeFor(bet, HOUSE_EDGE.jackpot, ledger)) {
+      push(stakeNeedMessage(bet, ledger), "danger");
       return;
     }
     if (!join(potId, bet)) {
-      credit(bet);
+      creditLedger(bet, ledger);
       push("You already have a seat in this pot.", "info");
       return;
     }
-    awardRakeback(bet, HOUSE_EDGE.jackpot);
-    awardAffiliateOnWager(bet, HOUSE_EDGE.jackpot);
     sound.chip();
-    push(`Joined ${def.label} jackpot with ${formatCash(bet)}.`, "success");
+    push(`Joined ${def.label} jackpot with ${formatPlayCash(bet, ledger)}.`, "success");
   }
 
   const botCount = pot.entries.filter((e) => e.kind === "bot").length;
@@ -119,12 +125,12 @@ export function JackpotPage() {
       push(reason, "warning");
       return;
     }
-    push(`Bot joined with ${formatCash(you!.amount)}.`, "info");
+    push(`Bot joined with ${formatPlayCash(you!.amount, ledger)}.`, "info");
   }
 
   async function handleSpin() {
     if (spinLock.current) return;
-    const live = useJackpotStore.getState().pots[potId];
+    const live = useJackpotStore.getState().tables[ledger][potId];
     if (live.phase !== "open" || live.entries.length < 2) return;
     spinLock.current = true;
     sound.click();
@@ -166,7 +172,7 @@ export function JackpotPage() {
   }, [pot.phase, potId]);
 
   function handleFinished() {
-    const current = useJackpotStore.getState().pots[potId];
+    const current = useJackpotStore.getState().tables[ledger][potId];
     if (current.phase !== "spinning") return;
     const winner = current.entries.find((e) => e.id === current.winnerId);
     const me = youEntry(current.entries);
@@ -182,12 +188,12 @@ export function JackpotPage() {
     }
     if (!winner || !me) return;
     if (winner.kind === "you") {
-      credit(livePayout);
-      recordRound(me.amount, livePayout, "jackpot");
-      push(`You won the jackpot! +${formatCash(livePayout)} after 9% house edge.`, "success");
+      creditLedger(livePayout, ledger);
+      recordRound(me.amount, livePayout, "jackpot", ledger);
+      push(`You won the jackpot! +${formatPlayCash(livePayout, ledger)} after 9% house edge.`, "success");
     } else {
-      recordRound(me.amount, 0, "jackpot");
-      push(`${winner.name} took the pot. House kept ${formatCash(liveTotal - livePayout)}.`, "info");
+      recordRound(me.amount, 0, "jackpot", ledger);
+      push(`${winner.name} took the pot. House kept ${formatPlayCash(liveTotal - livePayout, ledger)}.`, "info");
     }
   }
 
@@ -197,7 +203,7 @@ export function JackpotPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Jackpot</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Deposit into a pot. Tickets are proportional to bet size. Winner takes 91% of the pot — 9% house edge.
+            Deposit {playCurrencyLabel(ledger)} into a pot. Tickets are proportional to bet size. Winner takes 91% of the pot — 9% house edge. Shards and World Locks never mix.
           </p>
         </div>
         <InfoButton title="Jackpot — RTP & House Edge">
@@ -225,7 +231,7 @@ export function JackpotPage() {
             )}
           >
             <p className="text-sm font-semibold text-white">{p.label}</p>
-            <p className="text-[11px] text-slate-400">{p.blurb}</p>
+            <p className="text-[11px] text-slate-400">{potRangeLabel(p.id, ledger === "shards")}</p>
           </button>
         ))}
       </div>
@@ -234,8 +240,8 @@ export function JackpotPage() {
         <div className="relative surface space-y-6 p-5 pb-11">
           <WinLeaderStageMark game="jackpot" />
           <div className="relative">
-            <AnimatedPot value={total} label={`${def.label} pot`} size="lg" />
-            <p className="mt-1 text-center text-xs text-slate-500">Pays {formatCash(payout)} after house edge</p>
+            <AnimatedPot value={total} label={`${def.label} pot`} size="lg" currency={ledger} />
+            <p className="mt-1 text-center text-xs text-slate-500">Pays {formatPlayCash(payout, ledger)} after house edge</p>
             {countdownLeft != null && pot.phase === "open" && (
               <div className="absolute right-0 top-0 text-right">
                 <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-300">Starts in</p>
@@ -271,7 +277,9 @@ export function JackpotPage() {
                       nameClassName="text-sm font-medium text-white"
                     />
                     {e.kind === "bot" ? <span className="shrink-0 text-[10px] uppercase text-slate-500">bot</span> : null}
-                    <p className="font-mono text-sm text-slate-300">{formatCredits(e.amount)}</p>
+                    <p className="font-mono text-sm text-slate-300">
+                      <CashAmount wl={e.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
+                    </p>
                     <p className="w-14 text-right font-mono text-xs text-amber-200">{pct.toFixed(1)}%</p>
                   </div>
                 );
@@ -313,12 +321,12 @@ export function JackpotPage() {
                       }}
                       className="flex-1 rounded-lg border border-white/10 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/5"
                     >
-                      {formatCredits(v)}
+                      <CashAmount wl={v} currency={ledger} iconClassName="h-3 w-3" />
                     </button>
                   ))}
                 </div>
                 <button type="button" onClick={handleJoin} className="btn-primary w-full py-2.5">
-                  Join · {formatCash(Math.round(amount))}
+                  Join · <CashAmount wl={Math.round(amount)} currency={ledger} iconClassName="h-4 w-4" />
                 </button>
               </>
             )}
@@ -326,7 +334,8 @@ export function JackpotPage() {
             {pot.phase === "open" && you && (
               <>
                 <p className="text-sm text-slate-300">
-                  You’re in for <span className="font-mono font-semibold text-white">{formatCash(you.amount)}</span>.
+                  You’re in for{" "}
+                  <CashAmount wl={you.amount} currency={ledger} className="font-semibold text-white" iconClassName="h-3.5 w-3.5" />.
                   Call up to {JACKPOT_MAX_BOTS} bots — they’ll match that exact bet.
                 </p>
                 <button
@@ -335,7 +344,7 @@ export function JackpotPage() {
                   disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
                   className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white hover:bg-white/5 disabled:opacity-40"
                 >
-                  <Bot className="h-4 w-4" /> Call Bot · {formatCash(you.amount)}
+                  <Bot className="h-4 w-4" /> Call Bot · <CashAmount wl={you.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
                   <span className="text-xs font-medium text-slate-400">
                     ({botCount}/{JACKPOT_MAX_BOTS})
                   </span>

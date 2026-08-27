@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { shortId } from "../lib/format";
 import { randomBotName } from "../data/botNames";
+import { playCurrency, type PlayCurrency } from "../lib/playWallet";
 
 /** Same hues as battle seats, slightly quieter — jackpot table only. */
 export const JACKPOT_COLORS = [
@@ -48,8 +49,10 @@ interface JackpotPotState {
   countdownEndsAt: number | null;
 }
 
+type PotTable = Record<JackpotPotId, JackpotPotState>;
+
 interface JackpotStore {
-  pots: Record<JackpotPotId, JackpotPotState>;
+  tables: Record<PlayCurrency, PotTable>;
   join: (potId: JackpotPotId, amount: number) => boolean;
   callBot: (potId: JackpotPotId) => boolean;
   beginSpin: (potId: JackpotPotId, winnerId: string) => boolean;
@@ -68,6 +71,27 @@ function withCountdown(pot: JackpotPotState): JackpotPotState {
   return { ...pot, countdownEndsAt: Date.now() + JACKPOT_COUNTDOWN_MS };
 }
 
+function emptyTable(): PotTable {
+  return {
+    small: emptyPot(),
+    medium: emptyPot(),
+    large: emptyPot(),
+    unlimited: emptyPot(),
+  };
+}
+
+function patchPot(
+  tables: Record<PlayCurrency, PotTable>,
+  ledger: PlayCurrency,
+  potId: JackpotPotId,
+  next: JackpotPotState,
+): Record<PlayCurrency, PotTable> {
+  return {
+    ...tables,
+    [ledger]: { ...tables[ledger], [potId]: next },
+  };
+}
+
 export function potTotal(entries: JackpotEntry[]): number {
   return entries.reduce((s, e) => s + e.amount, 0);
 }
@@ -77,14 +101,10 @@ export function youEntry(entries: JackpotEntry[]): JackpotEntry | undefined {
 }
 
 export const useJackpotStore = create<JackpotStore>((set, get) => ({
-  pots: {
-    small: emptyPot(),
-    medium: emptyPot(),
-    large: emptyPot(),
-    unlimited: emptyPot(),
-  },
+  tables: { wl: emptyTable(), shards: emptyTable() },
   join: (potId, amount) => {
-    const pot = get().pots[potId];
+    const ledger = playCurrency();
+    const pot = get().tables[ledger][potId];
     if (!pot || pot.phase !== "open") return false;
     if (youEntry(pot.entries)) return false;
     const def = JACKPOT_POTS.find((p) => p.id === potId)!;
@@ -97,12 +117,13 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       color: JACKPOT_COLORS[pot.entries.length % JACKPOT_COLORS.length],
     };
     set((s) => ({
-      pots: { ...s.pots, [potId]: withCountdown({ ...pot, entries: [...pot.entries, entry] }) },
+      tables: patchPot(s.tables, ledger, potId, withCountdown({ ...pot, entries: [...pot.entries, entry] })),
     }));
     return true;
   },
   callBot: (potId) => {
-    const pot = get().pots[potId];
+    const ledger = playCurrency();
+    const pot = get().tables[ledger][potId];
     if (!pot || pot.phase !== "open") return false;
     const you = youEntry(pot.entries);
     if (!you) return false;
@@ -117,32 +138,38 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       amount: you.amount,
       color: JACKPOT_COLORS[pot.entries.length % JACKPOT_COLORS.length],
     };
-    set((s) => ({
-      pots: {
-        ...s.pots,
-        [potId]: withCountdown({ ...s.pots[potId], entries: [...s.pots[potId].entries, entry] }),
-      },
-    }));
+    set((s) => {
+      const cur = s.tables[ledger][potId];
+      return {
+        tables: patchPot(s.tables, ledger, potId, withCountdown({ ...cur, entries: [...cur.entries, entry] })),
+      };
+    });
     return true;
   },
   beginSpin: (potId, winnerId) => {
-    const pot = get().pots[potId];
+    const ledger = playCurrency();
+    const pot = get().tables[ledger][potId];
     if (!pot || pot.phase !== "open" || pot.entries.length < 2) return false;
     if (!pot.entries.some((e) => e.id === winnerId)) return false;
     set((s) => ({
-      pots: {
-        ...s.pots,
-        [potId]: { ...pot, phase: "spinning", winnerId, spinToken: pot.spinToken + 1, countdownEndsAt: null },
-      },
+      tables: patchPot(s.tables, ledger, potId, {
+        ...pot,
+        phase: "spinning",
+        winnerId,
+        spinToken: pot.spinToken + 1,
+        countdownEndsAt: null,
+      }),
     }));
     return true;
   },
   finishSpin: (potId) => {
-    const pot = get().pots[potId];
+    const ledger = playCurrency();
+    const pot = get().tables[ledger][potId];
     if (!pot || pot.phase !== "spinning") return;
-    set((s) => ({ pots: { ...s.pots, [potId]: { ...pot, phase: "finished" } } }));
+    set((s) => ({ tables: patchPot(s.tables, ledger, potId, { ...pot, phase: "finished" }) }));
   },
   resetPot: (potId) => {
-    set((s) => ({ pots: { ...s.pots, [potId]: emptyPot() } }));
+    const ledger = playCurrency();
+    set((s) => ({ tables: patchPot(s.tables, ledger, potId, emptyPot()) }));
   },
 }));

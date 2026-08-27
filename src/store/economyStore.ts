@@ -7,6 +7,7 @@ import { considerWinLeader, localWinName } from "./winLeaderStore";
 import { awardWagerXp, useLoyaltyStore } from "./loyaltyStore";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { shortId } from "../lib/format";
+import { playCurrency, WL_PER_SHARD, type PlayCurrency } from "../lib/playWallet";
 
 export const STARTING_BALANCE = 10000;
 export const LOW_BALANCE_THRESHOLD = 100;
@@ -17,6 +18,8 @@ export const DAILY_RAKEBACK_MS = 24 * 60 * 60 * 1000;
 interface EconomyState {
   balance: number;
   funCoins: number;
+  /** World Locks toward the next Shard (10 WL wagered = 1 Shard). */
+  shardWagerResidue: number;
   totalWagered: number;
   totalWon: number;
   totalRakeback: number;
@@ -28,15 +31,21 @@ interface EconomyState {
   tipWagerLeft: number;
   roundsPlayed: number;
   spend: (amount: number) => boolean;
+  spendFun: (amount: number) => boolean;
+  spendLedger: (amount: number, currency: PlayCurrency) => boolean;
   credit: (amount: number) => void;
   creditFun: (amount: number) => void;
+  creditLedger: (amount: number, currency: PlayCurrency) => void;
+  /** Credit a game payout into the wallet you are currently playing. */
+  payout: (amount: number, currency?: PlayCurrency) => void;
+  awardShardsFromWlWager: (wagered: number) => number;
   awardRakeback: (stake: number, houseEdge: number) => number;
   grantPendingRakeback: (amount: number) => void;
   claimRakeback: () => number;
   claimDailyRakeback: () => number;
   receiveTip: (amount: number) => void;
   applyTipWager: (wagered: number) => void;
-  recordRound: (wagered: number, won: number, game?: ActivityGame) => void;
+  recordRound: (wagered: number, won: number, game?: ActivityGame, currency?: PlayCurrency) => void;
   reset: () => void;
   maybeTopUp: () => boolean;
 }
@@ -46,6 +55,7 @@ export const useEconomyStore = create<EconomyState>()(
     (set, get) => ({
       balance: STARTING_BALANCE,
       funCoins: 0,
+      shardWagerResidue: 0,
       totalWagered: 0,
       totalWon: 0,
       totalRakeback: 0,
@@ -64,10 +74,44 @@ export const useEconomyStore = create<EconomyState>()(
         set({ balance: balance - amount });
         return true;
       },
+      spendFun: (amount) => {
+        const { funCoins } = get();
+        if (amount <= 0) return true;
+        if (funCoins < amount) return false;
+        set({ funCoins: funCoins - amount });
+        return true;
+      },
+      spendLedger: (amount, currency) => {
+        if (currency === "shards") return get().spendFun(amount);
+        return get().spend(amount);
+      },
       credit: (amount) => set((s) => ({ balance: s.balance + amount })),
       creditFun: (amount) => {
         if (amount <= 0) return;
         set((s) => ({ funCoins: s.funCoins + amount }));
+      },
+      creditLedger: (amount, currency) => {
+        if (amount <= 0) return;
+        if (currency === "shards") get().creditFun(amount);
+        else get().credit(amount);
+      },
+      payout: (amount, currency) => {
+        get().creditLedger(amount, currency ?? playCurrency());
+      },
+      awardShardsFromWlWager: (wagered) => {
+        if (!(wagered > 0)) return 0;
+        const total = (get().shardWagerResidue ?? 0) + wagered;
+        const granted = Math.floor(total / WL_PER_SHARD);
+        const residue = total % WL_PER_SHARD;
+        if (granted > 0) {
+          set((s) => ({
+            funCoins: s.funCoins + granted,
+            shardWagerResidue: residue,
+          }));
+        } else {
+          set({ shardWagerResidue: residue });
+        }
+        return granted;
       },
       awardRakeback: (stake, houseEdge) => {
         const base = rakebackAmount(stake, houseEdge);
@@ -143,14 +187,15 @@ export const useEconomyStore = create<EconomyState>()(
           balance: s.balance + locked,
         }));
       },
-      recordRound: (wagered, won, game) => {
+      recordRound: (wagered, won, game, currency) => {
+        const ledger = currency ?? playCurrency();
         set((s) => {
           const left = s.tipWagerLeft ?? 0;
           const locked = s.lockedTips ?? 0;
           let tipWagerLeft = left;
           let lockedTips = locked;
           let balance = s.balance;
-          if (wagered > 0 && left > 0 && locked > 0) {
+          if (wagered > 0 && ledger !== "shards" && left > 0 && locked > 0) {
             tipWagerLeft = Math.max(0, left - wagered);
             if (tipWagerLeft === 0) {
               lockedTips = 0;
@@ -168,8 +213,8 @@ export const useEconomyStore = create<EconomyState>()(
         });
         if (game && (wagered > 0 || won > 0)) {
           const playId = shortId("play");
-          logPlay({ id: playId, name: "You", game, wagered, won });
-          if (wagered > 0) {
+          logPlay({ id: playId, name: "You", game, wagered, won, currency: ledger });
+          if (wagered > 0 && ledger !== "shards") {
             awardWagerXp({ betId: playId, wagered, gameType: game, currency: "shard" });
           }
           if (game !== "battles" && wagered > 0 && won > 0) {
@@ -182,6 +227,7 @@ export const useEconomyStore = create<EconomyState>()(
         set({
           balance: STARTING_BALANCE,
           funCoins: 0,
+          shardWagerResidue: 0,
           totalWagered: 0,
           totalWon: 0,
           totalRakeback: 0,

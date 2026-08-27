@@ -39,7 +39,7 @@ export function Mines() {
   const [busy, setBusy] = useState(false);
   const [roundId, setRoundId] = useState(0);
 
-  const credit = useEconomyStore((s) => s.credit);
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);

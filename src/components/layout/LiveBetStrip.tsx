@@ -4,6 +4,7 @@ import { useActivityStore, ACTIVITY_GAME_LABELS, type PlayRecord } from "../../s
 import { useDemoProfileStore } from "../../store/demoProfileStore";
 import { useAdminViewStore } from "../../store/adminViewStore";
 import { isLocalPlayerName, publicPlayerName } from "../../lib/publicName";
+import { battlePlayCurrency, playCurrencyLabel, usePlayCurrency } from "../../lib/playWallet";
 import { CashAmount } from "../ui/CurrencyIcon";
 import { formatWinMulti } from "../../store/winLeaderStore";
 import { ChatModMenu } from "../admin/ChatModMenu";
@@ -18,6 +19,7 @@ const TABS: { id: Tab; label: string }[] = [
 ];
 
 const HIGH_ROLLER_WL = 100_000;
+const HIGH_ROLLER_SHARDS = 200;
 const LUCKY_X = 10;
 const TICK_MS = 3000;
 
@@ -38,6 +40,7 @@ function timeAgo(at: number, now: number): string {
 export function LiveBetStrip() {
   const plays = useActivityStore((s) => s.plays);
   const inject = useActivityStore((s) => s.injectLivePlays);
+  const ledger = usePlayCurrency();
   const [tab, setTab] = useState<Tab>("all");
   const [now, setNow] = useState(() => Date.now());
   const adminView = useAdminViewStore((s) => s.active);
@@ -53,12 +56,13 @@ export function LiveBetStrip() {
   }, [inject]);
 
   const rows = useMemo(() => {
-    const list = plays.filter((p) => p.wagered > 0);
+    const list = plays.filter((p) => p.wagered > 0 && battlePlayCurrency(p) === ledger);
+    const highCut = ledger === "shards" ? HIGH_ROLLER_SHARDS : HIGH_ROLLER_WL;
     if (tab === "lucky") return list.filter((p) => multiplier(p) > LUCKY_X).slice(0, 24);
-    if (tab === "high") return list.filter((p) => p.wagered >= HIGH_ROLLER_WL).slice(0, 24);
+    if (tab === "high") return list.filter((p) => p.wagered >= highCut).slice(0, 24);
     if (tab === "mine") return list.filter((p) => isLocalPlayerName(p.name)).slice(0, 24);
     return list.slice(0, 24);
-  }, [plays, tab]);
+  }, [plays, tab, ledger]);
 
   return (
     <section className="border-t border-white/[0.06] bg-[#0a1212]">
@@ -81,7 +85,9 @@ export function LiveBetStrip() {
       <div className="max-h-[21.4rem] overflow-y-auto px-2 py-2 scrollbar-thin">
         {rows.length === 0 ? (
           <p className="px-2 py-3 text-center text-xs text-slate-600">
-            {tab === "mine" ? "Your bets will land here." : "Waiting for bets…"}
+            {tab === "mine"
+              ? "Your bets will land here."
+              : `Waiting for ${playCurrencyLabel(ledger)} bets…`}
           </p>
         ) : (
           <table className="w-full text-left text-xs">
@@ -110,10 +116,10 @@ export function LiveBetStrip() {
                     </td>
                     <td className="hidden px-2 py-1.5 text-slate-400 sm:table-cell">{ACTIVITY_GAME_LABELS[p.game]}</td>
                     <td className="px-2 py-1.5">
-                      <CashAmount wl={p.wagered} iconClassName="h-3.5 w-3.5" />
+                      <CashAmount wl={p.wagered} currency={battlePlayCurrency(p)} iconClassName="h-3.5 w-3.5" />
                     </td>
                     <td className={clsx("px-2 py-1.5", p.won > p.wagered ? "text-emerald-300" : "text-slate-400")}>
-                      <CashAmount wl={p.won} iconClassName="h-3.5 w-3.5" />
+                      <CashAmount wl={p.won} currency={battlePlayCurrency(p)} iconClassName="h-3.5 w-3.5" />
                     </td>
                     <td className={clsx("px-2 py-1.5 font-mono", multi > LUCKY_X ? "text-amber-300" : "text-slate-500")}>
                       {multi > 0 ? formatWinMulti(multi) : "—"}

@@ -6,7 +6,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
-import { formatCredits, formatCash, formatPercent } from "../lib/format";
+import { formatCredits, formatPercent, formatPlayCash } from "../lib/format";
 import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
@@ -24,7 +24,9 @@ import {
   paytableRows,
   quickPick,
 } from "../lib/keno";
-import { requireAccount } from "../lib/stake";
+import { requireAccount, takeStake, stakeNeedMessage } from "../lib/stake";
+import { HOUSE_EDGE } from "../lib/rakeback";
+import { usePlayCurrency } from "../lib/playWallet";
 
 const RTP = 0.94;
 const BALLS = Array.from({ length: KENO_BALLS }, (_, i) => i + 1);
@@ -45,8 +47,9 @@ export function Keno() {
   const [session, setSession] = useState(0);
 
   const balance = useEconomyStore((s) => s.balance);
-  const spend = useEconomyStore((s) => s.spend);
-  const credit = useEconomyStore((s) => s.credit);
+  const funCoins = useEconomyStore((s) => s.funCoins);
+  const ledger = usePlayCurrency();
+  const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
@@ -97,8 +100,8 @@ export function Keno() {
       return;
     }
     if (!requireAccount()) return;
-    if (!spend(stake)) {
-      push("Not enough Shards for that bet.", "danger");
+    if (!takeStake(stake, HOUSE_EDGE.keno)) {
+      push(stakeNeedMessage(stake), "danger");
       return;
     }
     setDrawing(true);
@@ -127,7 +130,7 @@ export function Keno() {
       credit(payout);
       setSession((s) => s + payout);
       sound.win(payout >= stake * 10 ? "big" : "small");
-      push(`Caught ${catches}/${spots} — won ${formatCash(payout)}.`, "success");
+      push(`Caught ${catches}/${spots} — won ${formatPlayCash(payout, ledger)}.`, "success");
     } else {
       sound.lose();
       push(`Caught ${catches}/${spots} — no payout.`, "danger");
@@ -180,7 +183,7 @@ export function Keno() {
                     : "text-slate-400 ring-white/10 hover:bg-white/5",
                 )}
               >
-                {formatCredits(n)}
+                <CashAmount wl={n} iconClassName="h-3 w-3" />
               </button>
             ))}
             <button
@@ -238,7 +241,9 @@ export function Keno() {
           <div className="mt-4 grid grid-cols-2 gap-2 text-center text-xs">
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Balance</p>
-              <p className="font-mono text-base font-bold text-white">{formatCredits(balance)}</p>
+              <p className="font-mono text-base font-bold text-white">
+                <CashAmount wl={ledger === "shards" ? (funCoins ?? 0) : balance} />
+              </p>
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Spots</p>
@@ -248,13 +253,15 @@ export function Keno() {
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Last win</p>
-              <p className="font-mono text-base font-bold text-emerald-300">{formatCash(lastWin)}</p>
+              <p className="font-mono text-base font-bold text-emerald-300">
+                <CashAmount wl={lastWin} />
+              </p>
             </div>
             <div className="rounded-lg bg-bg-900 p-2.5 ring-1 ring-white/8">
               <p className="text-slate-500">Session</p>
               <p className={clsx("font-mono text-base font-bold", session >= 0 ? "text-emerald-300" : "text-rose-300")}>
                 {session >= 0 ? "+" : ""}
-                {formatCredits(session)}
+                {ledger === "shards" ? session.toLocaleString("en-US") : formatCredits(session)}
               </p>
             </div>
           </div>
@@ -300,7 +307,9 @@ export function Keno() {
                 ? `Caught ${lastCatches} of ${spots}`
                 : "Pick 1–10 numbers, then play"}
           </span>
-          <span className="font-mono text-slate-300">Bet {formatCash(stake)}</span>
+          <span className="font-mono text-slate-300">
+            Bet <CashAmount wl={stake} iconClassName="h-3.5 w-3.5" />
+          </span>
         </div>
 
         <div className="mb-5 flex min-h-[44px] flex-wrap gap-1.5">

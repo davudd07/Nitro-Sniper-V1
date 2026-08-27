@@ -153,7 +153,7 @@ export function BattleRoom() {
     if (!requireAccount()) return false;
     const ledger = battlePlayCurrency(battle);
     if (ledger !== playCurrency()) {
-      push(`Switch to ${playCurrencyLabel(ledger)} to join. Shards and World Locks don’t mix.`, "warning");
+      push(`Switch to ${playCurrencyLabel(ledger)} to join.`, "warning");
       return false;
     }
     const cost = joinCost(battle.costPerPlayer, battle.fundedPct, battle.fundedPct > 0 ? 0 : pct);

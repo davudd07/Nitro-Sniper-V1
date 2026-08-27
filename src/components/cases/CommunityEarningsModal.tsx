@@ -88,7 +88,7 @@ export function CommunityEarningsModal({ open, onClose }: { open: boolean; onClo
             Claim
           </button>
         </div>
-        <p className="mt-3 text-[11px] text-slate-500">Claim credits Shards to your play-money wallet.</p>
+        <p className="mt-3 text-[11px] text-slate-500">Claim to your wallet.</p>
       </div>
     </div>,
     document.body,

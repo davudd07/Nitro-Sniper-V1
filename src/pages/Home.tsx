@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, Sparkles, Search, ShieldCheck } from "lucide-react";
+import { Clock, Sparkles, Search } from "lucide-react";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
 import { listOfficialCases } from "../data/cases";
@@ -56,10 +56,6 @@ export function Home() {
           className="w-full rounded-xl border-2 border-cyan-400/25 bg-white/[0.04] py-3.5 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-500 focus:border-cyan-400/40"
         />
       </label>
-
-      <p className="inline-flex items-center gap-1.5 text-[11px] font-medium tracking-wide text-emerald-300/90">
-        <ShieldCheck className="h-3.5 w-3.5" /> Bet 0 to demo. Stakes spend the wallet in the header. Wager 10 World Locks to earn 1 Shard. Claim rakeback on Rewards.
-      </p>
 
       {filtered ? (
         <section>

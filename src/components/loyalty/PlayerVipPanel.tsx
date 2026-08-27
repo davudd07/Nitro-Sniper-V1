@@ -100,7 +100,7 @@ export function PlayerVipPanel({ compact = false }: { compact?: boolean }) {
           <section className="surface p-5">
             <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">XP history</p>
             {history.length === 0 ? (
-              <p className="text-sm text-slate-500">No XP yet. Place a World Lock bet (not Shards, not demo 0) to start.</p>
+              <p className="text-sm text-slate-500">No XP yet. Place a bet to start.</p>
             ) : (
               <ul className="max-h-80 space-y-1.5 overflow-y-auto text-xs">
                 {history.slice(0, 80).map((row) => (

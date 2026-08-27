@@ -112,7 +112,7 @@ export function CaseBattlesLobby() {
     if (!requireAccount()) return;
     const ledger = battlePlayCurrency(b);
     if (ledger !== playCurrency()) {
-      push(`Switch to ${playCurrencyLabel(ledger)} to join. Shards and World Locks don’t mix.`, "warning");
+      push(`Switch to ${playCurrencyLabel(ledger)} to join.`, "warning");
       return;
     }
     const cost = joinCost(b.costPerPlayer, b.fundedPct, b.fundedPct > 0 ? 0 : borrowPct);
@@ -150,7 +150,7 @@ export function CaseBattlesLobby() {
             </span>
           </h1>
           <p className="mt-1 text-sm text-slate-400">
-            Join a live {playCurrencyLabel(currency)} room or create one. Shards and World Locks never sit in the same pot.
+            Join a live {playCurrencyLabel(currency)} room or create one.
           </p>
         </div>
         <Link to="/battles/create" onClick={() => sound.click()} className="btn-primary inline-flex items-center gap-1.5 px-5 py-2.5">

@@ -15,6 +15,7 @@ import { requireAccount, takeStakeFor, stakeNeedMessage } from "../../lib/stake"
 import { HOUSE_EDGE } from "../../lib/rakeback";
 import { trackSettledWlWager } from "../../lib/wagerTrack";
 import { LOCAL_PLAYER, useModerationStore } from "../../store/moderationStore";
+import { MIN_TIP_WL } from "./PlayerTipButton";
 
 function formatRemain(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -23,7 +24,7 @@ function formatRemain(ms: number): string {
   return `${m}:${r.toString().padStart(2, "0")}`;
 }
 
-const TIP_PRESETS = [10, 25, 50];
+const TIP_PRESETS = [MIN_TIP_WL, 100, 250];
 
 export function ChatRainBanner() {
   const nextRainAt = useChatStore((s) => s.nextRainAt);
@@ -34,7 +35,7 @@ export function ChatRainBanner() {
   const push = useToastStore((s) => s.push);
   const [now, setNow] = useState(() => Date.now());
   const [tipOpen, setTipOpen] = useState(false);
-  const [custom, setCustom] = useState("25");
+  const [custom, setCustom] = useState(String(MIN_TIP_WL));
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -54,8 +55,8 @@ export function ChatRainBanner() {
 
   function sendTip(amount: number) {
     const n = Math.floor(amount);
-    if (n <= 0) {
-      push("Enter a tip amount.", "warning");
+    if (n < MIN_TIP_WL) {
+      push(`Minimum tip is ${formatCash(MIN_TIP_WL)}.`, "warning");
       return;
     }
     if (!requireAccount()) return;
@@ -143,7 +144,7 @@ export function ChatRainBanner() {
           ))}
           <input
             type="number"
-            min={1}
+            min={MIN_TIP_WL}
             value={custom}
             onChange={(e) => setCustom(e.target.value)}
             className="min-w-0 flex-1 rounded-md border border-white/10 bg-black/40 px-2 py-1 font-mono text-[11px] text-white outline-none"

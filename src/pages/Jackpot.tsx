@@ -26,7 +26,7 @@ import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
-import { usePlayCurrency, playCurrencyLabel } from "../lib/playWallet";
+import { usePlayCurrency } from "../lib/playWallet";
 import { useIdentityStore } from "../store/identityStore";
 import { PlayerTag } from "../components/identity/PlayerTag";
 
@@ -203,7 +203,7 @@ export function JackpotPage() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Jackpot</h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Deposit {playCurrencyLabel(ledger)} into a pot. Tickets are proportional to bet size. Winner takes 91% of the pot — 9% house edge. Shards and World Locks never mix.
+            Drop into a pot. Winner takes 91%.
           </p>
         </div>
         <InfoButton title="Jackpot — RTP & House Edge">

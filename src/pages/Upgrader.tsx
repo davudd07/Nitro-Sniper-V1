@@ -574,9 +574,7 @@ export function Upgrader() {
             Upgrader
           </h1>
           <p className="mt-1 max-w-xl text-sm text-slate-400">
-            {coins
-              ? "Wager Shards to a higher Shard payout — type amounts or pick a preset, then spin. Play-money only."
-              : "Stake a catalog item (or its Shard value), pick a richer target, and spin the dial. Play-money only."}
+            {coins ? "Spin a stake up to a bigger payout." : "Stake an item, pick a richer target, and spin."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

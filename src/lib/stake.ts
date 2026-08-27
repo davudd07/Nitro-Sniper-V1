@@ -14,7 +14,7 @@ export function isDemoStake(amount: number): boolean {
 
 export function requireAccount(): boolean {
   if (useAuthStore.getState().requireAccount()) return true;
-  useToastStore.getState().push("Create a username before placing a demo or World Lock bet.", "info");
+  useToastStore.getState().push("Create a username first.", "info");
   return false;
 }
 

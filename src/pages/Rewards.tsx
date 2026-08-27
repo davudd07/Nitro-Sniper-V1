@@ -7,9 +7,8 @@ import { CoinStackArt, TreasureChestArt } from "../components/rewards/DropArt";
 import { PlayerVipPanel } from "../components/loyalty/PlayerVipPanel";
 import { RankRewardsGrid } from "../components/loyalty/RankRewardsGrid";
 import { RankCasesPanel } from "../components/loyalty/RankCasesPanel";
-import { formatCash, formatPercent } from "../lib/format";
+import { formatCash } from "../lib/format";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
-import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
 import { assertBalanceUsable } from "../lib/stake";
 import { formatDropCountdown } from "../lib/xp";
@@ -268,11 +267,8 @@ export function Rewards() {
           onFooter={handleWeekly}
           info={
             <DropInfo title="Weekly drop">
-              <p>
-                A play-money Shard drop on a weekly timer. Claim when the countdown hits zero. After a claim the
-                timer resets for another week.
-              </p>
-              <p>Prize: {formatCash(WEEKLY_DROP_SH)}. No deposits, no cash value.</p>
+              <p>A weekly drop. Claim when the timer hits zero.</p>
+              <p>Prize: {formatCash(WEEKLY_DROP_SH)}.</p>
             </DropInfo>
           }
         />
@@ -286,20 +282,15 @@ export function Rewards() {
           onFooter={handleMonthly}
           info={
             <DropInfo title="Monthly drop">
-              <p>
-                A larger play-money Shard drop on a monthly timer. Claim when ready; the chest then locks until the
-                next cycle.
-              </p>
-              <p>Prize: {formatCash(MONTHLY_DROP_SH)}. Demo balance only — never a real payout.</p>
+              <p>A monthly drop. Claim when the timer hits zero.</p>
+              <p>Prize: {formatCash(MONTHLY_DROP_SH)}.</p>
             </DropInfo>
           }
         />
       </div>
 
       <p className="text-xs leading-relaxed text-slate-500">
-        Instant Drop and Daily Drop each accrue {formatPercent(RAKEBACK_OF_EDGE)} of the house-edge slice from real
-        demo stakes (bet &gt; 0), plus your VIP rakeback bonus. Instant Drop is claimable immediately. Daily Drop
-        matures for 24 hours, then pays 100%. Game RTP is unchanged. Chat rain still lives in the chat sidebar.
+        Instant Drop is claimable now. Daily Drop matures for 24 hours.
       </p>
 
       <RankCasesPanel tiers={tiers} currentId={vip.current.id} lifetimeXp={lifetimeXp} />

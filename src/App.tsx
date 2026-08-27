@@ -3,7 +3,6 @@ import { Route, Routes, useLocation, useParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { NavBar } from "./components/layout/NavBar";
 import { WinLeaderStrip } from "./components/layout/WinLeaderStrip";
-import { DemoBanner } from "./components/layout/DemoBanner";
 import { BanNotice } from "./components/layout/BanNotice";
 import { GameSidebar } from "./components/layout/GameSidebar";
 import { ChatSidebar } from "./components/layout/ChatSidebar";
@@ -109,7 +108,6 @@ export default function App() {
         <NavBar wide={isBattleRoom} />
         <AdminViewBar />
         <WinLeaderStrip />
-        <DemoBanner />
         <BanNotice />
         <main className="min-h-0 min-w-0 flex-1 overflow-y-auto">
           <div
@@ -142,9 +140,6 @@ export default function App() {
             </Routes>
           </div>
           <LiveBetStrip />
-          <footer className="border-t border-white/[0.05] py-5 text-center text-xs text-slate-500">
-            Prism Vault is a portfolio demo. Play-money only — no purchases, deposits, or withdrawals exist anywhere in this app.
-          </footer>
         </main>
       </div>
       <ChatSidebar />

@@ -129,7 +129,7 @@ export function Affiliate() {
       try {
         await navigator.share({
           title: "SeedBET affiliate",
-          text: "Play-money vault invite — World Locks, no cash.",
+          text: "Join me on SeedBET.",
           url: link,
         });
         return;
@@ -194,8 +194,7 @@ export function Affiliate() {
           Invite your friends. Earn <span className="text-cyan-300">rewards</span>.
         </h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-slate-300">
-          Join the SeedBET affiliate program and get a World Lock cut every time your friends play. Play-money only —
-          no cash, no withdrawals, no real-money payouts.
+          Share your code and earn a cut when your friends play.
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <HeroStat value={formatPercent(AFFILIATE_SHARE, 0)} label="Commission rate" />
@@ -330,7 +329,7 @@ export function Affiliate() {
           {attributedCode ? (
             <p className="mt-2 text-sm text-slate-300">
               First-touch attribution: <span className="font-mono font-bold text-cyan-200">{attributedCode}</span>
-              {usingOwnCode ? " — that’s your own code, so self-referrals are not paid." : ". Real World Lock bets pay that affiliate."}
+              {usingOwnCode ? " — that’s your own code." : "."}
             </p>
           ) : (
             <form
@@ -520,9 +519,7 @@ export function Affiliate() {
       </section>
 
       <p className="text-xs leading-relaxed text-slate-500">
-        Personal available / lifetime / referral rows are live demo data on this browser. Program totals and the
-        leaderboard are labeled showcase figures. Claiming credits World Locks here only. SeedBET never pays cash and never
-        tracks real affiliate traffic.
+        Claiming credits your World Lock balance.
       </p>
 
       <Link to="/rewards" className="text-sm text-slate-400 hover:text-white">

@@ -40,10 +40,7 @@ export function Leaderboard() {
           Leaderboard
         </h1>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-          Ranked by lock wagers converted to World Locks. Diamond Locks (100 WL) and Blue Gem Locks (10,000 WL) count the
-          same as World Locks — play in any lock unit and it is converted for this board. Shards never count.
-          Top 5 at the end of each period get a play-money prize. Hidden profiles show as Hidden.
-          Owner accounts are excluded from this board and its prizes.
+          Ranked by World Locks wagered. Diamond Locks and Blue Gem Locks convert. Shards don’t count.
         </p>
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
           <Switch

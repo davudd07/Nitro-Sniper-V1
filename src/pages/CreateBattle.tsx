@@ -42,7 +42,7 @@ import { consumeBattleDraft } from "../lib/battleDraft";
 import { sanitizeBattleModifiers } from "../lib/battleCoinflip";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
-import { playCurrencyLabel, usePlayCurrency } from "../lib/playWallet";
+import { usePlayCurrency } from "../lib/playWallet";
 
 function flatten(entries: BattleCaseEntry[]): string[] {
   return entries.flatMap((e) => Array.from({ length: e.count }, () => e.caseId));
@@ -272,9 +272,6 @@ export function CreateBattle() {
             <ArrowLeft className="h-4 w-4" /> Back
           </Link>
           <h1 className="text-2xl font-semibold tracking-tight text-white">Create Battle</h1>
-          <p className="mt-1 text-xs text-slate-500">
-            This room uses {playCurrencyLabel(currency)} only — Shards and World Locks never mix.
-          </p>
         </div>
 
         <section>

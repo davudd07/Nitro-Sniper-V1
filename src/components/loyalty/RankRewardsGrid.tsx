@@ -19,9 +19,7 @@ export function RankRewardsGrid({
       <div>
         <h2 className="text-lg font-semibold text-white">Rank rewards</h2>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-400">
-          Each VIP rank keeps its rakeback bonus, cosmetic title, and any one-time Shard drop. Unranked starts at 0
-          lifetime XP from settled World Lock wagers. Daily rank cases and rank-up keys live in Rank cases above. Drops
-          are play-money only — no deposits or withdrawals.
+          Each rank has rakeback, a title, and a drop. Daily cases and keys are above.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">

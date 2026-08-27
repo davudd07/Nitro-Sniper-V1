@@ -1,8 +1,6 @@
 import { Link } from "react-router-dom";
 import { Percent, Users, Gift } from "lucide-react";
 import type { ReactNode } from "react";
-import { formatPercent } from "../../lib/format";
-import { RAKEBACK_OF_EDGE } from "../../lib/rakeback";
 import { sound } from "../../lib/sound";
 
 function PromoCard({
@@ -46,25 +44,25 @@ export function PromoRow() {
       <PromoCard
         kicker="House edge slice"
         title="Rakeback"
-        body={`${formatPercent(RAKEBACK_OF_EDGE, 0)} of the house-edge slice from real demo stakes (bet > 0). Claim it as Shards on Rewards.`}
+        body="Claim a cut of the house edge on Rewards."
         cta="Claim rakeback →"
         to="/rewards"
         accent="linear-gradient(160deg, #14532d 0%, #052e16 100%)"
         icon={<Percent className="h-5 w-5" />}
       />
       <PromoCard
-        kicker="Play-money only"
+        kicker="Invite friends"
         title="Affiliate"
-        body="Share a demo invite. Earn a World Lock cut of referred play-money wager — never real cash, never a payout."
+        body="Share your code and earn when friends play."
         cta="Start earning →"
         to="/affiliate"
         accent="linear-gradient(160deg, #155e75 0%, #083344 100%)"
         icon={<Users className="h-5 w-5" />}
       />
       <PromoCard
-        kicker="No deposit exists"
+        kicker="Rewards"
         title="Free to play"
-        body="Daily demo drops, chat rain, and bet-0 tables. Community is optional — rewards live here in the vault."
+        body="Daily drops, chat rain, and rank cases."
         cta="Join in →"
         to="/rewards"
         accent="linear-gradient(160deg, #6b21a8 0%, #3b0764 100%)"

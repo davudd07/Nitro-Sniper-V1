@@ -55,14 +55,10 @@ export function HomeHero() {
                 Stay anonymous in games
               </div>
               <p className="mt-0.5 max-w-xs text-[10px] leading-relaxed text-slate-600">
-                Hides your username on bets, cases, and tables. Chat still shows your name when you talk.
+                Hides your name on bets and tables. Chat still shows it.
               </p>
             </div>
           </div>
-          <p className="mt-3 max-w-md text-sm leading-relaxed text-slate-300">
-            Play-money Prism Vault — provably fair tables, original cases, and Shards that never leave this demo.
-            Create a username before placing a demo or Shard bet.
-          </p>
           <Link to="/rewards" className="btn-cyan mt-5 px-5 py-2.5 text-sm" onClick={() => sound.click()}>
             Claim daily rewards
           </Link>

@@ -70,9 +70,7 @@ export function AccountGate() {
             <h2 className="text-xl font-extrabold text-white">{mode === "register" ? "Create username" : "Sign in"}</h2>
           </div>
         </div>
-        <p className="mb-4 text-xs leading-relaxed text-slate-400">
-          Create a username before demo or World Lock bets. Play-money only — this login stays on this browser.
-        </p>
+        <p className="mb-4 text-xs leading-relaxed text-slate-400">Pick a username to play.</p>
         <label className="mb-1.5 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Username</label>
         <input
           autoComplete="username"

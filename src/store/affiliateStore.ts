@@ -11,6 +11,7 @@ import {
 import { useAuthStore } from "./authStore";
 import { useDemoProfileStore } from "./demoProfileStore";
 import { useEconomyStore } from "./economyStore";
+import { isLocalOwner } from "../lib/owner";
 
 export interface AffiliateLedger {
   referrals: AffiliateReferral[];
@@ -144,6 +145,7 @@ export const useAffiliateStore = create<AffiliateState>()(
       },
       noteReferredWager: (stake, houseEdge) => {
         if (!(stake > 0) || !(houseEdge > 0)) return 0;
+        if (isLocalOwner()) return 0;
         const attributed = get().attributedCode;
         if (!attributed) return 0;
         if (!get().claimedBy[attributed]) return 0;
@@ -196,6 +198,15 @@ export const useAffiliateStore = create<AffiliateState>()(
         const available = affiliateAvailable(ledger);
         if (available <= 0) return 0;
         useEconomyStore.getState().credit(available);
+        void import("./balanceLedgerStore").then(({ appendBalanceLedger }) => {
+          appendBalanceLedger({
+            name: "You",
+            kind: "affiliate",
+            amount: available,
+            currency: "wl",
+            note: "Affiliate claim",
+          });
+        });
         set((s) => ({
           ledgers: {
             ...s.ledgers,

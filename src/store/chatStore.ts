@@ -33,12 +33,15 @@ const SEED: Omit<ChatMessage, "id" | "at">[] = [
 
 interface ChatState {
   messages: ChatMessage[];
+  /** Long-lived transcript for warden audits. Live chat is a short window of this. */
+  history: ChatMessage[];
   nextRainAt: number;
   lastRainWinners: string[];
   joinedRain: string[];
   rainPot: number;
   send: (text: string) => void;
   post: (msg: Omit<ChatMessage, "id" | "at">) => void;
+  historyFor: (name: string) => ChatMessage[];
   removeMessage: (id: string) => void;
   removeByName: (name: string) => void;
   joinRain: () => boolean;
@@ -63,14 +66,24 @@ function pickWinnersFrom(pool: string[]): string[] {
   return winners;
 }
 
+const LIVE_CAP = 80;
+const HISTORY_CAP = 2000;
+
+function seedMessages(now = Date.now()): ChatMessage[] {
+  return SEED.map((m, i) => ({
+    ...m,
+    id: `seed_${i}`,
+    at: now - (SEED.length - i) * 45000,
+  }));
+}
+
 export const useChatStore = create<ChatState>()(
   persist(
-    (set, get) => ({
-      messages: SEED.map((m, i) => ({
-        ...m,
-        id: `seed_${i}`,
-        at: Date.now() - (SEED.length - i) * 45000,
-      })),
+    (set, get) => {
+      const seeded = seedMessages();
+      return {
+      messages: seeded,
+      history: seeded,
       nextRainAt: Date.now() + CHAT_RAIN_MS,
       lastRainWinners: [],
       joinedRain: [],
@@ -81,12 +94,19 @@ export const useChatStore = create<ChatState>()(
         get().post({ name: "You", text: trimmed, color: "#d946ef", you: true });
       },
       post: (msg) => {
+        const row: ChatMessage = { ...msg, id: shortId("chat"), at: Date.now() };
         set((s) => ({
-          messages: [
-            ...s.messages,
-            { ...msg, id: shortId("chat"), at: Date.now() },
-          ].slice(-80),
+          messages: [...s.messages, row].slice(-LIVE_CAP),
+          history: [...(s.history ?? s.messages), row].slice(-HISTORY_CAP),
         }));
+      },
+      historyFor: (name) => {
+        const key = name.trim().toLowerCase();
+        const local = key === "you" || key === "local";
+        return (get().history ?? get().messages).filter((m) => {
+          if (local) return Boolean(m.you) || m.name.toLowerCase() === "you";
+          return m.name.toLowerCase() === key;
+        });
       },
       removeMessage: (id) => {
         set((s) => ({ messages: s.messages.filter((m) => m.id !== id) }));
@@ -175,7 +195,20 @@ export const useChatStore = create<ChatState>()(
         });
         return { winners, youWon, prizeEach, pot };
       },
-    }),
-    { name: "prism-vault-chat" },
+    };
+    },
+    {
+      name: "prism-vault-chat",
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<ChatState>;
+        const messages = p.messages ?? current.messages;
+        return {
+          ...current,
+          ...p,
+          messages,
+          history: p.history && p.history.length ? p.history : messages,
+        };
+      },
+    },
   ),
 );

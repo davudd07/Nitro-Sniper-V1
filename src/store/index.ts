@@ -18,3 +18,4 @@ export * from "./leaderboardStore";
 export * from "./rankRewardStore";
 export * from "./fundedBattleStore";
 export * from "./goldSpinStore";
+export * from "./balanceLedgerStore";

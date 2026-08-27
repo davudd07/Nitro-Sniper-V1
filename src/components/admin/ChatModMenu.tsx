@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Ban, Coins, MoreHorizontal, Trash2, Volume2, VolumeX, Wallet } from "lucide-react";
+import { Ban, Coins, Lock, MoreHorizontal, Trash2, Unlock, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import { LOCAL_PLAYER, useModerationStore } from "../../store/moderationStore";
 import { useChatStore } from "../../store/chatStore";
@@ -11,10 +11,13 @@ export function ChatModMenu({ name }: { name: string }) {
   const [open, setOpen] = useState(false);
   const banned = useModerationStore((s) => s.banned.includes(name));
   const muted = useModerationStore((s) => s.muted.includes(name));
+  const locked = useModerationStore((s) => s.locked.includes(name));
   const ban = useModerationStore((s) => s.ban);
   const unban = useModerationStore((s) => s.unban);
   const mute = useModerationStore((s) => s.mute);
   const unmute = useModerationStore((s) => s.unmute);
+  const lock = useModerationStore((s) => s.lock);
+  const unlock = useModerationStore((s) => s.unlock);
   const topUpShards = useModerationStore((s) => s.topUpShards);
   const removeByName = useChatStore((s) => s.removeByName);
   const push = useToastStore((s) => s.push);
@@ -54,6 +57,15 @@ export function ChatModMenu({ name }: { name: string }) {
           ) : (
             <MenuItem onClick={() => act(`Muted ${label}`, () => mute(name))}>
               <VolumeX className="h-3 w-3" /> Mute
+            </MenuItem>
+          )}
+          {locked ? (
+            <MenuItem onClick={() => act(`Unlocked ${label}`, () => unlock(name))}>
+              <Unlock className="h-3 w-3" /> Unlock balance
+            </MenuItem>
+          ) : (
+            <MenuItem onClick={() => act(`Locked ${label}`, () => lock(name))} danger>
+              <Lock className="h-3 w-3" /> Lock balance
             </MenuItem>
           )}
           <MenuItem onClick={() => act(`Purged chat from ${label}`, () => removeByName(name))} danger>

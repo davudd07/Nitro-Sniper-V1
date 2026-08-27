@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { BOT_NAMES } from "../data/botNames";
 import { useEconomyStore } from "./economyStore";
+import { appendBalanceLedger } from "./balanceLedgerStore";
 
 export const LOCAL_PLAYER = "You";
 
@@ -23,15 +24,19 @@ export interface AdminLogEntry {
 interface ModerationState {
   banned: string[];
   muted: string[];
+  locked: string[];
   botWallets: Record<string, BotWallet>;
   log: AdminLogEntry[];
   isBanned: (name: string) => boolean;
   isMuted: (name: string) => boolean;
+  isLocked: (name: string) => boolean;
   canChat: (name: string) => boolean;
   ban: (name: string) => void;
   unban: (name: string) => void;
   mute: (name: string) => void;
   unmute: (name: string) => void;
+  lock: (name: string) => void;
+  unlock: (name: string) => void;
   topUpShards: (name: string, amount: number) => void;
   grantFunCoins: (name: string, amount: number) => void;
   grantPendingRakeback: (name: string, amount: number) => void;
@@ -43,6 +48,7 @@ interface ModerationState {
     wagered: number;
     banned: boolean;
     muted: boolean;
+    locked: boolean;
   };
 }
 
@@ -60,10 +66,12 @@ export const useModerationStore = create<ModerationState>()(
     (set, get) => ({
       banned: [],
       muted: [],
+      locked: [],
       botWallets: {},
       log: [],
       isBanned: (name) => get().banned.includes(name),
       isMuted: (name) => get().muted.includes(name),
+      isLocked: (name) => get().locked.includes(name),
       canChat: (name) => {
         const s = get();
         return !s.banned.includes(name) && !s.muted.includes(name);
@@ -86,6 +94,15 @@ export const useModerationStore = create<ModerationState>()(
         set({ muted: get().muted.filter((n) => n !== name) });
         note(get, set, `Unmuted ${name}`);
       },
+      lock: (name) => {
+        if (get().locked.includes(name)) return;
+        set({ locked: [...get().locked, name] });
+        note(get, set, `Locked ${name}`);
+      },
+      unlock: (name) => {
+        set({ locked: get().locked.filter((n) => n !== name) });
+        note(get, set, `Unlocked ${name}`);
+      },
       topUpShards: (name, amount) => {
         if (amount <= 0) return;
         if (name === LOCAL_PLAYER) {
@@ -96,7 +113,15 @@ export const useModerationStore = create<ModerationState>()(
           wallets[name] = { ...cur, shards: cur.shards + amount };
           set({ botWallets: wallets });
         }
-        note(get, set, `Topped up ${name} +${amount} SH`);
+        appendBalanceLedger({
+          name,
+          kind: "grant",
+          amount,
+          currency: "wl",
+          note: "Warden World Lock top-up",
+          balanceAfter: name === LOCAL_PLAYER ? useEconomyStore.getState().balance : undefined,
+        });
+        note(get, set, `Topped up ${name} +${amount} WL`);
       },
       grantFunCoins: (name, amount) => {
         if (amount <= 0) return;
@@ -108,7 +133,14 @@ export const useModerationStore = create<ModerationState>()(
           wallets[name] = { ...cur, funCoins: cur.funCoins + amount };
           set({ botWallets: wallets });
         }
-        note(get, set, `Granted ${name} +${amount} Fun Coins`);
+        appendBalanceLedger({
+          name,
+          kind: "grant",
+          amount,
+          currency: "shards",
+          note: "Warden Shard grant",
+        });
+        note(get, set, `Granted ${name} +${amount} Shards`);
       },
       grantPendingRakeback: (name, amount) => {
         if (amount <= 0) return;
@@ -133,6 +165,7 @@ export const useModerationStore = create<ModerationState>()(
         set({
           banned: get().banned.filter((n) => n !== name),
           muted: get().muted.filter((n) => n !== name),
+          locked: get().locked.filter((n) => n !== name),
         });
         note(get, set, `Reset ${name}`);
       },
@@ -147,6 +180,7 @@ export const useModerationStore = create<ModerationState>()(
             wagered: eco.totalWagered,
             banned: s.banned.includes(name),
             muted: s.muted.includes(name),
+            locked: s.locked.includes(name),
           };
         }
         const w = s.botWallets[name] ?? emptyWallet();
@@ -157,9 +191,20 @@ export const useModerationStore = create<ModerationState>()(
           wagered: w.wagered,
           banned: s.banned.includes(name),
           muted: s.muted.includes(name),
+          locked: s.locked.includes(name),
         };
       },
     }),
-    { name: "prism-vault-moderation" },
+    {
+      name: "prism-vault-moderation",
+      merge: (persisted, current) => {
+        const p = (persisted ?? {}) as Partial<ModerationState>;
+        return {
+          ...current,
+          ...p,
+          locked: Array.isArray(p.locked) ? p.locked : [],
+        };
+      },
+    },
   ),
 );

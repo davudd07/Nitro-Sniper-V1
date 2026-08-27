@@ -9,9 +9,12 @@ import { sound } from "../../lib/sound";
 import { formatCredits, formatCash } from "../../lib/format";
 import { parseLockInput } from "../../lib/money";
 import { useSettingsStore } from "../../store/settingsStore";
-import { useEconomyStore } from "../../store/economyStore";
 import { useToastStore } from "../../store/toastStore";
 import { useEffect, useState } from "react";
+import { requireAccount, takeStakeFor, stakeNeedMessage } from "../../lib/stake";
+import { HOUSE_EDGE } from "../../lib/rakeback";
+import { trackSettledWlWager } from "../../lib/wagerTrack";
+import { LOCAL_PLAYER, useModerationStore } from "../../store/moderationStore";
 
 function formatRemain(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -28,7 +31,6 @@ export function ChatRainBanner() {
   const rainPot = useChatStore((s) => s.rainPot);
   const joinRain = useChatStore((s) => s.joinRain);
   const tipRain = useChatStore((s) => s.tipRain);
-  const spend = useEconomyStore((s) => s.spend);
   const push = useToastStore((s) => s.push);
   const [now, setNow] = useState(() => Date.now());
   const [tipOpen, setTipOpen] = useState(false);
@@ -56,10 +58,19 @@ export function ChatRainBanner() {
       push("Enter a tip amount.", "warning");
       return;
     }
-    if (!spend(n)) {
-      push(`You need ${formatCash(n)} to tip the rain.`, "danger");
+    if (!requireAccount()) return;
+    const mod = useModerationStore.getState();
+    if (mod.isLocked(LOCAL_PLAYER)) {
+      push("This account is locked. You can't tip.", "danger");
       return;
     }
+    if (!takeStakeFor(n, HOUSE_EDGE.tips, "wl")) {
+      if (!mod.isBanned(LOCAL_PLAYER) && !mod.isLocked(LOCAL_PLAYER)) {
+        push(stakeNeedMessage(n, "wl"), "danger");
+      }
+      return;
+    }
+    trackSettledWlWager(n);
     if (tipRain(n)) {
       sound.click();
       push(`Tipped rain ${formatCash(n)}. Pot is ${formatCash(pot + n)}.`, "success");

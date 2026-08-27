@@ -8,7 +8,9 @@ import { awardWagerXp, useLoyaltyStore } from "./loyaltyStore";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { shortId } from "../lib/format";
 import { playCurrency, WL_PER_SHARD, type PlayCurrency } from "../lib/playWallet";
-import { recordWlWager } from "./leaderboardStore";
+import { isLocalOwner } from "../lib/owner";
+import { trackSettledWlWager } from "../lib/wagerTrack";
+import { appendBalanceLedger } from "./balanceLedgerStore";
 
 export const STARTING_BALANCE = 10000;
 export const LOW_BALANCE_THRESHOLD = 100;
@@ -86,7 +88,10 @@ export const useEconomyStore = create<EconomyState>()(
         if (currency === "shards") return get().spendFun(amount);
         return get().spend(amount);
       },
-      credit: (amount) => set((s) => ({ balance: s.balance + amount })),
+      credit: (amount) => {
+        if (!(amount > 0)) return;
+        set((s) => ({ balance: s.balance + amount }));
+      },
       creditFun: (amount) => {
         if (amount <= 0) return;
         set((s) => ({ funCoins: s.funCoins + amount }));
@@ -95,6 +100,14 @@ export const useEconomyStore = create<EconomyState>()(
         if (amount <= 0) return;
         if (currency === "shards") get().creditFun(amount);
         else get().credit(amount);
+        appendBalanceLedger({
+          name: "You",
+          kind: "payout",
+          amount,
+          currency,
+          balanceAfter: currency === "shards" ? get().funCoins : get().balance,
+          note: "Wallet credit",
+        });
       },
       payout: (amount, currency) => {
         get().creditLedger(amount, currency ?? playCurrency());
@@ -150,6 +163,14 @@ export const useEconomyStore = create<EconomyState>()(
           balance: s.balance + amt,
           totalRakeback: s.totalRakeback + amt,
         }));
+        appendBalanceLedger({
+          name: "You",
+          kind: "rakeback",
+          amount: amt,
+          currency: "wl",
+          balanceAfter: get().balance,
+          note: "Instant rakeback",
+        });
         return amt;
       },
       claimDailyRakeback: () => {
@@ -163,6 +184,14 @@ export const useEconomyStore = create<EconomyState>()(
           balance: s.balance + amt,
           totalRakeback: s.totalRakeback + amt,
         }));
+        appendBalanceLedger({
+          name: "You",
+          kind: "rakeback",
+          amount: amt,
+          currency: "wl",
+          balanceAfter: get().balance,
+          note: "Daily rakeback",
+        });
         return amt;
       },
       receiveTip: (amount) => {
@@ -171,6 +200,13 @@ export const useEconomyStore = create<EconomyState>()(
           lockedTips: (s.lockedTips ?? 0) + amount,
           tipWagerLeft: (s.tipWagerLeft ?? 0) + amount,
         }));
+        appendBalanceLedger({
+          name: "You",
+          kind: "tip_received",
+          amount,
+          currency: "wl",
+          note: "Locked until you wager this amount",
+        });
       },
       applyTipWager: (wagered) => {
         if (wagered <= 0) return;
@@ -187,12 +223,22 @@ export const useEconomyStore = create<EconomyState>()(
           lockedTips: 0,
           balance: s.balance + locked,
         }));
+        appendBalanceLedger({
+          name: "You",
+          kind: "tip_unlocked",
+          amount: locked,
+          currency: "wl",
+          balanceAfter: get().balance,
+          note: "Wager requirement met",
+        });
       },
       recordRound: (wagered, won, game, currency) => {
         const ledger = currency ?? playCurrency();
+        const owner = isLocalOwner();
+        const left = get().tipWagerLeft ?? 0;
+        const locked = get().lockedTips ?? 0;
+        let unlocked = 0;
         set((s) => {
-          const left = s.tipWagerLeft ?? 0;
-          const locked = s.lockedTips ?? 0;
           let tipWagerLeft = left;
           let lockedTips = locked;
           let balance = s.balance;
@@ -201,6 +247,7 @@ export const useEconomyStore = create<EconomyState>()(
             if (tipWagerLeft === 0) {
               lockedTips = 0;
               balance += locked;
+              unlocked = locked;
             }
           }
           return {
@@ -212,14 +259,24 @@ export const useEconomyStore = create<EconomyState>()(
             balance,
           };
         });
+        if (unlocked > 0) {
+          appendBalanceLedger({
+            name: "You",
+            kind: "tip_unlocked",
+            amount: unlocked,
+            currency: "wl",
+            balanceAfter: get().balance,
+            note: "Wager requirement met",
+          });
+        }
         if (game && (wagered > 0 || won > 0)) {
           const playId = shortId("play");
           logPlay({ id: playId, name: "You", game, wagered, won, currency: ledger });
-          if (wagered > 0 && ledger !== "shards") {
+          if (wagered > 0 && ledger !== "shards" && !owner) {
             awardWagerXp({ betId: playId, wagered, gameType: game, currency: "shard" });
-            recordWlWager(wagered);
+            trackSettledWlWager(wagered);
           }
-          if (game !== "battles" && wagered > 0 && won > 0) {
+          if (!owner && game !== "battles" && wagered > 0 && won > 0) {
             considerWinLeader(game, { name: localWinName(), multiplier: won / wagered, isYou: true });
           }
           maybeShoutBigWin(localWinName(), wagered, won, game);
@@ -245,6 +302,14 @@ export const useEconomyStore = create<EconomyState>()(
         const { balance } = get();
         if (balance < LOW_BALANCE_THRESHOLD) {
           set({ balance: balance + TOP_UP_AMOUNT });
+          appendBalanceLedger({
+            name: "You",
+            kind: "topup",
+            amount: TOP_UP_AMOUNT,
+            currency: "wl",
+            balanceAfter: get().balance,
+            note: "Low-balance auto top-up",
+          });
           return true;
         }
         return false;

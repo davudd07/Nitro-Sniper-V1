@@ -105,7 +105,7 @@ export function ChatSidebar() {
                     nameClassName="text-[11px] font-bold"
                   />
                   <span className="flex items-center gap-0.5">
-                    {!m.rain && !m.shout && !m.you && !m.tip && <PlayerTipButton name={m.name} />}
+                    {!m.rain && !m.you && <PlayerTipButton name={m.name} />}
                     {adminView && !m.rain && !m.shout && <ChatModMenu name={m.name} />}
                   </span>
                 </div>

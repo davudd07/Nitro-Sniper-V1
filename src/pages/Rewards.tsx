@@ -11,11 +11,13 @@ import { formatCash, formatPercent } from "../lib/format";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
 import { sound } from "../lib/sound";
+import { assertBalanceUsable } from "../lib/stake";
 import { formatDropCountdown } from "../lib/xp";
 import { useEconomyStore } from "../store/economyStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { MONTHLY_DROP_SH, useRewardsStore, WEEKLY_DROP_SH } from "../store/rewardsStore";
 import { useToastStore } from "../store/toastStore";
+import { appendBalanceLedger } from "../store/balanceLedgerStore";
 
 function DropInfo({ title, children }: { title: string; children: ReactNode }) {
   const [open, setOpen] = useState(false);
@@ -163,6 +165,7 @@ export function Rewards() {
   const monthlyReady = now >= monthlyReadyAt;
 
   function handleClaimInstant() {
+    if (!assertBalanceUsable("claim rakeback")) return;
     const amt = claimRakeback();
     if (amt <= 0) {
       push("Nothing to claim yet — play a real stake first.", "info");
@@ -173,22 +176,27 @@ export function Rewards() {
   }
 
   function handleWeekly() {
+    if (!assertBalanceUsable("claim rewards")) return;
     const amt = claimWeekly();
     if (amt <= 0) return;
     credit(amt);
+    appendBalanceLedger({ name: "You", kind: "prize", amount: amt, currency: "wl", note: "Weekly drop" });
     sound.win("small");
     push(`Claimed weekly drop: ${formatCash(amt)}.`, "success");
   }
 
   function handleMonthly() {
+    if (!assertBalanceUsable("claim rewards")) return;
     const amt = claimMonthly();
     if (amt <= 0) return;
     credit(amt);
+    appendBalanceLedger({ name: "You", kind: "prize", amount: amt, currency: "wl", note: "Monthly drop" });
     sound.win("big");
     push(`Claimed monthly drop: ${formatCash(amt)}.`, "success");
   }
 
   function handleDaily() {
+    if (!assertBalanceUsable("claim rakeback")) return;
     const amt = claimDailyRakeback();
     if (amt <= 0) {
       push(

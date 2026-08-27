@@ -11,6 +11,7 @@ import {
 } from "../lib/leaderboard";
 import { localWinName } from "./winLeaderStore";
 import { useDemoProfileStore } from "./demoProfileStore";
+import { isLocalOwner } from "../lib/owner";
 
 export interface LeaderboardBot {
   id: string;
@@ -106,13 +107,6 @@ function snapshot(period: LeaderboardPeriod, state: LeaderboardState): SnapshotE
   const youName = localWinName();
   const youHidden = useDemoProfileStore.getState().anonymous;
   const rows: SnapshotEntry[] = [
-    {
-      id: LOCAL_LEADERBOARD_ID,
-      wagered: state.you[period],
-      isYou: true,
-      hidden: youHidden,
-      name: youName,
-    },
     ...state.botMeta.map((bot) => ({
       id: bot.id,
       wagered: state.bots[bot.id]?.[period] ?? 0,
@@ -121,11 +115,21 @@ function snapshot(period: LeaderboardPeriod, state: LeaderboardState): SnapshotE
       name: bot.name,
     })),
   ];
+  if (!isLocalOwner()) {
+    rows.push({
+      id: LOCAL_LEADERBOARD_ID,
+      wagered: state.you[period],
+      isYou: true,
+      hidden: youHidden,
+      name: youName,
+    });
+  }
   rows.sort((a, b) => b.wagered - a.wagered || a.id.localeCompare(b.id));
   return rows;
 }
 
 function payPeriod(period: LeaderboardPeriod, state: LeaderboardState): number {
+  if (isLocalOwner()) return 0;
   const ranked = snapshot(period, state);
   const youIdx = ranked.findIndex((r) => r.isYou);
   if (youIdx < 0 || youIdx > 4) return 0;
@@ -133,6 +137,15 @@ function payPeriod(period: LeaderboardPeriod, state: LeaderboardState): number {
   if (prize <= 0) return 0;
   void import("./economyStore").then(({ useEconomyStore }) => {
     useEconomyStore.getState().credit(prize);
+  });
+  void import("./balanceLedgerStore").then(({ appendBalanceLedger }) => {
+    appendBalanceLedger({
+      name: "You",
+      kind: "prize",
+      amount: prize,
+      currency: "wl",
+      note: `${period} leaderboard prize`,
+    });
   });
   void import("./toastStore").then(({ useToastStore }) => {
     const place = youIdx + 1;
@@ -163,6 +176,7 @@ export const useLeaderboardStore = create<LeaderboardState>()(
         lastBotTick: 0,
         recordWlWager: (amount) => {
           if (!Number.isFinite(amount) || amount <= 0) return;
+          if (isLocalOwner()) return;
           get().tick(Date.now());
           set((s) => ({
             you: {

@@ -23,11 +23,18 @@ import {
   COMMISSION_EXAMPLE,
   DEMO_BOARD,
   PROGRAM_STATS,
+  colorForName,
   referralCommission,
   referralStatusAt,
+  type AffiliateBoardRow,
 } from "../lib/affiliate";
 import { formatCash, formatPercent } from "../lib/format";
 import { sound } from "../lib/sound";
+import { assertBalanceUsable } from "../lib/stake";
+import { isLocalOwner } from "../lib/owner";
+import { useIdentityStore } from "../store/identityStore";
+import { useLeaderboardStore } from "../store/leaderboardStore";
+import { localWinName } from "../store/winLeaderStore";
 import {
   affiliateAvailable,
   affiliateLifetime,
@@ -86,6 +93,22 @@ export function Affiliate() {
   const rows = referrals.slice(safePage * AFFILIATE_PAGE_SIZE, (safePage + 1) * AFFILIATE_PAGE_SIZE);
   const usingOwnCode = Boolean(attributedCode && code && attributedCode === code);
   const example = COMMISSION_EXAMPLE;
+  const ownerRole = useIdentityStore((s) => s.roleFor("You"));
+  const weeklyWager = useLeaderboardStore((s) => s.you.weekly);
+  const raceRows: AffiliateBoardRow[] = (() => {
+    const rows = DEMO_BOARD.map((row) => ({ ...row }));
+    if (ownerRole !== "owner" && !isLocalOwner()) {
+      const name = localWinName();
+      const color = colorForName(name);
+      const existing = rows.findIndex((r) => r.name.toLowerCase() === name.toLowerCase());
+      if (existing >= 0) rows[existing] = { ...rows[existing]!, wagerWl: Math.max(rows[existing]!.wagerWl, weeklyWager) };
+      else rows.push({ name, color, wagerWl: weeklyWager, place: 0, prizeWl: 0 });
+    }
+    const prizes = [250, 120, 50];
+    return rows
+      .sort((a, b) => b.wagerWl - a.wagerWl || a.name.localeCompare(b.name))
+      .map((row, i) => ({ ...row, place: i + 1, prizeWl: prizes[i] ?? 0 }));
+  })();
 
   async function copyText(kind: "code" | "link", value: string) {
     try {
@@ -119,6 +142,7 @@ export function Affiliate() {
 
   function handleClaim() {
     sound.click();
+    if (!assertBalanceUsable("claim affiliate earnings")) return;
     const amt = claim();
     if (amt <= 0) {
       push(code ? "Nothing to claim yet." : "Lock your affiliate code before claiming.", "info");
@@ -443,6 +467,7 @@ export function Affiliate() {
             <h2 className="pixel-label text-xl font-extrabold uppercase text-white">Leaderboard</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
               Showcase race for this demo. Offer World Lock prizes to the top of the board — still play-money, still local.
+              Owner World Locks are never counted here.
             </p>
             {boardCreated ? (
               <div className="mt-4 overflow-x-auto">
@@ -456,7 +481,7 @@ export function Affiliate() {
                     </tr>
                   </thead>
                   <tbody>
-                    {DEMO_BOARD.map((row) => (
+                    {raceRows.map((row) => (
                       <tr key={row.name} className="border-b border-white/5 last:border-0">
                         <td className="py-2.5 pr-3 font-mono font-bold text-cyan-200">#{row.place}</td>
                         <td className="py-2.5 pr-3">

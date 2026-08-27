@@ -4,6 +4,7 @@ import { shortId } from "../lib/format";
 import { LOCAL_XP_USER, MAX_XP_LEDGER, activeBoosts, calculateWagerXp, combineBoosts, mergeLoyaltyConfig, rankDropsBetween, resolveVip, roundXp, utcDayKey, type LoyaltyConfig, type LoyaltyMission, type VipTier, type WagerCurrency, type XpBoost, type XpCategory, type XpMode, type XpSource, type XpTransaction } from "../lib/loyalty";
 import { useAuthStore } from "./authStore";
 import { useToastStore } from "./toastStore";
+import { isLocalOwner } from "../lib/owner";
 
 export interface MissionProgress {
   periodKey: string;
@@ -277,16 +278,18 @@ function maybeRankUp(before: number, after: number, tiers: VipTier[], userId: st
   const next = resolveVip(after, tiers).current;
   if (prev.id === next.id) return;
   const drops = rankDropsBetween(before, after, tiers);
-  if (drops.amount > 0) {
+  if (drops.amount > 0 && !isLocalOwner()) {
     void import("./economyStore").then(({ useEconomyStore }) => {
       useEconomyStore.getState().credit(drops.amount);
     });
   }
-  const extra = drops.amount > 0 ? ` · +${drops.amount} SH rank drop` : "";
+  const extra = drops.amount > 0 && !isLocalOwner() ? ` · +${drops.amount} SH rank drop` : "";
   useToastStore.getState().push(`VIP ${next.name} reached.${extra}`, "success");
-  void import("./rankRewardStore").then(({ grantRankUpKeys }) => {
-    grantRankUpKeys(prev.id, next.id, tiers);
-  });
+  if (!isLocalOwner()) {
+    void import("./rankRewardStore").then(({ grantRankUpKeys }) => {
+      grantRankUpKeys(prev.id, next.id, tiers);
+    });
+  }
 }
 
 export function awardWagerXp(input: {

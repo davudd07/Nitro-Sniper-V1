@@ -13,6 +13,8 @@ import { displayLeaderboardName, leaderboardRows, useLeaderboardStore } from "..
 import { useDemoProfileStore } from "../store/demoProfileStore";
 import { localWinName } from "../store/winLeaderStore";
 import { LeaderboardPodium } from "../components/leaderboard/LeaderboardPodium";
+import { useIdentityStore } from "../store/identityStore";
+import { isLocalOwner } from "../lib/owner";
 
 const PERIODS: LeaderboardPeriod[] = ["daily", "weekly", "monthly"];
 
@@ -22,6 +24,8 @@ export function Leaderboard() {
     (s) => `${s.keys.daily}:${s.you.daily}:${s.you.weekly}:${s.you.monthly}:${s.lastBotTick}`,
   );
   const anonymous = useDemoProfileStore((s) => s.anonymous);
+  const ownerRole = useIdentityStore((s) => s.roleFor("You"));
+  const owner = ownerRole === "owner" || isLocalOwner();
   void boardRev;
 
   const rows = leaderboardRows(period);
@@ -38,6 +42,7 @@ export function Leaderboard() {
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
           Ranked by World Locks wagered only — switch the header wallet to World Locks to climb. Shards never count.
           Top 5 at the end of each period get a play-money prize. Hidden profiles show as Hidden.
+          Owner accounts are excluded from this board and its prizes.
         </p>
         <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
           <Switch
@@ -78,7 +83,11 @@ export function Leaderboard() {
         ))}
       </div>
 
-      {youRow ? (
+      {owner ? (
+        <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
+          Owner World Locks are not counted on the leaderboard, Vault Race, rakeback, rank XP, or wager shards.
+        </p>
+      ) : youRow ? (
         <p className="text-sm text-slate-400">
           You are #{youRow.place} this {period} with <CashAmount wl={youRow.wagered} iconClassName="h-3.5 w-3.5" />{" "}
           wagered

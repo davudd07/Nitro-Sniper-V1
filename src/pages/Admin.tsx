@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
-import { Ban, Coins, Crown, Eye, Gift, Headphones, KeyRound, LogOut, MessageSquare, Package, Search, Shield, Volume2, VolumeX, Wallet } from "lucide-react";
+import { Ban, Coins, Crown, Eye, Gift, Headphones, KeyRound, Lock, LogOut, MessageSquare, Package, Search, Shield, Unlock, Volume2, VolumeX, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import {
   clearAdminSession,
@@ -19,7 +19,7 @@ import { useEconomyStore } from "../store/economyStore";
 import { ACTIVITY_GAMES, ACTIVITY_GAME_LABELS, useActivityStore, type ActivityGame } from "../store/activityStore";
 import { useChatStore } from "../store/chatStore";
 import { useSupportStore, type SupportTicket } from "../store/supportStore";
-import { formatCredits, formatCash, formatFunCoins, formatRakeback, formatXp } from "../lib/format";
+import { formatCredits, formatCash, formatFunCoins, formatPlayCash, formatRakeback, formatXp } from "../lib/format";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
 import { useAuthStore } from "../store/authStore";
@@ -31,6 +31,7 @@ import { useIdentityStore } from "../store/identityStore";
 import { VISUAL_ROLE_LIST, type VisualRole } from "../lib/identity";
 import { RoleBadge } from "../components/identity/RoleBadge";
 import { normalizeUsername } from "../lib/playerAuth";
+import { LEDGER_KIND_LABEL, useBalanceLedgerStore } from "../store/balanceLedgerStore";
 
 export function Admin() {
   const [authed, setAuthed] = useState(() => hasAdminSession());
@@ -124,11 +125,14 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
 
   const banned = useModerationStore((s) => s.banned);
   const muted = useModerationStore((s) => s.muted);
+  const locked = useModerationStore((s) => s.locked);
   const log = useModerationStore((s) => s.log);
   const ban = useModerationStore((s) => s.ban);
   const unban = useModerationStore((s) => s.unban);
   const mute = useModerationStore((s) => s.mute);
   const unmute = useModerationStore((s) => s.unmute);
+  const lock = useModerationStore((s) => s.lock);
+  const unlock = useModerationStore((s) => s.unlock);
   const topUpShards = useModerationStore((s) => s.topUpShards);
   const grantFunCoins = useModerationStore((s) => s.grantFunCoins);
   const grantPendingRakeback = useModerationStore((s) => s.grantPendingRakeback);
@@ -138,6 +142,10 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
   const playsFor = useActivityStore((s) => s.playsFor);
   const totalsFor = useActivityStore((s) => s.totalsFor);
   const chatMessages = useChatStore((s) => s.messages);
+  const chatHistory = useChatStore((s) => s.history);
+  const historyFor = useChatStore((s) => s.historyFor);
+  const ledgerEntries = useBalanceLedgerStore((s) => s.entries);
+  const entriesFor = useBalanceLedgerStore((s) => s.entriesFor);
   const tickets = useSupportStore((s) => s.tickets);
   const replyTicket = useSupportStore((s) => s.reply);
   const closeTicket = useSupportStore((s) => s.closeTicket);
@@ -164,25 +172,27 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
     extra.add(lookup.trim());
     for (const p of plays) extra.add(p.name);
     for (const m of chatMessages) extra.add(m.name);
+    for (const m of chatHistory ?? []) extra.add(m.name);
     for (const a of accounts) extra.add(a.username);
     const list = [...extra].filter(Boolean);
     return list.filter((n) => !q || n.toLowerCase().includes(q));
-  }, [q, plays, chatMessages, lookup, accounts]);
+  }, [q, plays, chatMessages, chatHistory, lookup, accounts]);
 
   const snap = snapshot(selected);
   const youBanned = banned.includes(LOCAL_PLAYER);
+  const youLocked = locked.includes(LOCAL_PLAYER);
   const activityTotals = totalsFor(selected);
   const ecoWagered = selected === LOCAL_PLAYER ? totalWagered : activityTotals.wagered || snap.wagered;
   const ecoWon = selected === LOCAL_PLAYER ? totalWon : activityTotals.won;
   const profit = ecoWon - ecoWagered;
   const recentPlays = playsFor(selected, gameFilter);
   const word = chatWord.trim().toLowerCase();
-  const playerChat = chatMessages.filter((m) => {
-    const mine = m.name.toLowerCase() === selected.toLowerCase() || (selected === LOCAL_PLAYER && m.you);
-    if (!mine) return false;
+  const playerChat = historyFor(selected).filter((m) => {
     if (!word) return true;
     return m.text.toLowerCase().includes(word);
   });
+  const balanceRows = entriesFor(selected);
+  void ledgerEntries;
   const loginName =
     selected === LOCAL_PLAYER
       ? session
@@ -312,6 +322,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 const isYou = name === LOCAL_PLAYER;
                 const isBan = banned.includes(name);
                 const isMute = muted.includes(name);
+                const isLock = locked.includes(name);
                 const hasLogin = accounts.some((a) => a.username.toLowerCase() === name.toLowerCase());
                 return (
                   <li key={name}>
@@ -328,6 +339,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                         {hasLogin && <span className="text-emerald-300">login</span>}
                         {isBan && <span className="text-rose-300">ban</span>}
                         {isMute && <span className="text-amber-300">mute</span>}
+                        {isLock && <span className="text-orange-300">lock</span>}
                       </span>
                     </button>
                   </li>
@@ -376,6 +388,11 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 Local player is banned — stakes and chat are blocked until you unban You.
               </p>
             )}
+            {youLocked && (
+              <p className="rounded-md border-2 border-amber-400/40 bg-amber-500/10 px-3 py-2 text-sm text-amber-100">
+                Local player is locked — they cannot wager, tip, claim, or spend until you unlock You.
+              </p>
+            )}
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
               <Stat label="Your World Locks" value={formatCredits(balance)} />
@@ -398,6 +415,9 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                   ) : null}
                   {snap.muted ? (
                     <span className="rounded-md bg-amber-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-200">Muted</span>
+                  ) : null}
+                  {snap.locked ? (
+                    <span className="rounded-md bg-orange-500/20 px-2 py-0.5 text-[10px] font-bold uppercase text-orange-200">Locked</span>
                   ) : null}
                 </div>
               </div>
@@ -422,7 +442,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 </select>
               </label>
               <p className="mb-4 text-[11px] text-slate-500">
-                Badges show in chat, battles, and jackpot. They do not grant extra permissions.
+                Badges show in chat, battles, and jackpot. Owner wagers are excluded from leaderboards, rakeback, rank XP, shards-from-wager, and Vault Race.
                 {currentRole ? (
                   <>
                     {" "}
@@ -463,6 +483,15 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                 ) : (
                   <button type="button" className="inline-flex items-center gap-1 rounded-md border-2 border-amber-400/40 px-3 py-1.5 text-xs font-bold uppercase text-amber-200" onClick={() => act(`Muted ${selected}`, () => mute(selected))}>
                     <VolumeX className="h-3.5 w-3.5" /> Mute
+                  </button>
+                )}
+                {snap.locked ? (
+                  <button type="button" className="inline-flex items-center gap-1 rounded-md border-2 border-emerald-400/40 px-3 py-1.5 text-xs font-bold uppercase text-emerald-200" onClick={() => act(`Unlocked ${selected}`, () => unlock(selected))}>
+                    <Unlock className="h-3.5 w-3.5" /> Unlock
+                  </button>
+                ) : (
+                  <button type="button" className="inline-flex items-center gap-1 rounded-md border-2 border-orange-400/40 px-3 py-1.5 text-xs font-bold uppercase text-orange-200" onClick={() => act(`Locked ${selected}`, () => lock(selected))}>
+                    <Lock className="h-3.5 w-3.5" /> Lock balance
                   </button>
                 )}
               </div>
@@ -519,6 +548,36 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
             />
 
             <div className="surface p-5">
+              <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Balance history</p>
+              {balanceRows.length === 0 ? (
+                <p className="text-sm text-slate-500">No World Lock or Shard movements on record for this player yet.</p>
+              ) : (
+                <ul className="max-h-80 space-y-1.5 overflow-y-auto text-xs">
+                  {balanceRows.map((row) => (
+                    <li key={row.id} className="flex items-start justify-between gap-2 rounded-md bg-black/25 px-2 py-1.5">
+                      <span className="min-w-0">
+                        <span className="font-semibold text-white">{LEDGER_KIND_LABEL[row.kind]}</span>
+                        {row.note ? <span className="ml-1.5 text-slate-500">{row.note}</span> : null}
+                        <span className="mt-0.5 block font-mono text-[10px] text-slate-500">{new Date(row.at).toLocaleString()}</span>
+                      </span>
+                      <span className="shrink-0 text-right font-mono">
+                        <span className={clsx("font-bold", row.amount >= 0 ? "text-emerald-300" : "text-rose-300")}>
+                          {row.amount >= 0 ? "+" : ""}
+                          {formatPlayCash(row.amount, row.currency)}
+                        </span>
+                        {row.balanceAfter != null ? (
+                          <span className="mt-0.5 block text-[10px] text-slate-500">
+                            bal {formatPlayCash(row.balanceAfter, row.currency)}
+                          </span>
+                        ) : null}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+
+            <div className="surface p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">Recent games</p>
                 <select
@@ -563,7 +622,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
             <div className="surface p-5">
               <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
                 <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.16em] text-slate-500">
-                  <MessageSquare className="h-3.5 w-3.5" /> Recent chat
+                  <MessageSquare className="h-3.5 w-3.5" /> Chat history
                 </p>
                 <input
                   value={chatWord}
@@ -577,13 +636,14 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                   {word ? `No messages from ${selected} containing “${chatWord.trim()}”.` : `No chat from ${selected} yet.`}
                 </p>
               ) : (
-                <ul className="max-h-56 space-y-1.5 overflow-y-auto text-xs text-slate-300">
+                <ul className="max-h-80 space-y-1.5 overflow-y-auto text-xs text-slate-300">
                   {playerChat
                     .slice()
                     .reverse()
                     .map((m) => (
                       <li key={m.id} className="rounded-md bg-black/25 px-2 py-1.5">
-                        <span className="mr-2 font-mono text-slate-500">{new Date(m.at).toLocaleTimeString()}</span>
+                        <span className="mr-2 font-mono text-slate-500">{new Date(m.at).toLocaleString()}</span>
+                        {m.tip ? <span className="mr-1 text-[10px] font-bold uppercase text-emerald-300">tip</span> : null}
                         {m.text}
                       </li>
                     ))}

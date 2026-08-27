@@ -34,16 +34,41 @@ const RTP = 0.94;
 const BALLS = Array.from({ length: KENO_BALLS }, (_, i) => i + 1);
 
 type Mode = "manual" | "auto";
+type DrawSpeed = "off" | "fast" | "instant";
+
+const DRAW_SPEEDS: DrawSpeed[] = ["off", "fast", "instant"];
+
+const DRAW_SPEED_LABEL: Record<DrawSpeed, string> = {
+  off: "Off",
+  fast: "Fast",
+  instant: "Instant",
+};
 
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Ball-by-ball delay. Instant reveals in one shot and does not use this. */
+function ballStepMs(speed: DrawSpeed, isAuto: boolean): number {
+  if (speed === "fast") return isAuto ? 40 : 80;
+  return isAuto ? 70 : 160;
+}
+
+function instantHoldMs(isAuto: boolean): number {
+  return isAuto ? 90 : 220;
+}
+
+function autoGapMs(speed: DrawSpeed): number {
+  if (speed === "instant") return 30;
+  if (speed === "fast") return 50;
+  return 80;
 }
 
 export function Keno() {
   const [picks, setPicks] = useState<number[]>([]);
   const [bet, setBet] = useState(100);
   const [mode, setMode] = useState<Mode>("manual");
-  const [fast, setFast] = useState(false);
+  const [speed, setSpeed] = useState<DrawSpeed>("off");
   const [risk, setRisk] = useState<KenoRisk>("medium");
   const [drawing, setDrawing] = useState(false);
   const [autoRunning, setAutoRunning] = useState(false);
@@ -61,8 +86,8 @@ export function Keno() {
   betRef.current = bet;
   const riskRef = useRef(risk);
   riskRef.current = risk;
-  const fastRef = useRef(fast);
-  fastRef.current = fast;
+  const speedRef = useRef(speed);
+  speedRef.current = speed;
 
   const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -132,13 +157,14 @@ export function Keno() {
     try {
       const rolls = await play(KENO_BALLS);
       const nextDrawn = drawKeno(rolls);
-      const step = fastRef.current ? (isAuto ? 18 : 40) : isAuto ? 70 : 160;
+      const speedNow = speedRef.current;
 
-      if (fastRef.current && !isAuto) {
+      if (speedNow === "instant") {
         setRevealed(nextDrawn);
         sound.tick(1);
-        await sleep(220);
+        await sleep(instantHoldMs(isAuto));
       } else {
+        const step = ballStepMs(speedNow, isAuto);
         const shown: number[] = [];
         for (const n of nextDrawn) {
           shown.push(n);
@@ -194,7 +220,7 @@ export function Keno() {
         if (autoStop.current) break;
         const outcome = await playRound();
         if (outcome === "blocked") break;
-        await sleep(fastRef.current ? 30 : 80);
+        await sleep(autoGapMs(speedRef.current));
       }
     } finally {
       autoRunningRef.current = false;
@@ -281,23 +307,32 @@ export function Keno() {
             ))}
           </div>
 
-          <button
-            type="button"
-            disabled={autoRunning}
-            onClick={() => {
-              sound.click();
-              setFast((v) => !v);
-            }}
-            className={clsx(
-              "mb-4 flex w-full items-center justify-center gap-1.5 rounded-lg py-2 text-xs font-extrabold uppercase tracking-wide ring-1 transition-colors disabled:opacity-50",
-              fast
-                ? "bg-cyan-400/20 text-cyan-100 ring-cyan-300/50"
-                : "bg-black/30 text-slate-400 ring-white/10 hover:text-white",
-            )}
-          >
-            <Zap className={clsx("h-3.5 w-3.5", fast && "fill-cyan-300 text-cyan-200")} />
-            Fast mode {fast ? "on" : "off"}
-          </button>
+          <div className="mb-4">
+            <div className="mb-1.5 flex items-center gap-1.5 text-[11px] font-medium uppercase tracking-wide text-slate-500">
+              <Zap className="h-3 w-3 text-cyan-300/80" />
+              Draw speed
+            </div>
+            <div className="grid grid-cols-3 gap-1 rounded-lg bg-black/35 p-1">
+              {DRAW_SPEEDS.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  disabled={autoRunning}
+                  onClick={() => {
+                    sound.click();
+                    setSpeed(s);
+                  }}
+                  className={clsx(
+                    "rounded-md py-1.5 text-[11px] font-extrabold uppercase tracking-wide disabled:opacity-50",
+                    speed === s ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400 hover:text-white",
+                    s === "instant" && speed === s && "ring-1 ring-cyan-300/40",
+                  )}
+                >
+                  {DRAW_SPEED_LABEL[s]}
+                </button>
+              ))}
+            </div>
+          </div>
 
           <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">Bet amount</label>
           <div className="mb-4 flex items-center gap-2">

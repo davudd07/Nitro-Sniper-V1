@@ -411,10 +411,10 @@ export function Keno() {
             {BALLS.map((n) => {
               const selected = pickSet.has(n);
               const isDrawn = drawnSet.has(n);
-              const drawDone = !drawing && revealed.length === KENO_DRAWN;
-              const matched = selected && isDrawn;
-              const missed = selected && drawDone && !isDrawn;
-              const extra = !selected && isDrawn;
+              const drawComplete = revealed.length === KENO_DRAWN;
+              const hit = selected && isDrawn;
+              const miss = selected && drawComplete && !isDrawn;
+              const houseBall = !selected && isDrawn;
               return (
                 <button
                   key={n}
@@ -423,10 +423,10 @@ export function Keno() {
                   onClick={() => toggle(n)}
                   className={clsx(
                     "aspect-square rounded-lg text-sm font-bold tabular-nums transition-all duration-150 ring-1 disabled:cursor-default sm:rounded-xl sm:text-base",
-                    matched && "bg-emerald-500/30 text-emerald-50 ring-emerald-300/80 shadow-[0_0_16px_rgba(52,211,153,0.28)]",
-                    missed && "bg-rose-500/20 text-rose-100 ring-rose-400/40",
-                    extra && !matched && "bg-cyan-500/15 text-cyan-100 ring-cyan-400/40",
-                    selected && !matched && !missed && "bg-cyan-400/25 text-white ring-cyan-300/70",
+                    hit && "bg-emerald-500 text-white ring-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.45)]",
+                    miss && "bg-rose-500 text-white ring-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.35)]",
+                    houseBall && "bg-white/10 text-slate-200 ring-white/20",
+                    selected && !hit && !miss && "bg-cyan-400/25 text-white ring-cyan-300/70",
                     !selected && !isDrawn && "bg-[#152022] text-slate-100 ring-white/10 hover:-translate-y-0.5 hover:bg-[#1c2c2e] hover:ring-cyan-300/35",
                   )}
                 >

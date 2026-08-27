@@ -414,7 +414,7 @@ export function Affiliate() {
                         </span>
                       </td>
                       <td className="px-3 py-3 text-slate-200">
-                        <CashAmount currency="wl" wl={row.wagerWl} />
+                        <CashAmount currency="wl" unit="wl" wl={row.wagerWl} />
                       </td>
                       <td className="px-3 py-3 font-mono text-slate-300">{row.bets.toLocaleString("en-US")}</td>
                       <td className="px-3 py-3 text-emerald-200">
@@ -466,8 +466,9 @@ export function Affiliate() {
           <div className="min-w-0 flex-1">
             <h2 className="pixel-label text-xl font-extrabold uppercase text-white">Leaderboard</h2>
             <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-              Showcase race for this demo. Offer World Lock prizes to the top of the board — still play-money, still local.
-              Owner World Locks are never counted here.
+              Showcase race for this demo. World Locks, Diamond Locks, and Blue Gem Locks all count — DL and BGL wagers
+              convert to World Locks (1 DL = 100 WL, 1 BGL = 10,000 WL). Shards never count. Prizes are World Locks.
+              Owner lock wagers are never counted here.
             </p>
             {boardCreated ? (
               <div className="mt-4 overflow-x-auto">
@@ -491,10 +492,10 @@ export function Affiliate() {
                           </span>
                         </td>
                         <td className="py-2.5 pr-3">
-                          <CashAmount currency="wl" wl={row.wagerWl} />
+                          <CashAmount currency="wl" unit="wl" wl={row.wagerWl} />
                         </td>
                         <td className="py-2.5 text-amber-200">
-                          <CashAmount currency="wl" wl={row.prizeWl} iconClassName="h-4 w-4" />
+                          <CashAmount currency="wl" unit="wl" wl={row.prizeWl} iconClassName="h-4 w-4" />
                         </td>
                       </tr>
                     ))}

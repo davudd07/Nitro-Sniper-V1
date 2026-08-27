@@ -40,7 +40,8 @@ export function Leaderboard() {
           Leaderboard
         </h1>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-          Ranked by World Locks wagered only — switch the header wallet to World Locks to climb. Shards never count.
+          Ranked by lock wagers converted to World Locks. Diamond Locks (100 WL) and Blue Gem Locks (10,000 WL) count the
+          same as World Locks — play in any lock unit and it is converted for this board. Shards never count.
           Top 5 at the end of each period get a play-money prize. Hidden profiles show as Hidden.
           Owner accounts are excluded from this board and its prizes.
         </p>
@@ -77,7 +78,7 @@ export function Leaderboard() {
           <div key={i} className="rounded-xl border-2 border-white/10 bg-[#0c1414] px-3 py-2 shadow-[3px_3px_0_#050808]">
             <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">#{i + 4} prize</p>
             <p className="mt-1 font-semibold text-amber-200">
-              <CashAmount wl={amt} iconClassName="h-3.5 w-3.5" />
+              <CashAmount currency="wl" unit="wl" wl={amt} iconClassName="h-3.5 w-3.5" />
             </p>
           </div>
         ))}
@@ -85,16 +86,17 @@ export function Leaderboard() {
 
       {owner ? (
         <p className="rounded-xl border border-rose-400/30 bg-rose-500/10 px-3 py-2 text-sm text-rose-100">
-          Owner World Locks are not counted on the leaderboard, Vault Race, rakeback, rank XP, or wager shards.
+          Owner lock wagers are not counted on the leaderboard, Vault Race, rakeback, rank XP, or wager shards.
         </p>
       ) : youRow ? (
         <p className="text-sm text-slate-400">
-          You are #{youRow.place} this {period} with <CashAmount wl={youRow.wagered} iconClassName="h-3.5 w-3.5" />{" "}
-          wagered
+          You are #{youRow.place} this {period} with{" "}
+          <CashAmount currency="wl" unit="wl" wl={youRow.wagered} iconClassName="h-3.5 w-3.5" /> wagered
           {youRow.prize > 0 ? (
             <>
               {" "}
-              · current prize <CashAmount wl={youRow.prize} iconClassName="h-3.5 w-3.5" /> if you hold this place
+              · current prize <CashAmount currency="wl" unit="wl" wl={youRow.prize} iconClassName="h-3.5 w-3.5" /> if you
+              hold this place
             </>
           ) : (
             " · top 5 pays when the period ends"
@@ -126,10 +128,14 @@ export function Leaderboard() {
                 {row.isYou ? <span className="ml-2 text-[10px] font-bold uppercase tracking-wide text-cyan-300">You</span> : null}
               </span>
               <span className="font-semibold text-amber-200">
-                <CashAmount wl={row.wagered} iconClassName="h-3.5 w-3.5" />
+                <CashAmount currency="wl" unit="wl" wl={row.wagered} iconClassName="h-3.5 w-3.5" />
               </span>
               <span className="hidden text-sm text-emerald-200 md:block">
-                {row.prize > 0 ? <CashAmount wl={row.prize} iconClassName="h-3.5 w-3.5" /> : "—"}
+                {row.prize > 0 ? (
+                  <CashAmount currency="wl" unit="wl" wl={row.prize} iconClassName="h-3.5 w-3.5" />
+                ) : (
+                  "—"
+                )}
               </span>
             </div>
           ))}

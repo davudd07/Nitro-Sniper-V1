@@ -175,6 +175,7 @@ export const useLeaderboardStore = create<LeaderboardState>()(
         botMeta: BOT_META,
         lastBotTick: 0,
         recordWlWager: (amount) => {
+          // `amount` is World Locks. DL/BGL play is converted before this call.
           if (!Number.isFinite(amount) || amount <= 0) return;
           if (isLocalOwner()) return;
           get().tick(Date.now());

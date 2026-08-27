@@ -81,11 +81,11 @@ export function LeaderboardPodium({ rows }: { rows: LeaderboardRow[] }) {
               </p>
               <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Wagered</p>
               <p className="font-semibold text-amber-200">
-                <CashAmount wl={row.wagered} iconClassName="h-4 w-4" />
+                <CashAmount currency="wl" unit="wl" wl={row.wagered} iconClassName="h-4 w-4" />
               </p>
               <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Prize</p>
               <p className="font-semibold text-emerald-200">
-                {row.prize > 0 ? <CashAmount wl={row.prize} iconClassName="h-4 w-4" /> : "—"}
+                {row.prize > 0 ? <CashAmount currency="wl" unit="wl" wl={row.prize} iconClassName="h-4 w-4" /> : "—"}
               </p>
             </div>
             <div className={clsx("relative h-2.5", style.step)} />

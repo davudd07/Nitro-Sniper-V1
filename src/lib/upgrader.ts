@@ -98,12 +98,12 @@ export function clampUpgraderAmount(value: number): number {
 /** Smallest target that is at least 1.20× the source (500 SH → 600 SH). */
 export function minTargetForSource(source: number): number {
   if (!(source > 0) || !Number.isFinite(source)) return 0;
-  return ceilToCents(Math.min(UPGRADER_MAX_AMOUNT, source * UPGRADER_MIN_MULTIPLIER));
+  return ceilToCents(source * UPGRADER_MIN_MULTIPLIER);
 }
 
 /**
  * Largest target that still keeps win chance at or above `UPGRADER_MIN_CHANCE`
- * and within the 10,000× multiplier cap.
+ * and within the 10,000× multiplier cap. `0` if no legal upgrade fits.
  */
 export function maxTargetForSource(source: number, houseEdge: number): number {
   if (!(source > 0) || !Number.isFinite(source)) return UPGRADER_MAX_AMOUNT;
@@ -113,8 +113,10 @@ export function maxTargetForSource(source: number, houseEdge: number): number {
       ? floorToCents((source * rtp) / UPGRADER_MIN_CHANCE)
       : UPGRADER_MAX_AMOUNT;
   const fromMulti = ceilToCents(source * UPGRADER_MAX_MULTIPLIER);
+  const minT = minTargetForSource(source);
   const cap = Math.min(UPGRADER_MAX_AMOUNT, fromChance > 0 ? fromChance : UPGRADER_MAX_AMOUNT, fromMulti);
-  return Math.max(minTargetForSource(source), cap);
+  if (!(cap > 0) || minT > cap) return 0;
+  return cap;
 }
 
 export function formatUpgraderStake(value: number): string {

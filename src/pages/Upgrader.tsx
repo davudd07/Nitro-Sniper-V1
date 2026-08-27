@@ -374,9 +374,11 @@ export function Upgrader() {
     let value = clampUpgraderAmount(next);
     if (inputValue > 0) {
       const minT = minTargetForSource(inputValue);
-      if (minT > 0) value = Math.max(value, minT);
       const maxT = maxTargetForSource(inputValue, houseEdge);
-      if (maxT > 0) value = Math.min(value, maxT);
+      if (maxT > 0) {
+        if (minT > 0) value = Math.max(value, minT);
+        value = Math.min(value, maxT);
+      }
     }
     setCoinTarget(value);
     setCoinTargetText(upgraderInputString(value));
@@ -420,8 +422,10 @@ export function Upgrader() {
     if (value > 0) {
       const minT = minTargetForSource(value);
       const maxT = maxTargetForSource(value, houseEdge);
-      if (minT > 0) tgt = Math.max(tgt, minT);
-      if (maxT > 0) tgt = Math.min(tgt, maxT);
+      if (maxT > 0) {
+        if (minT > 0) tgt = Math.max(tgt, minT);
+        tgt = Math.min(tgt, maxT);
+      }
     }
     const cap = maxStakeBelowTarget(tgt);
     if (cap > 0) value = Math.min(cap, value);

@@ -74,11 +74,14 @@ export const useSettingsStore = create<SettingsState>()(
               };
         return {
           ...next,
-          gamesNavOpen: p.gamesNavOpen !== false,
+          gamesNavOpen: true,
         };
       },
       onRehydrateStorage: () => (state) => {
-        if (state) sound.setMuted(!state.soundOn);
+        if (state) {
+          sound.setMuted(!state.soundOn);
+          state.gamesNavOpen = true;
+        }
       },
     },
   ),

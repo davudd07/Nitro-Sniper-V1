@@ -50,10 +50,10 @@ export function HomeHero() {
               <p className="mt-1 text-[11px] text-slate-500">
                 <AvatarChangeCopy />
               </p>
-              <label className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
+              <div className="mt-2 flex items-center gap-2 text-[11px] text-slate-400">
                 <Switch checked={anonymous} onChange={setAnonymous} color="#67e8f9" />
                 Stay anonymous in games
-              </label>
+              </div>
               <p className="mt-0.5 max-w-xs text-[10px] leading-relaxed text-slate-600">
                 Hides your username on bets, cases, and tables. Chat still shows your name when you talk.
               </p>

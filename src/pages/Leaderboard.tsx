@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { clsx } from "clsx";
 import { Trophy } from "lucide-react";
 import { CashAmount } from "../components/ui/CurrencyIcon";
+import { Switch } from "../components/ui/Switch";
 import {
   LEADERBOARD_PERIOD_LABEL,
   LEADERBOARD_PRIZES,
@@ -34,9 +35,17 @@ export function Leaderboard() {
           Leaderboard
         </h1>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-slate-400">
-          Ranked by World Locks wagered only — Shards never count. Top 5 at the end of each period get a play-money
-          prize. Hidden profiles show as Hidden.
+          Ranked by World Locks wagered only — switch the header wallet to World Locks to climb. Shards never count.
+          Top 5 at the end of each period get a play-money prize. Hidden profiles show as Hidden.
         </p>
+        <div className="mt-3 flex items-center gap-2 text-xs text-slate-400">
+          <Switch
+            checked={anonymous}
+            onChange={(on) => useDemoProfileStore.getState().setAnonymous(on)}
+            color="#67e8f9"
+          />
+          Hide my name on this board
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-1.5">
@@ -90,7 +99,7 @@ export function Leaderboard() {
           <span>Prize</span>
         </div>
         <div className="divide-y divide-white/6">
-          {rows.slice(0, 12).map((row) => (
+          {rows.map((row) => (
             <div
               key={row.id}
               className={clsx(

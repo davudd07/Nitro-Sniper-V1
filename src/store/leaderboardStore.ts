@@ -265,9 +265,23 @@ export const useLeaderboardStore = create<LeaderboardState>()(
   ),
 );
 
+let queuedWl = 0;
+
 export function recordWlWager(amount: number): void {
+  if (!Number.isFinite(amount) || amount <= 0) return;
+  if (!useLeaderboardStore.persist.hasHydrated()) {
+    queuedWl += amount;
+    return;
+  }
   useLeaderboardStore.getState().recordWlWager(amount);
 }
+
+useLeaderboardStore.persist.onFinishHydration(() => {
+  if (queuedWl <= 0) return;
+  const n = queuedWl;
+  queuedWl = 0;
+  useLeaderboardStore.getState().recordWlWager(n);
+});
 
 export function leaderboardRows(period: LeaderboardPeriod): LeaderboardRow[] {
   const state = useLeaderboardStore.getState();

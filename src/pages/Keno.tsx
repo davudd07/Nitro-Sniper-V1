@@ -411,10 +411,8 @@ export function Keno() {
             {BALLS.map((n) => {
               const selected = pickSet.has(n);
               const isDrawn = drawnSet.has(n);
-              const drawComplete = revealed.length === KENO_DRAWN;
               const hit = selected && isDrawn;
-              const miss = selected && drawComplete && !isDrawn;
-              const houseBall = !selected && isDrawn;
+              const drawnMiss = !selected && isDrawn;
               return (
                 <button
                   key={n}
@@ -424,9 +422,8 @@ export function Keno() {
                   className={clsx(
                     "aspect-square rounded-lg text-sm font-bold tabular-nums transition-all duration-150 ring-1 disabled:cursor-default sm:rounded-xl sm:text-base",
                     hit && "bg-emerald-500 text-white ring-emerald-200 shadow-[0_0_16px_rgba(16,185,129,0.45)]",
-                    miss && "bg-rose-500 text-white ring-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.35)]",
-                    houseBall && "bg-white/10 text-slate-200 ring-white/20",
-                    selected && !hit && !miss && "bg-cyan-400/25 text-white ring-cyan-300/70",
+                    drawnMiss && "bg-rose-500 text-white ring-rose-200 shadow-[0_0_14px_rgba(244,63,94,0.35)]",
+                    selected && !hit && "bg-cyan-400/25 text-white ring-cyan-300/70",
                     !selected && !isDrawn && "bg-[#152022] text-slate-100 ring-white/10 hover:-translate-y-0.5 hover:bg-[#1c2c2e] hover:ring-cyan-300/35",
                   )}
                 >

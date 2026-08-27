@@ -38,6 +38,7 @@ import { useCommunityCaseStore } from "../store/communityCaseStore";
 import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import { isMaxxxWin } from "../data/items";
 import { shouldCelebrateMaxxxWin, useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
+import { useGoldSpinStore } from "../store/goldSpinStore";
 
 type BattlePlayer = BattleRosterSeat;
 
@@ -88,6 +89,8 @@ export function BattleRoom() {
   const play = useFairnessStore((s) => s.play);
   const applyTipWager = useEconomyStore((s) => s.applyTipWager);
   const creditLedger = useEconomyStore((s) => s.creditLedger);
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  void goldRev;
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
 

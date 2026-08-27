@@ -468,8 +468,11 @@ export function CaseReel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
-  // Idle strip at rest. Rebuild when spinToken resets or the reel size
-  // changes — otherwise a leftover land transform shows a black window.
+  const goldPoolKey = goldPool.map((item) => item.id).join(",");
+
+  // Idle strip at rest. Rebuild when spinToken resets, the reel size
+  // changes, or the Gold Spin pool is edited — otherwise a leftover land
+  // transform shows a black window.
   // First paint already has items (useState initializer); this keeps them
   // in sync after a remount / count change.
   useLayoutEffect(() => {
@@ -478,7 +481,7 @@ export function CaseReel({
     setPhase("idle");
     setStrip(buildIdleStrip(pool, goldPool, laneSeed));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spinToken, size, orientation, laneSeed]);
+  }, [spinToken, size, orientation, laneSeed, goldPoolKey]);
 
   // Rest transform only after the strip is committed. Applying it in the
   // same pass as setStrip can miss a freshly mounted node (black reel).

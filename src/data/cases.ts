@@ -5,6 +5,7 @@ import { OFFICIAL_CHEST_COLORS, pileStickers, type ChestSticker } from "../lib/c
 import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useAdminViewStore } from "../store/adminViewStore";
 import { RANK_CASE_DEFS } from "./rankCases";
+import { withGoldSpin } from "../store/goldSpinStore";
 
 export interface CaseOddsEntry {
   item: CaseItem;
@@ -574,16 +575,22 @@ export function compileCase(def: CaseDef): Case {
 export const CASES: Case[] = CASE_DEFS.map(compileCase);
 export const RANK_CASES: Case[] = RANK_CASE_DEFS.map(compileCase);
 
-export function getCase(id: string): Case | undefined {
+/** Compiled case without Gold Spin admin overrides. */
+export function getRawCase(id: string): Case | undefined {
   return CASES.find((c) => c.id === id) ?? RANK_CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
+}
+
+export function getCase(id: string): Case | undefined {
+  const raw = getRawCase(id);
+  return raw ? withGoldSpin(raw) : undefined;
 }
 
 /** Official catalog, minus cases a warden hid. Admin view still sees hidden rows. */
 export function listOfficialCases(): Case[] {
   const hidden = new Set(useCatalogModerationStore.getState().hiddenOfficialIds);
-  if (hidden.size === 0) return CASES;
-  if (useAdminViewStore.getState().active) return CASES;
-  return CASES.filter((c) => !hidden.has(c.id));
+  const list =
+    hidden.size === 0 || useAdminViewStore.getState().active ? CASES : CASES.filter((c) => !hidden.has(c.id));
+  return list.map((c) => withGoldSpin(c));
 }
 
 export function isOfficialCaseHidden(id: string): boolean {

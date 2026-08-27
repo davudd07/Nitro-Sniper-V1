@@ -3,7 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { Heart, Plus, Wallet } from "lucide-react";
 import { clsx } from "clsx";
 import type { Case } from "../data/cases";
-import { listOfficialCases } from "../data/cases";
+import { getCase, listOfficialCases } from "../data/cases";
 import { CaseThumb } from "../components/cases/CaseThumb";
 import { RiskBadge } from "../components/cases/RiskBadge";
 import { CatalogSwitch, type CaseCatalogKind } from "../components/cases/CatalogSwitch";
@@ -35,6 +35,8 @@ import {
 import { sound } from "../lib/sound";
 import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
 import { AdminCaseActions } from "../components/admin/AdminCaseActions";
+import { GoldSpinAdminButton } from "../components/admin/GoldSpinAdminButton";
+import { useGoldSpinStore } from "../store/goldSpinStore";
 
 type CommunitySubNav = "all" | "mine" | "favorites";
 type PriceSort = "low" | "high";
@@ -42,6 +44,7 @@ type PriceSort = "low" | "high";
 export function Cases() {
   const adminView = useAdminViewStore((s) => s.active);
   const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
+  const goldRev = useGoldSpinStore((s) => s.revision);
   const [searchParams, setSearchParams] = useSearchParams();
   const [catalog, setCatalog] = useState<CaseCatalogKind>(
     searchParams.get("catalog") === "community" ? "community" : "official",
@@ -80,7 +83,7 @@ export function Cases() {
       listOfficialCases()
         .filter((c) => matchesCaseName(c.name, query))
         .sort((a, b) => a.price - b.price),
-    [query, hiddenOfficialIds, adminView],
+    [query, hiddenOfficialIds, adminView, goldRev],
   );
 
   function setCatalogKind(next: CaseCatalogKind) {
@@ -249,6 +252,10 @@ function CommunityCaseCard({
   onToggleFavorite: () => void;
 }) {
   const perOpen = communityCommissionPerOpen(c.price, c.houseEdge);
+  const adminView = useAdminViewStore((s) => s.active);
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const live = getCase(c.id) ?? c;
+  void goldRev;
   return (
     <div className="surface group overflow-hidden">
       <Link to={`/cases/${c.id}`}>
@@ -261,8 +268,14 @@ function CommunityCaseCard({
             <CashAmount wl={c.price} className="text-sm" />
           </p>
           <CaseCreatorLine c={c} className="mt-0.5 truncate text-[11px] text-slate-500" />
-          <div className="mt-2">
+          <div className="mt-2 flex flex-wrap items-center gap-1">
             <AdminCaseActions c={c} />
+            <InfoButton title={`${live.name} — Odds & House Edge`}>
+              <StatRow label="Price" value={<CashAmount wl={live.price} />} />
+              <StatRow label="Return to player (RTP)" value={formatPercent(live.rtp)} />
+              <StatRow label="House edge" value={formatPercent(live.houseEdge)} />
+              <CaseOddsEditor c={live} adminView={adminView} />
+            </InfoButton>
           </div>
         </div>
         <button
@@ -282,8 +295,51 @@ function CommunityCaseCard({
   );
 }
 
+function CaseOddsEditor({ c, adminView }: { c: Case; adminView: boolean }) {
+  return (
+    <div className="pt-2">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Full odds table</p>
+      {adminView && (
+        <p className="mb-1.5 text-[10px] font-medium text-amber-200/80">
+          Admin view: Add gold / Remove gold is saved in this browser forever.
+        </p>
+      )}
+      <div className="max-h-56 space-y-1 overflow-y-auto scrollbar-thin pr-1">
+        {[...c.odds]
+          .sort((a, b) => b.probability - a.probability)
+          .map((o) => (
+            <div
+              key={o.item.id}
+              className={clsx(
+                "flex items-center justify-between gap-2 rounded px-2 py-1 text-xs",
+                adminView && o.goldTier ? "bg-amber-400/15 ring-1 ring-amber-300/70" : "bg-black/20",
+                adminView && !o.goldTier && "opacity-55",
+              )}
+            >
+              <span className="min-w-0 truncate" style={{ color: RARITIES[o.item.rarity].text }}>
+                {o.item.name}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 text-slate-400">
+                <CashAmount wl={o.item.value} iconClassName="h-3 w-3" /> · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
+                <span className="font-mono text-slate-500">#{formatTicketRange(o.ticketStart, o.ticketEnd)}</span>
+                {adminView ? (
+                  <GoldSpinAdminButton caseId={c.id} item={o.item} goldTier={o.goldTier} />
+                ) : (
+                  o.goldTier && " · ✨ gold"
+                )}
+              </span>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
 function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
   const hidden = useCatalogModerationStore((s) => s.hiddenOfficialIds.includes(c.id));
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const live = getCase(c.id) ?? c;
+  void goldRev;
   return (
     <div className={clsx("surface group overflow-hidden", hidden && "ring-1 ring-amber-400/40")}>
       <Link to={`/cases/${c.id}`}>
@@ -297,42 +353,12 @@ function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
           </p>
           <div className="flex shrink-0 items-center gap-1">
             <AdminCaseActions c={c} />
-            <InfoButton title={`${c.name} — Odds & House Edge`}>
-            <StatRow label="Price" value={<CashAmount wl={c.price} />} />
-            <StatRow label="Return to player (RTP)" value={formatPercent(c.rtp)} />
-            <StatRow label="House edge" value={formatPercent(c.houseEdge)} />
-            <p className="pt-1">{c.blurb}</p>
-            <div className="pt-2">
-              <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Full odds table</p>
-              {adminView && (
-                <p className="mb-1.5 text-[10px] font-medium text-amber-200/80">Admin view: gold-spin pool highlighted</p>
-              )}
-              <div className="max-h-56 space-y-1 overflow-y-auto scrollbar-thin pr-1">
-                {[...c.odds]
-                  .sort((a, b) => b.probability - a.probability)
-                  .map((o) => (
-                    <div
-                      key={o.item.id}
-                      className={clsx(
-                        "flex items-center justify-between rounded px-2 py-1 text-xs",
-                        adminView && o.goldTier ? "bg-amber-400/15 ring-1 ring-amber-300/70" : "bg-black/20",
-                        adminView && !o.goldTier && "opacity-55",
-                      )}
-                    >
-                      <span style={{ color: RARITIES[o.item.rarity].text }}>{o.item.name}</span>
-                      <span className="text-slate-400">
-                        <CashAmount wl={o.item.value} iconClassName="h-3 w-3" /> · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
-                        <span className="ml-1.5 font-mono text-slate-500">#{formatTicketRange(o.ticketStart, o.ticketEnd)}</span>
-                        {adminView && o.goldTier ? (
-                          <span className="ml-1.5 font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
-                        ) : (
-                          o.goldTier && " · ✨ gold"
-                        )}
-                      </span>
-                    </div>
-                  ))}
-              </div>
-            </div>
+            <InfoButton title={`${live.name} — Odds & House Edge`}>
+            <StatRow label="Price" value={<CashAmount wl={live.price} />} />
+            <StatRow label="Return to player (RTP)" value={formatPercent(live.rtp)} />
+            <StatRow label="House edge" value={formatPercent(live.houseEdge)} />
+            <p className="pt-1">{live.blurb}</p>
+            <CaseOddsEditor c={live} adminView={adminView} />
           </InfoButton>
           </div>
         </div>

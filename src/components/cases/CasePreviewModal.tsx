@@ -9,6 +9,9 @@ import { CashAmount } from "../ui/CurrencyIcon";
 import { sound } from "../../lib/sound";
 import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../../lib/communityCases";
 import { CaseCreatorLine } from "./CaseCreatorLine";
+import { useAdminViewStore } from "../../store/adminViewStore";
+import { useGoldSpinStore } from "../../store/goldSpinStore";
+import { GoldSpinAdminButton } from "../admin/GoldSpinAdminButton";
 
 export function CasePreviewModal({
   caseId,
@@ -17,6 +20,9 @@ export function CasePreviewModal({
   caseId: string | null;
   onClose: () => void;
 }) {
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const adminView = useAdminViewStore((s) => s.active);
+  void goldRev;
   if (!caseId) return null;
   const c = getCase(caseId);
   if (!c) return null;
@@ -64,20 +70,26 @@ export function CasePreviewModal({
         <p className="mb-4 text-sm text-slate-400">{c.blurb}</p>
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">What’s inside</p>
         <p className="mb-2 text-[10px] font-medium text-amber-200/80">
-          Gold-spin pool highlighted — same items that can trigger a gold reel on solo opens
+          {adminView
+            ? "Admin view: Add gold / Remove gold is saved in this browser forever."
+            : "Gold-spin pool highlighted — same items that can trigger a gold reel on solo opens"}
         </p>
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           {[...c.odds]
             .sort((a, b) => b.item.value - a.item.value)
             .map((o) => (
-              <ItemCard
-                key={o.item.id}
-                item={o.item}
-                probability={o.probability}
-                size="sm"
-                highlightGold={o.goldTier}
-                className={!o.goldTier ? "opacity-55" : undefined}
-              />
+              <div key={o.item.id} className="flex flex-col gap-1">
+                <ItemCard
+                  item={o.item}
+                  probability={o.probability}
+                  size="sm"
+                  highlightGold={o.goldTier}
+                  className={!o.goldTier ? "opacity-55" : undefined}
+                />
+                {adminView ? (
+                  <GoldSpinAdminButton caseId={c.id} item={o.item} goldTier={o.goldTier} />
+                ) : null}
+              </div>
             ))}
         </div>
       </div>

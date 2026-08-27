@@ -17,3 +17,4 @@ export * from "./maxxxWinStore";
 export * from "./leaderboardStore";
 export * from "./rankRewardStore";
 export * from "./fundedBattleStore";
+export * from "./goldSpinStore";

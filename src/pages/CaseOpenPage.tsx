@@ -35,6 +35,8 @@ import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 import { parseRankCaseId } from "../lib/rankRewards";
 import { useRankRewardStore } from "../store/rankRewardStore";
 import { formatDropCountdown } from "../lib/xp";
+import { useGoldSpinStore } from "../store/goldSpinStore";
+import { GoldSpinAdminButton } from "../components/admin/GoldSpinAdminButton";
 
 const MAX_OPENS = 4;
 const SOLO_SPIN_MS = 6800;
@@ -46,6 +48,7 @@ const QUICK_GOLD_CHARGE_MS = 320;
 
 export function CaseOpenPage() {
   const { caseId } = useParams();
+  const goldRev = useGoldSpinStore((s) => s.revision);
   const c = caseId ? getCase(caseId) : undefined;
   const reward = caseId ? parseRankCaseId(caseId) : null;
 
@@ -85,9 +88,15 @@ export function CaseOpenPage() {
   const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
   const isOwner = Boolean(c?.community && c.creatorId && c.creatorId === session);
 
-  const goldPool = useMemo(() => (c ? c.odds.filter((o) => o.goldTier).map((o) => o.item) : []), [c]);
+  const goldPool = useMemo(() => {
+    const live = caseId ? getCase(caseId) : undefined;
+    return live ? live.odds.filter((o) => o.goldTier).map((o) => o.item) : [];
+  }, [caseId, goldRev]);
   const goldIds = useMemo(() => new Set(goldPool.map((item) => item.id)), [goldPool]);
-  const pool = useMemo(() => (c ? c.odds.map((o) => o.item) : []), [c]);
+  const pool = useMemo(() => {
+    const live = caseId ? getCase(caseId) : undefined;
+    return live ? live.odds.map((o) => o.item) : [];
+  }, [caseId, goldRev]);
   const missingCatalogRows = useMemo(
     () => (c?.community ? c.raw.filter(([id]) => !ITEMS[id]) : []),
     [c],
@@ -431,7 +440,9 @@ export function CaseOpenPage() {
           <div className="surface p-3">
             <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Odds table</p>
             {adminView && (
-              <p className="mb-2 text-[10px] font-medium text-amber-200/80">Admin view: gold-spin pool highlighted</p>
+              <p className="mb-2 text-[10px] font-medium text-amber-200/80">
+                Admin view: click Add gold / Remove gold on a row. That Gold Spin pool is saved in this browser forever.
+              </p>
             )}
             <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-thin pr-1">
               {[...c.odds]
@@ -455,11 +466,11 @@ export function CaseOpenPage() {
                     <span className="flex shrink-0 items-center gap-1.5 text-slate-400">
                       <span>{(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%</span>
                       <CashAmount wl={o.item.value} iconClassName="h-3 w-3" />
-                      {adminView && o.goldTier ? (
-                        <span className="font-bold uppercase tracking-wide text-amber-200">Gold spin</span>
-                      ) : (
-                        o.goldTier && " ✨"
-                      )}
+                      {adminView ? (
+                        <GoldSpinAdminButton caseId={c.id} item={o.item} goldTier={o.goldTier} />
+                      ) : o.goldTier ? (
+                        " ✨"
+                      ) : null}
                     </span>
                   </div>
                 ))}

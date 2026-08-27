@@ -298,9 +298,9 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
     name: "Elite",
     minXp: 6_000_000,
     color: "#a78bfa",
-    benefits: "+42% Instant Drop and Daily rakeback. One-time 12,000 SH rank drop.",
-    rakebackBonusPct: 0.42,
-    rankDropSh: 12_000,
+    benefits: "+75% Instant Drop and Daily rakeback. One-time 250,000 SH rank drop.",
+    rakebackBonusPct: 0.75,
+    rankDropSh: 250_000,
     cosmetic: "Elite war banner",
   },
   {
@@ -308,9 +308,9 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
     name: "Grandmaster",
     minXp: 12_000_000,
     color: "#f97316",
-    benefits: "+50% Instant Drop and Daily rakeback. One-time 25,000 SH rank drop.",
-    rakebackBonusPct: 0.5,
-    rankDropSh: 25_000,
+    benefits: "+100% Instant Drop and Daily rakeback. One-time 750,000 SH rank drop.",
+    rakebackBonusPct: 1,
+    rankDropSh: 750_000,
     cosmetic: "Grandmaster sigil",
   },
   {
@@ -318,9 +318,9 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
     name: "Obsidian",
     minXp: 24_000_000,
     color: "#2dd4bf",
-    benefits: "+60% Instant Drop and Daily rakeback. One-time 50,000 SH rank drop.",
-    rakebackBonusPct: 0.6,
-    rankDropSh: 50_000,
+    benefits: "+130% Instant Drop and Daily rakeback. One-time 2,500,000 SH rank drop.",
+    rakebackBonusPct: 1.3,
+    rankDropSh: 2_500_000,
     cosmetic: "Obsidian eclipse chrome",
   },
   {
@@ -328,9 +328,9 @@ export const DEFAULT_VIP_TIERS: VipTier[] = [
     name: "Emperor",
     minXp: 48_000_000,
     color: "#fbbf24",
-    benefits: "+80% Instant Drop and Daily rakeback. Emperor vault status. One-time 120,000 SH rank drop.",
-    rakebackBonusPct: 0.8,
-    rankDropSh: 120_000,
+    benefits: "+180% Instant Drop and Daily rakeback. Emperor vault status. One-time 10,000,000 SH rank drop.",
+    rakebackBonusPct: 1.8,
+    rankDropSh: 10_000_000,
     cosmetic: "Emperor crown + vault aura",
   },
 ];
@@ -448,6 +448,37 @@ export function isPreviousDefaultVipTiers(tiers: VipTier[]): boolean {
   return tiers.every((t) => PREVIOUS_DEFAULT_TIER_MIN_XP[t.id] === t.minXp);
 }
 
+/**
+ * Pre-juice Elite+ drops/rakeback on the current XP ladder. Browsers that
+ * already stored 6M/12M/24M/48M min XP keep those thresholds but pick up
+ * the new rank-drop and rakeback numbers.
+ */
+const PREVIOUS_ELITE_PLUS_REWARDS: Record<string, { rakebackBonusPct: number; rankDropSh: number }> = {
+  elite: { rakebackBonusPct: 0.42, rankDropSh: 12_000 },
+  grandmaster: { rakebackBonusPct: 0.5, rankDropSh: 25_000 },
+  obsidian: { rakebackBonusPct: 0.6, rankDropSh: 50_000 },
+  emperor: { rakebackBonusPct: 0.8, rankDropSh: 120_000 },
+};
+
+function refreshStockElitePlusRewards(tiers: VipTier[]): VipTier[] {
+  return tiers.map((t) => {
+    const n = normalizeVipTier(t);
+    const fresh = DEFAULT_VIP_TIERS.find((d) => d.id === n.id);
+    const prev = PREVIOUS_ELITE_PLUS_REWARDS[n.id];
+    if (!fresh || !prev) return n;
+    if (n.minXp !== fresh.minXp) return n;
+    if (n.rankDropSh !== prev.rankDropSh) return n;
+    if (Math.abs(n.rakebackBonusPct - prev.rakebackBonusPct) > 1e-9) return n;
+    return {
+      ...n,
+      rakebackBonusPct: fresh.rakebackBonusPct,
+      rankDropSh: fresh.rankDropSh,
+      benefits: fresh.benefits,
+      cosmetic: fresh.cosmetic,
+    };
+  });
+}
+
 export function migrateVipTiers(tiers?: VipTier[] | null): VipTier[] {
   if (
     !Array.isArray(tiers) ||
@@ -457,7 +488,7 @@ export function migrateVipTiers(tiers?: VipTier[] | null): VipTier[] {
   ) {
     return DEFAULT_VIP_TIERS.map((t) => ({ ...t }));
   }
-  return tiers.map((t) => normalizeVipTier(t));
+  return refreshStockElitePlusRewards(tiers);
 }
 
 export function sortedTiers(tiers: VipTier[]): VipTier[] {

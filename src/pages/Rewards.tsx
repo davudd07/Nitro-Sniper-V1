@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { CoinStackArt, TreasureChestArt } from "../components/rewards/DropArt";
 import { PlayerVipPanel } from "../components/loyalty/PlayerVipPanel";
 import { RankRewardsGrid } from "../components/loyalty/RankRewardsGrid";
+import { RankCasesPanel } from "../components/loyalty/RankCasesPanel";
 import { formatCash, formatPercent } from "../lib/format";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { RAKEBACK_OF_EDGE } from "../lib/rakeback";
@@ -292,6 +293,8 @@ export function Rewards() {
         demo stakes (bet &gt; 0), plus your VIP rakeback bonus. Instant Drop is claimable immediately. Daily Drop
         matures for 24 hours, then pays 100%. Game RTP is unchanged. Chat rain still lives in the chat sidebar.
       </p>
+
+      <RankCasesPanel tiers={tiers} currentId={vip.current.id} lifetimeXp={lifetimeXp} />
 
       <RankRewardsGrid tiers={tiers} currentId={vip.current.id} lifetimeXp={lifetimeXp} />
 

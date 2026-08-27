@@ -4,6 +4,7 @@ import { isFillerLoot, stampTicketRanges, ticketFromRoll } from "../lib/caseTick
 import { OFFICIAL_CHEST_COLORS, pileStickers, type ChestSticker } from "../lib/chest";
 import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useAdminViewStore } from "../store/adminViewStore";
+import { RANK_CASE_DEFS } from "./rankCases";
 
 export interface CaseOddsEntry {
   item: CaseItem;
@@ -539,7 +540,7 @@ export interface Case extends CaseDef {
   opens?: number;
 }
 
-export const CASES: Case[] = CASE_DEFS.map((def) => {
+export function compileCase(def: CaseDef): Case {
   const { odds, ev, rtp } = buildCase(def);
   const topIds = [...odds]
     .sort((a, b) => b.item.value - a.item.value)
@@ -555,10 +556,13 @@ export const CASES: Case[] = CASE_DEFS.map((def) => {
     chestStickers: pileStickers(topIds),
     designItemIds: topIds,
   };
-});
+}
+
+export const CASES: Case[] = CASE_DEFS.map(compileCase);
+export const RANK_CASES: Case[] = RANK_CASE_DEFS.map(compileCase);
 
 export function getCase(id: string): Case | undefined {
-  return CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
+  return CASES.find((c) => c.id === id) ?? RANK_CASES.find((c) => c.id === id) ?? findHydratedCommunityCase(id);
 }
 
 /** Official catalog, minus cases a warden hid. Admin view still sees hidden rows. */

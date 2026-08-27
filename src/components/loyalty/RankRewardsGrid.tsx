@@ -20,7 +20,8 @@ export function RankRewardsGrid({
         <h2 className="text-lg font-semibold text-white">Rank rewards</h2>
         <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-400">
           Each VIP rank keeps its rakeback bonus, cosmetic title, and any one-time Shard drop. Unranked starts at 0
-          lifetime XP from settled Shard wagers. Drops are play-money SH only — no deposits or withdrawals.
+          lifetime XP from settled World Lock wagers. Daily rank cases and rank-up keys live in Rank cases above. Drops
+          are play-money only — no deposits or withdrawals.
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
@@ -67,6 +68,8 @@ export function RankRewardsGrid({
                 ) : (
                   <li className="text-slate-500">No rank Shard drop at this step.</li>
                 )}
+                <li>Daily case once every 24 hours (unlocked ranks).</li>
+                {i > 0 ? <li>Rank-up grants a key for this band’s 2 hour case.</li> : <li>No key until Silver 1.</li>}
                 {tier.cosmetic ? (
                   <li className="inline-flex items-start gap-1 text-amber-100/90">
                     <Sparkles className="mt-0.5 h-3 w-3 shrink-0" /> {tier.cosmetic}

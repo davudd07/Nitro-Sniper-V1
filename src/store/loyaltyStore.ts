@@ -284,6 +284,9 @@ function maybeRankUp(before: number, after: number, tiers: VipTier[], userId: st
   }
   const extra = drops.amount > 0 ? ` · +${drops.amount} SH rank drop` : "";
   useToastStore.getState().push(`VIP ${next.name} reached.${extra}`, "success");
+  void import("./rankRewardStore").then(({ grantRankUpKeys }) => {
+    grantRankUpKeys(prev.id, next.id, tiers);
+  });
 }
 
 export function awardWagerXp(input: {

@@ -28,12 +28,14 @@ import { Crash } from "./pages/Crash";
 import { CrossRoad } from "./pages/CrossRoad";
 import { ComingSoon } from "./pages/ComingSoon";
 import { ChatRainController } from "./components/chat/ChatRainController";
+import { VaultEventsController } from "./components/layout/VaultEventsController";
 import { SupportWidget } from "./components/support/SupportWidget";
 import { PATH_TO_GAME } from "./data/lobbyGames";
 import { trackRecent } from "./lib/recentGames";
 import { Rewards } from "./pages/Rewards";
 import { Vip } from "./pages/Vip";
 import { Affiliate } from "./pages/Affiliate";
+import { Leaderboard } from "./pages/Leaderboard";
 import { Admin } from "./pages/Admin";
 import { AdminViewBar } from "./components/admin/AdminViewBar";
 import { installChatModeration } from "./lib/moderation";
@@ -121,6 +123,7 @@ export default function App() {
               <Route path="/rewards" element={<Rewards />} />
               <Route path="/vip" element={<Vip />} />
               <Route path="/affiliate" element={<Affiliate />} />
+              <Route path="/leaderboard" element={<Leaderboard />} />
               <Route path="/mines" element={<Mines />} />
               <Route path="/blackjack" element={<Blackjack />} />
               <Route path="/cases" element={<Cases />} />
@@ -146,6 +149,7 @@ export default function App() {
       </div>
       <ChatSidebar />
       <ChatRainController />
+      <VaultEventsController />
       <SupportWidget />
       <AccountGate />
       <MaxxxWinOverlay />

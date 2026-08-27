@@ -64,7 +64,10 @@ export function JoinBattleModal({
         {funded ? (
           <div className="rounded-xl border border-emerald-400/25 bg-emerald-500/10 p-3 text-sm text-emerald-100">
             <p className="flex items-center gap-1.5 font-semibold">
-              <Banknote className="h-4 w-4" /> Creator funded {pctLabel(battle.fundedPct)}
+              <Banknote className="h-4 w-4" />{" "}
+              {battle.eventKind === "funded"
+                ? "House-funded — free to join"
+                : `Creator funded ${pctLabel(battle.fundedPct)}`}
             </p>
             <p className="mt-1 flex flex-wrap items-center gap-1 text-xs text-emerald-200/80">
               You pay <CashAmount wl={seatAfterFund} currency={ledger} iconClassName="h-3 w-3" /> instead of{" "}

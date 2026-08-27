@@ -74,6 +74,8 @@ export interface BattleConfig {
   replay?: BattleReplay;
   /** 0–1. Creator borrowed this fraction of their own seat. */
   creatorBorrowPct: number;
+  /** House event — join is free, World Locks only. */
+  eventKind?: "funded";
   status: BattleLobbyStatus;
   /** Total pot paid out when finished. */
   payout?: number;
@@ -90,6 +92,7 @@ interface BattleStoreState {
   battles: Record<string, BattleConfig>;
   joinIntents: Record<string, BattleJoinIntent>;
   createBattle: (cfg: Omit<BattleConfig, "id" | "createdAt" | "status"> & { status?: BattleLobbyStatus }) => string;
+  putBattle: (battle: BattleConfig) => void;
   getBattle: (id: string) => BattleConfig | undefined;
   listBattles: () => BattleConfig[];
   setJoinIntent: (battleId: string, intent: BattleJoinIntent) => void;
@@ -530,6 +533,9 @@ export const useBattleStore = create<BattleStoreState>((set, get) => ({
     };
     set((s) => ({ battles: { ...s.battles, [id]: battle } }));
     return id;
+  },
+  putBattle: (battle) => {
+    set((s) => ({ battles: { ...s.battles, [battle.id]: battle } }));
   },
   getBattle: (id) => get().battles[id],
   listBattles: () => Object.values(get().battles).sort((a, b) => b.createdAt - a.createdAt),

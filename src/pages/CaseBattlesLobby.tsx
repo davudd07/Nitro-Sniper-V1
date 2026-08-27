@@ -22,6 +22,7 @@ import { battlePlayCurrency, playCurrency, playCurrencyLabel, usePlayCurrency } 
 import { BattleCost, BorrowBadge, FinishedBattleCostPaid } from "../components/battles/BattleCost";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { WinLeaderBadge } from "../components/layout/WinLeaderBadge";
+import { FundedBattleBanner } from "../components/battles/FundedBattleBanner";
 
 const FILTERS = [
   { id: "active", label: "Active battles" },
@@ -70,7 +71,12 @@ export function CaseBattlesLobby() {
         .sort((a, b) => (b.payout ?? 0) - (a.payout ?? 0) || (b.finishedAt ?? 0) - (a.finishedAt ?? 0))
         .slice(0, 10);
     }
-    return visible;
+    return [...visible].sort((a, b) => {
+      const af = a.eventKind === "funded" ? 1 : 0;
+      const bf = b.eventKind === "funded" ? 1 : 0;
+      if (bf !== af) return bf - af;
+      return b.createdAt - a.createdAt;
+    });
   }, [battles, filter, caseQuery, currency]);
 
   function occupied(b: BattleConfig) {
@@ -151,6 +157,8 @@ export function CaseBattlesLobby() {
           <Plus className="h-4 w-4" /> Create Battle
         </Link>
       </div>
+
+      <FundedBattleBanner />
 
       <div className="flex flex-wrap items-center gap-1.5">
         {FILTERS.map((f) => (
@@ -345,6 +353,11 @@ export function CaseBattlesLobby() {
                     {b.shared && (
                       <span className="inline-flex items-center gap-0.5 rounded-full bg-sky-500/15 px-1.5 py-0.5 text-[10px] font-medium text-sky-300">
                         <Users className="h-2.5 w-2.5" /> Shared
+                      </span>
+                    )}
+                    {b.eventKind === "funded" && (
+                      <span className="inline-flex items-center gap-0.5 rounded-full bg-lime-400/20 px-1.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-lime-200">
+                        <Banknote className="h-2.5 w-2.5" /> House
                       </span>
                     )}
                     {b.fundedPct > 0 && (

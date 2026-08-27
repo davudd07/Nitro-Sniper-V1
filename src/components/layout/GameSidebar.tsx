@@ -18,6 +18,7 @@ import {
   PanelLeft,
   Gift,
   Users,
+  Trophy,
 } from "lucide-react";
 import { clsx } from "clsx";
 import { useSettingsStore } from "../../store/settingsStore";
@@ -144,6 +145,24 @@ export function GameSidebar() {
           >
             <Users className="h-4 w-4 shrink-0" />
             {open && <span className="truncate">Affiliate</span>}
+          </NavLink>
+
+          <NavLink
+            to="/leaderboard"
+            title="Leaderboard"
+            onClick={() => sound.click()}
+            className={({ isActive }) =>
+              clsx(
+                NAV_LINK,
+                open ? "justify-start" : "justify-center px-0",
+                isActive
+                  ? "border-cyan-400/50 bg-cyan-400/15 text-white"
+                  : "border-transparent text-slate-400 hover:border-white/10 hover:bg-white/[0.04] hover:text-slate-200",
+              )
+            }
+          >
+            <Trophy className="h-4 w-4 shrink-0" />
+            {open && <span className="truncate">Leaderboard</span>}
           </NavLink>
 
           <button

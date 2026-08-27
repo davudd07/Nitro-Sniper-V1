@@ -8,6 +8,7 @@ import { awardWagerXp, useLoyaltyStore } from "./loyaltyStore";
 import { LOCAL_XP_USER, resolveVip } from "../lib/loyalty";
 import { shortId } from "../lib/format";
 import { playCurrency, WL_PER_SHARD, type PlayCurrency } from "../lib/playWallet";
+import { recordWlWager } from "./leaderboardStore";
 
 export const STARTING_BALANCE = 10000;
 export const LOW_BALANCE_THRESHOLD = 100;
@@ -216,6 +217,7 @@ export const useEconomyStore = create<EconomyState>()(
           logPlay({ id: playId, name: "You", game, wagered, won, currency: ledger });
           if (wagered > 0 && ledger !== "shards") {
             awardWagerXp({ betId: playId, wagered, gameType: game, currency: "shard" });
+            recordWlWager(wagered);
           }
           if (game !== "battles" && wagered > 0 && won > 0) {
             considerWinLeader(game, { name: localWinName(), multiplier: won / wagered, isYou: true });

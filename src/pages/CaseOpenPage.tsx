@@ -32,6 +32,9 @@ import { isMaxxxWin, ITEMS } from "../data/items";
 import { isMissingCatalogItem } from "../lib/communityCaseAudit";
 import type { CaseOddsEntry } from "../data/cases";
 import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
+import { parseRankCaseId } from "../lib/rankRewards";
+import { useRankRewardStore } from "../store/rankRewardStore";
+import { formatDropCountdown } from "../lib/xp";
 
 const MAX_OPENS = 4;
 const SOLO_SPIN_MS = 6800;
@@ -44,6 +47,7 @@ const QUICK_GOLD_CHARGE_MS = 320;
 export function CaseOpenPage() {
   const { caseId } = useParams();
   const c = caseId ? getCase(caseId) : undefined;
+  const reward = caseId ? parseRankCaseId(caseId) : null;
 
   const [goldSpin, setGoldSpin] = useState(true);
   const [openCount, setOpenCount] = useState(1);
@@ -61,8 +65,16 @@ export function CaseOpenPage() {
   const roundBorrowRef = useRef(0);
   const reelStageRef = useRef<HTMLDivElement>(null);
   const [reelWindowPx, setReelWindowPx] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const dailyClaimedAt = useRankRewardStore((s) => s.dailyClaimedAt);
+  const keyOpenedAt = useRankRewardStore((s) => s.keyOpenedAt);
+  const keys = useRankRewardStore((s) => s.keys);
+  void dailyClaimedAt;
+  void keyOpenedAt;
+  void keys;
 
   const credit = useEconomyStore((s) => s.payout);
+  const creditReward = useEconomyStore((s) => s.credit);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
@@ -92,16 +104,51 @@ export function CaseOpenPage() {
     return () => ro.disconnect();
   }, [openCount]);
 
-  if (!c) return <Navigate to="/cases" replace />;
-  if (!c.community && hiddenOfficialIds.includes(c.id) && !adminView) return <Navigate to="/cases" replace />;
+  useLayoutEffect(() => {
+    if (!reward) return;
+    const id = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [reward]);
+
+  if (!c) return <Navigate to={reward ? "/rewards" : "/cases"} replace />;
+  if (!c.community && !reward && hiddenOfficialIds.includes(c.id) && !adminView) return <Navigate to="/cases" replace />;
 
   const totalPrice = c.price * openCount;
   const reelSize = openCount >= 3 ? "md" : "lg";
   const effectiveBorrow = borrowOn ? borrowPct : 0;
   const paidTotal = Math.round(totalPrice * keepPct(effectiveBorrow));
+  const rewardBlocked = reward
+    ? reward.kind === "daily"
+      ? now < useRankRewardStore.getState().dailyReadyAt(reward.rankId)
+        ? formatDropCountdown(useRankRewardStore.getState().dailyReadyAt(reward.rankId) - now)
+        : ""
+      : (keys[reward.band] ?? 0) < 1
+        ? `Need a ${reward.band} key`
+        : now < useRankRewardStore.getState().keyReadyAt(reward.band)
+          ? formatDropCountdown(useRankRewardStore.getState().keyReadyAt(reward.band) - now)
+          : ""
+    : "";
+  const rewardOpenCount = reward ? 1 : openCount;
 
   async function openCase(demo = false) {
     if (spinning || !c) return;
+    if (reward) {
+      const result = useRankRewardStore.getState().beginOpen(c.id);
+      if (!result.ok) {
+        push(result.reason, "warning");
+        return;
+      }
+      demoRoundRef.current = false;
+      roundBorrowRef.current = 0;
+      setSpinning(true);
+      landedRef.current = 0;
+      roundCountRef.current = 1;
+      roundItemsRef.current = [];
+      const rolls = await play(1);
+      setPendingResults(rolls.map((roll) => rollCaseItem(c, roll)));
+      setSpinToken((t) => t + 1);
+      return;
+    }
     const n = openCount;
     const borrow = demo ? 0 : effectiveBorrow;
     const stake = demo ? 0 : Math.round(c.price * n * keepPct(borrow));
@@ -133,8 +180,9 @@ export function CaseOpenPage() {
     const paidPrice = Math.round(c.price * keepPct(borrow));
     const paidValue = winPayout(item.value, borrow);
     if (!demo) {
-      credit(paidValue);
-      recordRound(paidPrice, paidValue, "cases");
+      if (reward) creditReward(paidValue);
+      else credit(paidValue);
+      if (!reward) recordRound(paidPrice, paidValue, "cases");
     } else {
       recordRound(0, 0, "cases");
     }
@@ -168,8 +216,8 @@ export function CaseOpenPage() {
 
   return (
     <div className="space-y-6">
-      <Link to="/cases" className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
-        <ArrowLeft className="h-4 w-4" /> Back to cases
+      <Link to={reward ? "/rewards" : "/cases"} className="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-white">
+        <ArrowLeft className="h-4 w-4" /> {reward ? "Back to rewards" : "Back to cases"}
       </Link>
 
       <div className="surface overflow-hidden">
@@ -241,14 +289,14 @@ export function CaseOpenPage() {
         <div className="min-w-0 space-y-4">
           <div className="surface min-w-0 overflow-hidden p-3">
             <div ref={reelStageRef} className="min-w-0 space-y-3">
-              {Array.from({ length: openCount }, (_, i) => (
+              {Array.from({ length: rewardOpenCount }, (_, i) => (
                 <CaseReel
-                  key={`solo-${openCount}-${reelSize}-${i}`}
+                  key={`solo-${rewardOpenCount}-${reelSize}-${i}`}
                   pool={pool}
                   goldPool={goldPool}
                   result={pendingResults[i] ?? null}
                   spinToken={spinToken}
-                  goldSpinEnabled={goldSpin}
+                  goldSpinEnabled={!reward && goldSpin}
                   requireGoldConfirm
                   lockstep={openCount > 1}
                   lockstepWindowPx={openCount > 1 ? reelWindowPx : undefined}
@@ -267,6 +315,8 @@ export function CaseOpenPage() {
           <div className="surface space-y-3 p-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div className="flex flex-wrap items-center gap-3">
+                {!reward && (
+                  <>
                 <div className="flex items-center gap-2 text-sm text-slate-300">
                   <Switch checked={goldSpin} onChange={setGoldSpin} disabled={spinning} color="#fbbf24" />
                   <Sparkles className="h-4 w-4 text-amber-300" /> Gold Spin
@@ -301,8 +351,18 @@ export function CaseOpenPage() {
                     </button>
                   ))}
                 </div>
+                  </>
+                )}
+                {reward && (
+                  <p className="text-sm text-slate-400">
+                    {reward.kind === "daily"
+                      ? "Free daily rank case · once every 24 hours"
+                      : "Rank-up key case · 2 hour cooldown · consumes one key"}
+                  </p>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
+                {!reward && (
                 <button
                   type="button"
                   onClick={() => void openCase(true)}
@@ -312,13 +372,18 @@ export function CaseOpenPage() {
                 >
                   {spinning ? "Opening…" : "Demo spin"}
                 </button>
+                )}
                 <button
                   onClick={() => void openCase(false)}
-                  disabled={spinning}
+                  disabled={spinning || Boolean(rewardBlocked)}
                   className="btn-primary px-8 py-2.5 disabled:opacity-50"
                 >
                   {spinning ? (
                     "Opening…"
+                  ) : rewardBlocked ? (
+                    rewardBlocked
+                  ) : reward ? (
+                    "Open free"
                   ) : openCount === 1 ? (
                     <span className="inline-flex items-center gap-1">
                       Open · <CashAmount wl={paidTotal} iconClassName="h-4 w-4" />
@@ -331,7 +396,7 @@ export function CaseOpenPage() {
                 </button>
               </div>
             </div>
-            {borrowOn && (
+            {borrowOn && !reward && (
               <div className="rounded-xl border border-sky-400/20 bg-sky-500/5 px-3 py-2.5">
                 <BorrowPctSlider value={borrowPct} onChange={setBorrowPct} disabled={spinning} />
                 <p className="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-sky-200">

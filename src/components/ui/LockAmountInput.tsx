@@ -42,7 +42,8 @@ export function LockAmountInput({
             onChangeWl(0);
             return;
           }
-          onChangeWl(shards ? Math.round(n) : displayToWorldLocks(n, unit));
+          const next = shards ? Math.round(n) : displayToWorldLocks(n, unit);
+          onChangeWl(Number.isFinite(next) && next >= 0 ? Math.min(next, 1_000_000_000) : 0);
         }}
         className={inputClassName}
       />

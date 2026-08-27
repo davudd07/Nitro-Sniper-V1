@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useParams, Link, Navigate, useNavigate } from "react-router-dom";
 import { ArrowLeft, Handshake, Sparkles, Trash2, TriangleAlert, Zap } from "lucide-react";
 import { clsx } from "clsx";
@@ -59,6 +59,8 @@ export function CaseOpenPage() {
   const roundItemsRef = useRef<CaseItem[]>([]);
   const demoRoundRef = useRef(false);
   const roundBorrowRef = useRef(0);
+  const reelStageRef = useRef<HTMLDivElement>(null);
+  const [reelWindowPx, setReelWindowPx] = useState(0);
 
   const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
@@ -78,6 +80,17 @@ export function CaseOpenPage() {
     () => (c?.community ? c.raw.filter(([id]) => !ITEMS[id]) : []),
     [c],
   );
+
+  useLayoutEffect(() => {
+    const el = reelStageRef.current;
+    if (!el) return;
+    const sync = () => setReelWindowPx(el.clientWidth);
+    sync();
+    if (typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [openCount]);
 
   if (!c) return <Navigate to="/cases" replace />;
   if (!c.community && hiddenOfficialIds.includes(c.id) && !adminView) return <Navigate to="/cases" replace />;
@@ -226,25 +239,29 @@ export function CaseOpenPage() {
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
         <div className="min-w-0 space-y-4">
-          <div className="surface min-w-0 space-y-3 overflow-hidden p-3">
-            {Array.from({ length: openCount }, (_, i) => (
-              <CaseReel
-                key={i}
-                pool={pool}
-                goldPool={goldPool}
-                result={pendingResults[i] ?? null}
-                spinToken={spinToken}
-                goldSpinEnabled={goldSpin}
-                requireGoldConfirm
-                duration={quickSpin ? QUICK_SPIN_MS : SOLO_SPIN_MS}
-                goldDuration={quickSpin ? QUICK_GOLD_MS : SOLO_GOLD_MS}
-                goldChargeMs={quickSpin ? QUICK_GOLD_CHARGE_MS : SOLO_GOLD_CHARGE_MS}
-                size={reelSize}
-                orientation="horizontal"
-                laneSeed={i + 1}
-                onLanded={handleLanded}
-              />
-            ))}
+          <div className="surface min-w-0 overflow-hidden p-3">
+            <div ref={reelStageRef} className="min-w-0 space-y-3">
+              {Array.from({ length: openCount }, (_, i) => (
+                <CaseReel
+                  key={`solo-${openCount}-${reelSize}-${i}`}
+                  pool={pool}
+                  goldPool={goldPool}
+                  result={pendingResults[i] ?? null}
+                  spinToken={spinToken}
+                  goldSpinEnabled={goldSpin}
+                  requireGoldConfirm
+                  lockstep={openCount > 1}
+                  lockstepWindowPx={openCount > 1 ? reelWindowPx : undefined}
+                  duration={quickSpin ? QUICK_SPIN_MS : SOLO_SPIN_MS}
+                  goldDuration={quickSpin ? QUICK_GOLD_MS : SOLO_GOLD_MS}
+                  goldChargeMs={quickSpin ? QUICK_GOLD_CHARGE_MS : SOLO_GOLD_CHARGE_MS}
+                  size={reelSize}
+                  orientation="horizontal"
+                  laneSeed={i + 1}
+                  onLanded={handleLanded}
+                />
+              ))}
+            </div>
           </div>
 
           <div className="surface space-y-3 p-3">

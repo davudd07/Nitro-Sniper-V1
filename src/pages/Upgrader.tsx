@@ -29,18 +29,21 @@ import {
   UPGRADER_FAST_EXTRA_SPINS,
   UPGRADER_FAST_SPIN_MS,
   UPGRADER_HOUSE_EDGE,
+  UPGRADER_MAX_AMOUNT,
   UPGRADER_MAX_MULTIPLIER,
   UPGRADER_MIN_CHANCE,
   UPGRADER_MIN_MULTIPLIER,
   UPGRADER_SPIN_MS,
   ceilToCents,
   clampMultiplier,
+  clampUpgraderAmount,
   closestItemNear,
   filterCatalog,
   formatChancePct,
   formatRollBand,
   landDegForRoll,
   maxStakeBelowTarget,
+  maxTargetForSource,
   minTargetForSource,
   multiplierFromValues,
   parseUpgraderAmount,
@@ -149,6 +152,15 @@ function SlotCard({
   );
 }
 
+function capCoinInput(raw: string): string {
+  if (raw === "") return "";
+  if (raw === "." || /^\d+\.$/.test(raw)) return raw.length > 16 ? raw.slice(0, 16) : raw;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return "";
+  if (n > UPGRADER_MAX_AMOUNT) return String(UPGRADER_MAX_AMOUNT);
+  return raw;
+}
+
 function CoinAmountCard({
   label,
   hint,
@@ -175,13 +187,14 @@ function CoinAmountCard({
         <input
           type="number"
           min={0}
+          max={UPGRADER_MAX_AMOUNT}
           step={0.01}
           disabled={disabled}
           value={text}
-          onChange={(e) => onText(e.target.value)}
-          onBlur={(e) => onCommit(e.target.value)}
+          onChange={(e) => onText(capCoinInput(e.target.value))}
+          onBlur={(e) => onCommit(capCoinInput(e.target.value))}
           onKeyDown={(e) => {
-            if (e.key === "Enter") onCommit(text);
+            if (e.key === "Enter") onCommit(capCoinInput(text));
           }}
           className="min-w-0 flex-1 bg-transparent text-center font-mono text-lg font-bold text-lime-300 outline-none disabled:opacity-50"
         />
@@ -308,7 +321,7 @@ export function Upgrader() {
       if (targetItem) setMultiplierText("2.00");
       return;
     }
-    let value = ceilToCents(next);
+    let value = clampUpgraderAmount(next);
     if (targetValue > 0) {
       const maxS = stakeFromChance(maxChance, targetValue, houseEdge);
       const minS = stakeFromChance(UPGRADER_MIN_CHANCE, targetValue, houseEdge);
@@ -333,21 +346,37 @@ export function Upgrader() {
       setCoinSourceText("");
       return;
     }
-    let value = ceilToCents(next);
+    let value = clampUpgraderAmount(next);
     const cap = maxStakeBelowTarget(targetValue);
     if (cap > 0) value = Math.min(cap, value);
     setStake(value);
     setCoinSourceText(upgraderInputString(value));
-    if (targetValue >= minTargetForSource(value)) {
-      setMultiplierText(multiplierFromValues(value, targetValue).toFixed(2));
+    let tgt = targetValue;
+    if (value > 0) {
+      const minT = minTargetForSource(value);
+      const maxT = maxTargetForSource(value, houseEdge);
+      if (tgt > 0) {
+        if (minT > 0 && tgt < minT) tgt = minT;
+        if (maxT > 0 && tgt > maxT) tgt = maxT;
+      }
+      if (tgt !== targetValue && tgt > 0) {
+        setCoinTarget(tgt);
+        setCoinTargetText(upgraderInputString(tgt));
+        arcTargetRef.current = tgt;
+      }
+      if (tgt >= minTargetForSource(value)) {
+        setMultiplierText(multiplierFromValues(value, tgt).toFixed(2));
+      }
     }
   }
 
   function applyCoinTarget(next: number) {
-    let value = ceilToCents(next);
+    let value = clampUpgraderAmount(next);
     if (inputValue > 0) {
       const minT = minTargetForSource(inputValue);
       if (minT > 0) value = Math.max(value, minT);
+      const maxT = maxTargetForSource(inputValue, houseEdge);
+      if (maxT > 0) value = Math.min(value, maxT);
     }
     setCoinTarget(value);
     setCoinTargetText(upgraderInputString(value));
@@ -386,8 +415,14 @@ export function Upgrader() {
   }
 
   function applyCoinPair(source: number, target: number) {
-    const tgt = ceilToCents(target);
-    let value = ceilToCents(source);
+    let value = clampUpgraderAmount(source);
+    let tgt = clampUpgraderAmount(target);
+    if (value > 0) {
+      const minT = minTargetForSource(value);
+      const maxT = maxTargetForSource(value, houseEdge);
+      if (minT > 0) tgt = Math.max(tgt, minT);
+      if (maxT > 0) tgt = Math.min(tgt, maxT);
+    }
     const cap = maxStakeBelowTarget(tgt);
     if (cap > 0) value = Math.min(cap, value);
     setCoinTarget(tgt);
@@ -549,9 +584,9 @@ export function Upgrader() {
             <p>
               Win chance is the green slice over 360°, equal to{" "}
               <span className="font-mono text-white">(source ÷ target) × (1 − 5%)</span>. Default house edge is 5% (never
-              +EV). The target must be at least 1.20× the source — a 500 → 500 spin is not an upgrade. Items mode uses
-              the catalog; Coins mode types a source amount and a higher target (e.g. 5 → 485 WL ≈ 0.98%). Drag a thick
-              end-cap to resize that slice — longer green is a higher chance and a higher source stake (
+              +EV). The target must be at least 1.20× the source — a 500 → 500 spin is not an upgrade. The thinnest
+              legal slice is 0.01%. Items mode uses the catalog; Coins mode types a source amount and a higher target.
+              Drag a thick end-cap to resize that slice — longer green is a higher chance and a higher source stake (
               <span className="font-mono text-white">stake = chance × target / 0.95</span>, rounded up to cents, capped
               at 1.20×). Drag the green stroke to rotate the slice without changing odds. The arrow spins and lands; a
               hit inside your placed slice credits the target World Lock value. A miss consumes the source stake. Fair rolls use{" "}

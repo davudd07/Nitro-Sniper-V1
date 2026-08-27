@@ -6,11 +6,13 @@ import { HOUSE_EDGE } from "./rakeback";
 /** 5% Upgrader edge unless VIP admin overrides `upgrader`. */
 export const UPGRADER_HOUSE_EDGE = HOUSE_EDGE.upgrader;
 
-/** Playable floor: 1% green. Tiny enough to feel spicy, still a sane stake. */
-export const UPGRADER_MIN_CHANCE = 0.01;
+/** Playable floor: 0.01% green. Tiny enough for long-shot upgrades. */
+export const UPGRADER_MIN_CHANCE = 0.0001;
 /** Lowest legal upgrade: 1.20×. A 1.00× (same-value) spin is not an upgrade. */
 export const UPGRADER_MIN_MULTIPLIER = 1.2;
 export const UPGRADER_MAX_MULTIPLIER = 10_000;
+/** Hard cap on typed stakes / targets so a huge input cannot freeze the tab. */
+export const UPGRADER_MAX_AMOUNT = 1_000_000_000;
 /** Normal spin: ~1.75× the previous 2400ms roll, with more loops so it still feels like a spin. */
 export const UPGRADER_SPIN_MS = 4200;
 export const UPGRADER_EXTRA_SPINS = 12;
@@ -87,10 +89,32 @@ export function floorToCents(value: number): number {
   return Math.floor(value * 100 + 1e-9) / 100;
 }
 
+/** Clamp a typed / computed stake into the playable amount range. */
+export function clampUpgraderAmount(value: number): number {
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  return ceilToCents(Math.min(UPGRADER_MAX_AMOUNT, value));
+}
+
 /** Smallest target that is at least 1.20× the source (500 SH → 600 SH). */
 export function minTargetForSource(source: number): number {
-  if (!(source > 0)) return 0;
-  return ceilToCents(source * UPGRADER_MIN_MULTIPLIER);
+  if (!(source > 0) || !Number.isFinite(source)) return 0;
+  return ceilToCents(Math.min(UPGRADER_MAX_AMOUNT, source * UPGRADER_MIN_MULTIPLIER));
+}
+
+/**
+ * Largest target that still keeps win chance at or above `UPGRADER_MIN_CHANCE`
+ * and within the 10,000× multiplier cap.
+ */
+export function maxTargetForSource(source: number, houseEdge: number): number {
+  if (!(source > 0) || !Number.isFinite(source)) return UPGRADER_MAX_AMOUNT;
+  const rtp = 1 - normalizedEdge(houseEdge);
+  const fromChance =
+    rtp > 0 && UPGRADER_MIN_CHANCE > 0
+      ? floorToCents((source * rtp) / UPGRADER_MIN_CHANCE)
+      : UPGRADER_MAX_AMOUNT;
+  const fromMulti = ceilToCents(source * UPGRADER_MAX_MULTIPLIER);
+  const cap = Math.min(UPGRADER_MAX_AMOUNT, fromChance > 0 ? fromChance : UPGRADER_MAX_AMOUNT, fromMulti);
+  return Math.max(minTargetForSource(source), cap);
 }
 
 export function formatUpgraderStake(value: number): string {
@@ -108,19 +132,23 @@ export function upgraderInputString(wl: number): string {
 export function parseUpgraderAmount(raw: string): number {
   const n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return 0;
-  return ceilToCents(displayToWorldLocks(n, currentLockUnit()));
+  return clampUpgraderAmount(displayToWorldLocks(n, currentLockUnit()));
 }
 
 /**
  * Largest source whose 1.20× minimum target still fits under `targetValue`.
  * 500 SH payout → max source 416.66 SH (416.67 would need 500.01).
+ * Bounded iterations — a huge typed target must not freeze the tab.
  */
 export function maxStakeBelowTarget(targetValue: number): number {
-  if (!(targetValue > 0)) return 0;
-  let cap = floorToCents(targetValue / UPGRADER_MIN_MULTIPLIER);
-  while (cap > 0 && minTargetForSource(cap) > targetValue) {
+  if (!(targetValue > 0) || !Number.isFinite(targetValue)) return 0;
+  const target = Math.min(UPGRADER_MAX_AMOUNT, targetValue);
+  let cap = floorToCents(Math.min(UPGRADER_MAX_AMOUNT, target / UPGRADER_MIN_MULTIPLIER));
+  // At most a few cent tweaks for float rounding — never an unbounded walk.
+  for (let i = 0; i < 8 && cap > 0 && minTargetForSource(cap) > target; i++) {
     cap = floorToCents(cap - 0.01);
   }
+  if (!(cap > 0) || minTargetForSource(cap) > target) return 0;
   return cap;
 }
 
@@ -157,7 +185,7 @@ export function stakeFromChance(chance: number, targetValue: number, houseEdge: 
   const rtp = 1 - normalizedEdge(houseEdge);
   if (!(rtp > 0)) return 0;
   const clamped = clampUpgraderChance(chance, houseEdge);
-  const raw = ceilToCents((clamped * targetValue) / rtp);
+  const raw = clampUpgraderAmount((clamped * Math.min(UPGRADER_MAX_AMOUNT, targetValue)) / rtp);
   const cap = maxStakeBelowTarget(targetValue);
   if (cap > 0 && raw > cap) return cap;
   return raw;
@@ -166,22 +194,22 @@ export function stakeFromChance(chance: number, targetValue: number, houseEdge: 
 /**
  * Win chance = (source / target) × (1 − house edge).
  * Default edge is 5%. Target must be at least 1.20× source (never a 1.00× same-value spin).
- * Drag-resize and bet buttons in Items mode use `clampUpgraderChance` (1% floor).
- * Coins mode typed amounts may be smaller (e.g. 5 → 485 ≈ 0.98% at 5% edge).
+ * Floor is 0.01% (`UPGRADER_MIN_CHANCE`); longer shots are clamped by max target.
  */
 export function upgraderChance(inputValue: number, targetValue: number, houseEdge: number): number {
   if (!(inputValue > 0) || !(targetValue > 0)) return 0;
+  if (!Number.isFinite(inputValue) || !Number.isFinite(targetValue)) return 0;
   if (minTargetForSource(inputValue) > targetValue) return 0;
   const rtp = 1 - normalizedEdge(houseEdge);
   const chance = (inputValue / targetValue) * rtp;
   if (!(chance > 0)) return 0;
-  return Math.min(chance, upgraderMaxChance(houseEdge));
+  return clampUpgraderChance(chance, houseEdge);
 }
 
 export function targetFromMultiplier(inputValue: number, multiplier: number): number {
   if (!(inputValue > 0) || !(multiplier >= UPGRADER_MIN_MULTIPLIER)) return 0;
   const raw = Math.round(inputValue * multiplier * 100) / 100;
-  return Math.max(raw, minTargetForSource(inputValue));
+  return clampUpgraderAmount(Math.max(raw, minTargetForSource(inputValue)));
 }
 
 export function multiplierFromValues(inputValue: number, targetValue: number): number {
@@ -240,7 +268,7 @@ export function landDegForRoll(roll: number, chance: number, won: boolean, arcSt
 export function formatChancePct(chance: number): string {
   if (!(chance > 0)) return "0.00%";
   const pct = chance * 100;
-  if (pct < 0.01) return `${pct.toFixed(4)}%`;
+  if (pct < 0.01) return "0.01%";
   return `${pct.toFixed(2)}%`;
 }
 
@@ -253,9 +281,7 @@ export function formatAttemptMultiplier(multi: number): string {
 /** Winning roll band shown on the dial, e.g. `0.00–47.50`. */
 export function formatRollBand(chance: number): string {
   if (!(chance > 0)) return "0.00–0.00";
-  const hi = chance * 100;
-  const hiStr = hi < 0.01 ? hi.toFixed(4) : hi.toFixed(2);
-  return `0.00–${hiStr}`;
+  return `0.00–${(chance * 100).toFixed(2)}`;
 }
 
 export type UpgradeSort = "price_desc" | "price_asc";

@@ -88,6 +88,36 @@ function stripTransform(horizontal: boolean, px: number) {
   return horizontal ? `translate3d(${-px}px,0,0)` : `translate3d(0,${-px}px,0)`;
 }
 
+function buildIdleStrip(pool: CaseItem[], goldPool: CaseItem[], laneSeed: number): CaseItem[] {
+  if (pool.length === 0) return [];
+  const rand = mulberry32(laneSeed + 17);
+  return buildStrip(pool, pickFrom(pool, rand), rand, goldPool, true);
+}
+
+/**
+ * Window size used to center the land slot. Lockstep siblings must share one
+ * number — mixing a live 0-width measure with a fallback makes one reel travel
+ * farther in the same duration (it looks faster).
+ */
+function spinWindowPx(opts: {
+  isHorizontal: boolean;
+  lockstep: boolean;
+  measured: number;
+  itemSize: number;
+  boxSize: number;
+  lockstepWindowPx?: number;
+}): number {
+  const { isHorizontal, lockstep, measured, itemSize, boxSize, lockstepWindowPx } = opts;
+  if (!isHorizontal) {
+    return lockstep ? boxSize : measured > 0 ? measured : boxSize;
+  }
+  if (lockstep) {
+    if (lockstepWindowPx && lockstepWindowPx > 0) return lockstepWindowPx;
+    return itemSize * 5;
+  }
+  return measured > 0 ? measured : itemSize * 5;
+}
+
 function pickFrom(pool: CaseItem[], rand: () => number): CaseItem {
   return pool[Math.floor(rand() * pool.length)] ?? pool[0];
 }
@@ -232,6 +262,8 @@ export function CaseReel({
   onGoldTriggered,
   playerLabel,
   requireGoldConfirm = false,
+  lockstep: lockstepProp,
+  lockstepWindowPx,
 }: {
   pool: CaseItem[];
   goldPool: CaseItem[];
@@ -249,9 +281,16 @@ export function CaseReel({
   playerLabel?: string;
   /** Solo opens: wait for a "Spin for Gold" click instead of auto-spinning. */
   requireGoldConfirm?: boolean;
+  /**
+   * Same travel + easing across sibling reels. Defaults on for vertical
+   * battle columns. Pass true for multi-open solo cases.
+   */
+  lockstep?: boolean;
+  /** Shared CSS width for horizontal lockstep siblings (parent-measured). */
+  lockstepWindowPx?: number;
 }) {
   const [phase, setPhase] = useState<"idle" | "main" | "awaitingGold" | "charge" | "gold" | "done">("idle");
-  const [strip, setStrip] = useState<CaseItem[]>([]);
+  const [strip, setStrip] = useState<CaseItem[]>(() => buildIdleStrip(pool, goldPool, laneSeed));
   const containerRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
   const offsetRef = useRef(0);
@@ -261,8 +300,8 @@ export function CaseReel({
   const lastTickIndexRef = useRef(-1);
   const cfg = SIZE_CONFIG[size][orientation];
   const isHorizontal = orientation === "horizontal";
-  /** Side-by-side battle columns must share easing + travel distance. */
-  const lockstep = !isHorizontal;
+  /** Side-by-side battle columns (and multi-open solo reels) share easing + travel. */
+  const lockstep = lockstepProp ?? !isHorizontal;
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const goldSeedRef = useRef(0);
   const resultRef = useRef(result);
@@ -294,12 +333,18 @@ export function CaseReel({
     // Battle columns sit side-by-side. Measuring each box independently (or
     // adding per-lane rest jitter) makes one reel travel farther in the same
     // duration — it looks faster, then they still stop together. Lockstep
-    // uses the shared size config so every lane covers the same distance.
-    const containerDim = lockstep
-      ? cfg.boxSize
-      : isHorizontal
-        ? (containerRef.current?.clientWidth || cfg.boxSize)
-        : (containerRef.current?.clientHeight || cfg.boxSize);
+    // uses one shared window size so every lane covers the same distance.
+    const measured = isHorizontal
+      ? containerRef.current?.clientWidth ?? 0
+      : containerRef.current?.clientHeight ?? 0;
+    const containerDim = spinWindowPx({
+      isHorizontal,
+      lockstep,
+      measured,
+      itemSize: cfg.itemSize,
+      boxSize: cfg.boxSize,
+      lockstepWindowPx,
+    });
     const itemSize = cfg.itemSize;
     const landCenter = LAND_INDEX * itemSize + itemSize / 2 - containerDim / 2;
     // Tease rests just past the gold→land boundary so the winner is clearly
@@ -423,15 +468,25 @@ export function CaseReel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
-  // Full-length idle strip so unique icons decode during countdown / before Open.
-  // GOLD SPIN indicator baits (not gold-pool items) fly past before Open.
-  useEffect(() => {
-    if (spinToken !== 0 || strip.length > 0 || pool.length === 0) return;
-    const rand = mulberry32(laneSeed + 17);
-    setStrip(buildStrip(pool, pickFrom(pool, rand), rand, goldPool, true));
+  // Idle strip at rest. Rebuild when spinToken resets or the reel size
+  // changes — otherwise a leftover land transform shows a black window.
+  // First paint already has items (useState initializer); this keeps them
+  // in sync after a remount / count change.
+  useLayoutEffect(() => {
+    if (spinToken !== 0) return;
+    cancelMotion();
+    setPhase("idle");
+    setStrip(buildIdleStrip(pool, goldPool, laneSeed));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [spinToken, size, orientation, laneSeed]);
+
+  // Rest transform only after the strip is committed. Applying it in the
+  // same pass as setStrip can miss a freshly mounted node (black reel).
+  useLayoutEffect(() => {
+    if (spinToken !== 0) return;
     applyOffset(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pool, goldPool, spinToken, laneSeed]);
+  }, [strip, spinToken, size, orientation]);
 
   useEffect(() => {
     if (!result || spinToken === 0) return;

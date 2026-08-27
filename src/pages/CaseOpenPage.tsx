@@ -29,14 +29,13 @@ import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
 import { noteOfficialCaseOpens } from "../store/caseStatsStore";
 import type { CaseItem } from "../data/items";
 import { isMaxxxWin, ITEMS } from "../data/items";
-import { isMissingCatalogItem } from "../lib/communityCaseAudit";
 import type { CaseOddsEntry } from "../data/cases";
 import { useMaxxxWinStore, waitUntilMaxxxIdle } from "../store/maxxxWinStore";
 import { parseRankCaseId } from "../lib/rankRewards";
 import { useRankRewardStore } from "../store/rankRewardStore";
 import { formatDropCountdown } from "../lib/xp";
 import { useGoldSpinStore } from "../store/goldSpinStore";
-import { GoldSpinAdminButton } from "../components/admin/GoldSpinAdminButton";
+import { CaseContentsGrid } from "../components/cases/CaseContentsGrid";
 
 const MAX_OPENS = 4;
 const SOLO_SPIN_MS = 6800;
@@ -294,9 +293,8 @@ export function CaseOpenPage() {
         </div>
       </div>
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 space-y-4">
-          <div className="surface min-w-0 overflow-hidden p-3">
+      <div className="min-w-0 space-y-4">
+        <div className="surface min-w-0 overflow-hidden p-3">
             <div ref={reelStageRef} className="min-w-0 space-y-3">
               {Array.from({ length: rewardOpenCount }, (_, i) => (
                 <CaseReel
@@ -416,6 +414,8 @@ export function CaseOpenPage() {
             )}
           </div>
 
+          <CaseContentsGrid caseId={c.id} odds={c.odds} adminView={adminView} />
+
           {history.length > 0 && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Your unboxed items</p>
@@ -433,50 +433,8 @@ export function CaseOpenPage() {
               </div>
             </div>
           )}
-        </div>
 
-        <div className="space-y-4">
           <ProvablyFairPanel />
-          <div className="surface p-3">
-            <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">Odds table</p>
-            {adminView && (
-              <p className="mb-2 text-[10px] font-medium text-amber-200/80">
-                Admin view: click Add gold / Remove gold on a row. That Gold Spin pool is saved in this browser forever.
-              </p>
-            )}
-            <div className="max-h-72 space-y-1 overflow-y-auto scrollbar-thin pr-1">
-              {[...c.odds]
-                .sort((a, b) => b.probability - a.probability)
-                .map((o, i) => (
-                  <div
-                    key={`${o.item.id}-${i}`}
-                    className={clsx(
-                      "flex items-center justify-between rounded px-2 py-1.5 text-xs",
-                      adminView && o.goldTier
-                        ? "bg-amber-400/15 ring-1 ring-amber-300/70"
-                        : "bg-black/20",
-                      adminView && !o.goldTier && "opacity-55",
-                      isMissingCatalogItem(o.item) && "text-slate-500",
-                    )}
-                  >
-                    <span className="truncate pr-2">
-                      {o.item.name}
-                      {isMissingCatalogItem(o.item) ? " · catalog removed" : ""}
-                    </span>
-                    <span className="flex shrink-0 items-center gap-1.5 text-slate-400">
-                      <span>{(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%</span>
-                      <CashAmount wl={o.item.value} iconClassName="h-3 w-3" />
-                      {adminView ? (
-                        <GoldSpinAdminButton caseId={c.id} item={o.item} goldTier={o.goldTier} />
-                      ) : o.goldTier ? (
-                        " ✨"
-                      ) : null}
-                    </span>
-                  </div>
-                ))}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

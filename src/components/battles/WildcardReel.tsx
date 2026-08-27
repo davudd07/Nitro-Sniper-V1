@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { EASE_OUT_QUART_CSS, easeOutQuart } from "../../lib/easing";
 import { mulberry32 } from "../../lib/fundedBattle";
@@ -62,10 +62,9 @@ export function WildcardReel({
   const slot = SLOT_PX[size];
   const [strip, setStrip] = useState<WildcardMulti[]>(() => idleStrip(laneSeed));
   const [phase, setPhase] = useState<"idle" | "spin" | "done">("idle");
-  const [kick, setKick] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
-  const landedRef = useRef(false);
+  const genRef = useRef(0);
   const onLandedRef = useRef(onLanded);
   onLandedRef.current = onLanded;
 
@@ -74,85 +73,122 @@ export function WildcardReel({
     if (el) el.style.transform = `translate3d(0,${-px}px,0)`;
   }
 
-  useLayoutEffect(() => {
+  useEffect(() => {
     if (spinToken === 0 || result == null) {
+      genRef.current += 1;
       setPhase("idle");
       setStrip(idleStrip(laneSeed));
       applyOffset(0);
-      landedRef.current = false;
       return;
     }
-    landedRef.current = false;
+
+    const gen = ++genRef.current;
     const next = buildStrip(result, spinToken * 7919 + laneSeed * 131);
     setStrip(next);
     setPhase("spin");
     applyOffset(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spinToken]);
 
-  useEffect(() => {
-    if (phase !== "spin" || result == null) return;
-    const el = stripRef.current;
-    const box = wrapRef.current;
-    if (!el || !box) {
-      const retry = window.setTimeout(() => setKick((n) => n + 1), 32);
-      return () => window.clearTimeout(retry);
-    }
-    const windowH = box.clientHeight || height;
-    const landPx = LAND_INDEX * slot - (windowH - slot) / 2;
     const delay = laneSeed * 110;
-    const dur = duration + laneSeed * 70;
-    el.getAnimations().forEach((a) => a.cancel());
-    const anim = el.animate(
-      [
-        { transform: "translate3d(0,0,0)", filter: "blur(1.2px) saturate(1.15)" },
-        { transform: `translate3d(0,${-landPx * 0.82}px,0)`, filter: "blur(0.6px) saturate(1.2)", offset: 0.72 },
-        { transform: `translate3d(0,${-landPx}px,0)`, filter: "blur(0px) saturate(1)" },
-      ],
-      { duration: dur, delay, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
-    );
-    let cancelled = false;
-    let lastTick = -1;
+    const dur = Math.max(1200, duration) + laneSeed * 70;
+    const minElapsed = delay + dur - 32;
     let raf = 0;
-    const tick = () => {
-      if (cancelled) return;
-      const raw = typeof anim.currentTime === "number" ? anim.currentTime : 0;
-      const t = Math.min(1, Math.max(0, (raw - delay) / dur));
-      const eased = easeOutQuart(Math.max(0, t));
-      const idx = Math.floor((eased * landPx) / slot);
-      if (idx !== lastTick) {
-        lastTick = idx;
-        playSpinTick(1 - t);
+    let fallback = 0;
+    let anim: Animation | null = null;
+    let startAt = 0;
+    let lastTick = -1;
+    let landPx = 0;
+
+    const live = () => genRef.current === gen;
+
+    const finish = () => {
+      if (!live()) return;
+      if (performance.now() - startAt < minElapsed) {
+        raf = requestAnimationFrame(tick);
+        return;
       }
-      if (t < 1 && anim.playState !== "finished") raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    const done = () => {
-      if (cancelled || landedRef.current) return;
-      landedRef.current = true;
+      genRef.current += 1;
       cancelAnimationFrame(raf);
-      setPhase("done");
+      window.clearTimeout(fallback);
+      try {
+        anim?.commitStyles();
+      } catch {
+        /* ignore */
+      }
+      try {
+        anim?.cancel();
+      } catch {
+        /* ignore */
+      }
       applyOffset(landPx);
+      setPhase("done");
       const up = wildcardTone(result) === "up";
       if (up) sound.win(result >= 5 ? "big" : "small");
       else sound.lose();
       onLandedRef.current?.(result);
     };
-    anim.onfinish = done;
-    const fallback = window.setTimeout(done, delay + dur + 80);
+
+    const tick = (now: number) => {
+      if (!live()) return;
+      const t = Math.min(1, Math.max(0, (now - startAt - delay) / dur));
+      if (!anim) applyOffset(landPx * easeOutQuart(t));
+      const idx = Math.floor((easeOutQuart(Math.max(0, t)) * landPx) / slot);
+      if (idx !== lastTick) {
+        lastTick = idx;
+        playSpinTick(1 - t);
+      }
+      if (t >= 1) finish();
+      else raf = requestAnimationFrame(tick);
+    };
+
+    const start = () => {
+      if (!live()) return;
+      const wrap = wrapRef.current;
+      const el = stripRef.current;
+      if (!wrap || !el) {
+        raf = requestAnimationFrame(start);
+        return;
+      }
+      const windowH = wrap.clientHeight || height;
+      landPx = LAND_INDEX * slot - (windowH - slot) / 2;
+      startAt = performance.now();
+      applyOffset(0);
+      el.getAnimations().forEach((a) => a.cancel());
+      if (typeof el.animate === "function") {
+        anim = el.animate(
+          [
+            { transform: "translate3d(0,0,0)", filter: "blur(1.2px) saturate(1.15)" },
+            { transform: `translate3d(0,${-landPx * 0.82}px,0)`, filter: "blur(0.6px) saturate(1.2)", offset: 0.72 },
+            { transform: `translate3d(0,${-landPx}px,0)`, filter: "blur(0px) saturate(1)" },
+          ],
+          { duration: dur, delay, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
+        );
+        anim.onfinish = () => {
+          if (!live()) return;
+          finish();
+        };
+      }
+      raf = requestAnimationFrame(tick);
+      fallback = window.setTimeout(finish, delay + dur + 80);
+    };
+
+    // Double rAF so the new strip is committed before the first transform.
+    raf = requestAnimationFrame(() => {
+      raf = requestAnimationFrame(start);
+    });
+
     return () => {
-      cancelled = true;
+      if (genRef.current === gen) genRef.current += 1;
       cancelAnimationFrame(raf);
       window.clearTimeout(fallback);
-      anim.onfinish = null;
+      if (anim) anim.onfinish = null;
       try {
-        anim.cancel();
+        anim?.cancel();
       } catch {
         /* ignore */
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, spinToken, kick]);
+  }, [spinToken]);
 
   const landed = phase === "done" && result != null;
   const landedUp = landed && wildcardTone(result) === "up";

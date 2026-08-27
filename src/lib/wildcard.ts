@@ -60,3 +60,24 @@ export function wildcardMapFromUnknown(
   }
   return out;
 }
+
+const FAST_SPIN_MS = 2600;
+const NORMAL_SPIN_MS = 3800;
+const FAST_HOLD_MS = 900;
+const NORMAL_HOLD_MS = 1400;
+const LANE_STAGGER_MS = 180;
+
+export function wildcardBaseSpinMs(fastSpin: boolean): number {
+  return fastSpin ? FAST_SPIN_MS : NORMAL_SPIN_MS;
+}
+
+export function wildcardLaneSpinMs(fastSpin: boolean, laneSeed: number): number {
+  return wildcardBaseSpinMs(fastSpin) + Math.max(0, laneSeed) * LANE_STAGGER_MS;
+}
+
+/** Time the room stays on the Wildcard phase: longest lane spin + land hold. */
+export function wildcardPhaseMs(fastSpin: boolean, slotIndexes: number[]): number {
+  const maxSeed = slotIndexes.length > 0 ? Math.max(0, ...slotIndexes) : 0;
+  const hold = fastSpin ? FAST_HOLD_MS : NORMAL_HOLD_MS;
+  return wildcardLaneSpinMs(fastSpin, maxSeed) + hold;
+}

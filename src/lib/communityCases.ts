@@ -201,7 +201,7 @@ export function riskFromEntries(entries: CommunityOddsInput[]): RiskLevel {
   return "low";
 }
 
-/** Same ticket table as official cases: rarest prizes occupy 990,000–1,000,000. */
+/** Same ticket table as official cases: highest-value prizes occupy 990,000–1,000,000. */
 export function withGoldTiers(
   odds: Omit<CaseOddsEntry, "goldTier" | "tickets" | "ticketStart" | "ticketEnd">[],
 ): CaseOddsEntry[] {

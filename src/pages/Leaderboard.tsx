@@ -12,6 +12,7 @@ import {
 import { displayLeaderboardName, leaderboardRows, useLeaderboardStore } from "../store/leaderboardStore";
 import { useDemoProfileStore } from "../store/demoProfileStore";
 import { localWinName } from "../store/winLeaderStore";
+import { LeaderboardPodium } from "../components/leaderboard/LeaderboardPodium";
 
 const PERIODS: LeaderboardPeriod[] = ["daily", "weekly", "monthly"];
 
@@ -64,10 +65,12 @@ export function Leaderboard() {
         ))}
       </div>
 
-      <div className="grid gap-2 sm:grid-cols-5">
-        {prizes.map((amt, i) => (
+      <LeaderboardPodium rows={rows} />
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        {prizes.slice(3).map((amt, i) => (
           <div key={i} className="rounded-xl border-2 border-white/10 bg-[#0c1414] px-3 py-2 shadow-[3px_3px_0_#050808]">
-            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">#{i + 1}</p>
+            <p className="text-[10px] font-extrabold uppercase tracking-[0.16em] text-slate-500">#{i + 4} prize</p>
             <p className="mt-1 font-semibold text-amber-200">
               <CashAmount wl={amt} iconClassName="h-3.5 w-3.5" />
             </p>

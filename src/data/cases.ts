@@ -13,7 +13,7 @@ export interface CaseOddsEntry {
   tickets: number;
   ticketStart: number;
   ticketEnd: number;
-  /** Rarest 1% of prize tickets (990,000–1,000,000) — Gold Spin eligible. Never junk filler. */
+  /** Occupies the top 1% of tickets when prizes are stacked highest-value first. Gold Spin eligible. Never junk filler. */
   goldTier: boolean;
 }
 
@@ -59,7 +59,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "starter",
     name: "Farm Cache",
     price: 25,
-    blurb: "Turtles, horsies, and sabers with a shot at a floating leaf.",
+    blurb: "Turtles, horsies, and sabers. Angel Wings sit in the gold-spin pool.",
     from: "#4d7c0f",
     to: "#14532d",
     targetRtp: 0.96,
@@ -121,7 +121,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "prime",
     name: "Cape Cache",
     price: 120,
-    blurb: "Capes and auras. Neon Nerves sits in the gold-spin pool.",
+    blurb: "Capes and auras. Flaming Aura sits in the gold-spin pool.",
     from: "#7c3aed",
     to: "#4c1d95",
     targetRtp: 0.96,
@@ -183,7 +183,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "elite",
     name: "Aura Chamber",
     price: 800,
-    blurb: "Auras through Love Eyes in the gold-spin pool.",
+    blurb: "Auras through crowns. Shadow Crown sits in the gold-spin pool.",
     from: "#f97316",
     to: "#7c2d12",
     targetRtp: 0.96,
@@ -204,7 +204,7 @@ const CASE_DEFS: CaseDef[] = [
     id: "comet",
     name: "Comet Trail",
     price: 1200,
-    blurb: "Ride the comet. Crowns sit in the rarest 1%.",
+    blurb: "Ride the comet. Twin Swords sit in the gold-spin pool.",
     from: "#fbbf24",
     to: "#9a3412",
     targetRtp: 0.96,
@@ -511,6 +511,19 @@ function buildCase(def: CaseDef): { odds: CaseOddsEntry[]; ev: number; rtp: numb
   const prizeOdds = odds.filter((o) => !isFillerLoot(o.item));
   if (odds.some((o) => o.goldTier && isFillerLoot(o.item))) {
     throw new Error(`Case "${def.id}" put junk filler in the gold-spin pool`);
+  }
+  if (prizeOdds.length > 0) {
+    const goldPrizes = prizeOdds.filter((o) => o.goldTier);
+    const nonGoldPrizes = prizeOdds.filter((o) => !o.goldTier);
+    if (goldPrizes.length > 0 && nonGoldPrizes.length > 0) {
+      const minGold = Math.min(...goldPrizes.map((o) => o.item.value));
+      const maxNonGold = Math.max(...nonGoldPrizes.map((o) => o.item.value));
+      if (maxNonGold > minGold + 1e-9) {
+        throw new Error(
+          `Case "${def.id}" put a cheaper item in Gold Spin than a more valuable prize (${maxNonGold} WL vs ${minGold} WL)`,
+        );
+      }
+    }
   }
   if (fillerOdds.length > 0 && prizeOdds.length > 0) {
     const rarestPrize = Math.min(...prizeOdds.map((o) => o.probability));

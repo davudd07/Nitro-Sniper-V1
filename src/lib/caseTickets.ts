@@ -55,10 +55,12 @@ export function allocateTickets(probabilities: number[], total = CASE_TICKET_COU
 }
 
 /**
- * Rarest *prizes* sit at the top of the ticket list, so the rarest 1% of
+ * Highest-value *prizes* sit at the top of the ticket list, so the top 1% of
  * outcomes occupy tickets 990,000–1,000,000 (Gold Spin). Junk filler always
  * occupies the low tickets — even if a case accidentally makes dirt rare —
  * so Gold Spin never pays Dirt / Firework / 0-WL placeholders.
+ * Value beats rarity: a more expensive item is Gold Spin even when a cheaper
+ * chase is less likely (Farm Cache Angel Wings vs Floating Leaf).
  */
 export function stampTicketRanges<T extends { probability: number; item?: TicketLootRef }>(
   entries: T[],
@@ -69,6 +71,9 @@ export function stampTicketRanges<T extends { probability: number; item?: Ticket
     .sort((a, b) => {
       const fill = Number(isFillerLoot(a.entry.item)) - Number(isFillerLoot(b.entry.item));
       if (fill !== 0) return fill;
+      const va = a.entry.item?.value ?? 0;
+      const vb = b.entry.item?.value ?? 0;
+      if (vb !== va) return vb - va;
       return a.entry.probability - b.entry.probability || b.tickets - a.tickets;
     });
   let cursor = CASE_TICKET_COUNT;

@@ -842,6 +842,8 @@ export function BattleRoom() {
   }
 
   function callBot(slotIndex: number) {
+    if (!battle) return;
+    if ((battle.fundedPct ?? 0) >= 1 || battle.eventKind === "funded") return;
     const usedNames = new Set(players.filter((p) => p.name).map((p) => p.name));
     const next = players.map((p) =>
       p.slotIndex === slotIndex ? { ...p, kind: "bot" as const, name: randomBotName(usedNames) } : p,
@@ -1181,7 +1183,13 @@ export function BattleRoom() {
                               compact={crowded}
                               fastSpin={battle.fastSpin}
                               fundedPct={battle.fundedPct}
-                              canManageSeats={!spectating && phase === "filling" && battle.status !== "finished"}
+                              canManageSeats={
+                                !spectating &&
+                                phase === "filling" &&
+                                battle.status !== "finished" &&
+                                (battle.fundedPct ?? 0) < 1 &&
+                                battle.eventKind !== "funded"
+                              }
                               canJoinSeat={spectating && phase === "filling" && battle.status !== "finished" && !wantReplay}
                               onLanded={(item) => handleLanded(p.slotIndex, item)}
                               onCallBot={() => callBot(p.slotIndex)}
@@ -1451,6 +1459,9 @@ function PlayerStage({
                 >
                   <Bot className="h-3.5 w-3.5" /> Call Bot
                 </button>
+              )}
+              {fundedPct >= 1 && !canManageSeats && !canJoinSeat && (
+                <p className="text-[10px] leading-snug text-slate-500">Waiting for players — bots can’t fill a house-funded seat.</p>
               )}
             </>
           )}

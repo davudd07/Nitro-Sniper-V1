@@ -592,7 +592,7 @@ export function BattleRoom() {
     wildcardLandedRef.current.add(slotIndex);
     const need = players.filter((p) => p.kind !== "empty" && p.kind !== "joining").length;
     if (wildcardLandedRef.current.size < need) return;
-    window.setTimeout(() => continueAfterWildcard(), battle?.fastSpin ? 280 : 720);
+    window.setTimeout(() => continueAfterWildcard(), battle?.fastSpin ? 900 : 1400);
   }
 
   function continueAfterWildcard() {
@@ -1175,7 +1175,7 @@ export function BattleRoom() {
         <div className="relative min-w-0 w-full">
           {phase === "countdown" && <BattleCountdown countdown={countdown} />}
           {phase === "wildcard" && (
-            <div className="pointer-events-none absolute inset-x-0 top-2 z-10 flex justify-center px-3">
+            <div className="mb-2 flex justify-center px-3">
               <p className="wildcard-banner rounded-full border border-emerald-300/50 bg-emerald-500/20 px-3 py-1 text-[11px] font-black uppercase tracking-[0.18em] text-emerald-50 shadow-[0_0_22px_rgba(52,211,153,0.35)]">
                 Wildcard · every player rolls their own multiplier
               </p>
@@ -1305,7 +1305,7 @@ export function BattleRoom() {
                               compact={crowded}
                               fastSpin={battle.fastSpin}
                               fundedPct={battle.fundedPct}
-                              wildcardActive={phase === "wildcard"}
+                              wildcardActive={phase === "wildcard" || (phase === "jackpot" && wildcardTargets[p.slotIndex] != null)}
                               wildcardResult={wildcardTargets[p.slotIndex] ?? null}
                               wildcardSpinToken={wildcardSpinToken}
                               onWildcardLanded={() => handleWildcardLanded(p.slotIndex)}
@@ -1602,7 +1602,7 @@ function PlayerStage({
           spinToken={wildcardSpinToken}
           size={reelSize}
           laneSeed={player.slotIndex}
-          duration={fastSpin ? 1800 : 3400}
+          duration={fastSpin ? 2600 : 3800}
           onLanded={onWildcardLanded}
         />
       ) : player.kind === "empty" || player.kind === "joining" ? (

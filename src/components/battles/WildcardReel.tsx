@@ -62,10 +62,12 @@ export function WildcardReel({
   const slot = SLOT_PX[size];
   const [strip, setStrip] = useState<WildcardMulti[]>(() => idleStrip(laneSeed));
   const [phase, setPhase] = useState<"idle" | "spin" | "done">("idle");
+  const [kick, setKick] = useState(0);
   const wrapRef = useRef<HTMLDivElement>(null);
   const stripRef = useRef<HTMLDivElement>(null);
-  const animRef = useRef<Animation | null>(null);
   const landedRef = useRef(false);
+  const onLandedRef = useRef(onLanded);
+  onLandedRef.current = onLanded;
 
   function applyOffset(px: number) {
     const el = stripRef.current;
@@ -92,11 +94,14 @@ export function WildcardReel({
     if (phase !== "spin" || result == null) return;
     const el = stripRef.current;
     const box = wrapRef.current;
-    if (!el || !box) return;
+    if (!el || !box) {
+      const retry = window.setTimeout(() => setKick((n) => n + 1), 32);
+      return () => window.clearTimeout(retry);
+    }
     const windowH = box.clientHeight || height;
     const landPx = LAND_INDEX * slot - (windowH - slot) / 2;
-    const delay = laneSeed * 90;
-    const dur = duration + laneSeed * 55;
+    const delay = laneSeed * 110;
+    const dur = duration + laneSeed * 70;
     el.getAnimations().forEach((a) => a.cancel());
     const anim = el.animate(
       [
@@ -106,11 +111,13 @@ export function WildcardReel({
       ],
       { duration: dur, delay, easing: EASE_OUT_QUART_CSS, fill: "forwards" },
     );
-    animRef.current = anim;
+    let cancelled = false;
     let lastTick = -1;
     let raf = 0;
     const tick = () => {
-      const t = Math.min(1, Math.max(0, ((anim.currentTime as number) - delay) / dur));
+      if (cancelled) return;
+      const raw = typeof anim.currentTime === "number" ? anim.currentTime : 0;
+      const t = Math.min(1, Math.max(0, (raw - delay) / dur));
       const eased = easeOutQuart(Math.max(0, t));
       const idx = Math.floor((eased * landPx) / slot);
       if (idx !== lastTick) {
@@ -121,21 +128,23 @@ export function WildcardReel({
     };
     raf = requestAnimationFrame(tick);
     const done = () => {
-      cancelAnimationFrame(raf);
-      if (landedRef.current) return;
+      if (cancelled || landedRef.current) return;
       landedRef.current = true;
+      cancelAnimationFrame(raf);
       setPhase("done");
       applyOffset(landPx);
       const up = wildcardTone(result) === "up";
       if (up) sound.win(result >= 5 ? "big" : "small");
       else sound.lose();
-      onLanded?.(result);
+      onLandedRef.current?.(result);
     };
     anim.onfinish = done;
     const fallback = window.setTimeout(done, delay + dur + 80);
     return () => {
+      cancelled = true;
       cancelAnimationFrame(raf);
       window.clearTimeout(fallback);
+      anim.onfinish = null;
       try {
         anim.cancel();
       } catch {
@@ -143,7 +152,7 @@ export function WildcardReel({
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [phase, spinToken]);
+  }, [phase, spinToken, kick]);
 
   const landed = phase === "done" && result != null;
   const landedUp = landed && wildcardTone(result) === "up";

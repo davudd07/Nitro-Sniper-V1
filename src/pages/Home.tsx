@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Clock, Sparkles, Flame, Search, ShieldCheck } from "lucide-react";
+import { Clock, Sparkles, Search, ShieldCheck } from "lucide-react";
 import { sound } from "../lib/sound";
 import { useToastStore } from "../store/toastStore";
 import { listOfficialCases } from "../data/cases";
@@ -13,7 +13,6 @@ import { HomeHero } from "../components/lobby/HomeHero";
 import { PromoRow } from "../components/lobby/PromoRow";
 import {
   LOBBY_GAMES,
-  MORE_PLAYABLE_IDS,
   PAINTED_IDS,
   SOON_IDS,
   gameById,
@@ -99,13 +98,6 @@ export function Home() {
               })}
             </div>
           </section>
-
-          <GameRow icon={<Flame className="h-4 w-4 text-orange-300" />} title="More tables">
-            {MORE_PLAYABLE_IDS.map((id) => {
-              const g = gameById(id);
-              return g ? <GameCard key={g.id} game={g} onSoon={soon} /> : null;
-            })}
-          </GameRow>
 
           <GameRow icon={<Sparkles className="h-4 w-4 text-slate-400" />} title="Coming soon">
             {SOON_IDS.map((id) => {

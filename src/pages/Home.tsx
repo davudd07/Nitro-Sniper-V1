@@ -13,8 +13,8 @@ import { HomeHero } from "../components/lobby/HomeHero";
 import { PromoRow } from "../components/lobby/PromoRow";
 import {
   LOBBY_GAMES,
-  ORIGINAL_IDS,
-  POPULAR_IDS,
+  MORE_PLAYABLE_IDS,
+  PAINTED_IDS,
   SOON_IDS,
   gameById,
 } from "../data/lobbyGames";
@@ -87,15 +87,21 @@ export function Home() {
             </GameRow>
           )}
 
-          <GameRow icon={<Sparkles className="h-4 w-4 text-fuchsia-300" />} title="Prism Vault Originals">
-            {ORIGINAL_IDS.map((id) => {
-              const g = gameById(id);
-              return g ? <GameCard key={g.id} game={g} onSoon={soon} /> : null;
-            })}
-          </GameRow>
+          <section>
+            <div className="mb-4 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-fuchsia-300" />
+              <h2 className="text-sm font-bold uppercase tracking-[0.14em] text-white">SeedBET Originals</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 lg:gap-4">
+              {PAINTED_IDS.map((id) => {
+                const g = gameById(id);
+                return g ? <GameCard key={g.id} game={g} featured onSoon={soon} /> : null;
+              })}
+            </div>
+          </section>
 
-          <GameRow icon={<Flame className="h-4 w-4 text-orange-300" />} title="Popular">
-            {POPULAR_IDS.map((id) => {
+          <GameRow icon={<Flame className="h-4 w-4 text-orange-300" />} title="More tables">
+            {MORE_PLAYABLE_IDS.map((id) => {
               const g = gameById(id);
               return g ? <GameCard key={g.id} game={g} onSoon={soon} /> : null;
             })}

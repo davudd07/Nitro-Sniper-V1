@@ -389,3 +389,21 @@ body {
 .dice-slider:active::-moz-range-thumb {
   cursor: grabbing;
 }
+
+.lobby-tile-lift {
+  transition: transform 300ms ease, filter 300ms ease;
+}
+.lobby-tile-lift:hover,
+.lobby-tile-lift:focus-visible {
+  transform: translateY(-10px);
+  filter: drop-shadow(0 16px 18px rgba(0, 0, 0, 0.5));
+}
+@media (prefers-reduced-motion: reduce) {
+  .lobby-tile-lift,
+  .lobby-tile-lift:hover,
+  .lobby-tile-lift:focus-visible {
+    transition: none;
+    transform: none;
+    filter: none;
+  }
+}

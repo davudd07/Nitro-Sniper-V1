@@ -33,11 +33,21 @@ export const ROAD_MULTIPLIERS: Record<RoadDifficulty, readonly number[]> = {
   ],
 };
 
-const HITS: Record<RoadDifficulty, { n: number; d: number }> = {
+type HitRatio = { n: number; d: number };
+
+const HITS: Record<RoadDifficulty, HitRatio> = {
   easy: { n: 1, d: 20 },
   medium: { n: 3, d: 22 },
   hard: { n: 1, d: 4 },
   expert: { n: 1, d: 2.2 },
+};
+
+/** Steeper hit chance after a milestone. `afterLane` is 0-based and inclusive of the tile just reached. */
+const LATE_HITS: Partial<Record<RoadDifficulty, HitRatio & { afterLane: number }>> = {
+  // Easy 2.00× is the 13th tile (index 12). Later Go attempts are 1 in 8.
+  easy: { n: 1, d: 8, afterLane: ROAD_MULTIPLIERS.easy.findIndex((m) => m >= 2) },
+  // After the 6th medium tile (index 5), later Go attempts are 1 in 5.5.
+  medium: { n: 1, d: 5.5, afterLane: 5 },
 };
 
 function def(id: RoadDifficulty, label: string): RoadDifficultyDef {
@@ -58,10 +68,28 @@ export function roadDifficulty(id: RoadDifficulty): RoadDifficultyDef {
   return ROAD_DIFFICULTIES.find((d) => d.id === id) ?? ROAD_DIFFICULTIES[0]!;
 }
 
-export function formatRoadHit(def: RoadDifficultyDef): string {
-  const d = def.hitD;
+function formatHitRatio(n: number, d: number): string {
   const dLabel = Number.isInteger(d) ? String(d) : d.toFixed(1).replace(/\.0$/, "");
-  return `${def.hitN} in ${dLabel}`;
+  return `${n} in ${dLabel}`;
+}
+
+export function formatRoadHit(def: RoadDifficultyDef): string {
+  const late = LATE_HITS[def.id];
+  const early = formatHitRatio(def.hitN, def.hitD);
+  if (!late || late.afterLane < 0) return early;
+  if (def.id === "easy") return `${early} until 2×, then ${formatHitRatio(late.n, late.d)}`;
+  if (def.id === "medium") return `${early} until tile 6, then ${formatHitRatio(late.n, late.d)}`;
+  return early;
+}
+
+/** Hit chance for the Go onto `laneIndex` (0 = first road tile). */
+export function roadHitChance(difficulty: RoadDifficulty, laneIndex: number): number {
+  const early = HITS[difficulty];
+  const late = LATE_HITS[difficulty];
+  const useLate = Boolean(late && late.afterLane >= 0 && laneIndex > late.afterLane);
+  const { n, d } = useLate && late ? late : early;
+  if (!(d > 0)) return 0;
+  return n / d;
 }
 
 /** Multiplier after `steps` successful crosses. Step 0 is the sidewalk (1.00×, no cash-out). */
@@ -96,10 +124,10 @@ export function roadPayout(stake: number, steps: number, difficulty: RoadDifficu
   return Math.round(stake * roadMultiplier(steps, difficulty));
 }
 
-/** Lane `i` is a hit when the fair float is below the miss chance. */
-export function roadLaneHits(rolls: number[], hitChance: number): boolean[] {
-  const miss = Math.min(0.99, Math.max(0.01, hitChance));
-  return rolls.map((r) => {
+/** Lane `i` is a hit when the fair float is below that lane's miss chance. */
+export function roadLaneHits(rolls: number[], difficulty: RoadDifficulty): boolean[] {
+  return rolls.map((r, i) => {
+    const miss = Math.min(0.99, Math.max(0.01, roadHitChance(difficulty, i)));
     const u = Number.isFinite(r) ? Math.min(0.999999, Math.max(0, r)) : 0;
     return u < miss;
   });

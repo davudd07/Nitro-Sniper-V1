@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import { Ban, ChevronDown, Lamp, Menu, ShieldCheck, Trees } from "lucide-react";
 import { clsx } from "clsx";
 import { useEconomyStore } from "../store/economyStore";
@@ -81,6 +81,9 @@ export function CrossRoad() {
   const panRef = useRef<{ pointer: number; startX: number; startScroll: number; moved: boolean } | null>(null);
 
   useEffect(() => {
+    // Don't pan mid-splat — scrolling while the car's transform is settling
+    // made the hit sprite jump to another lane.
+    if (splat && phase === "playing") return;
     const ahead = roundOver && seedDeathLane >= 0 && seedDeathLane + 1 > steps;
     const el = ahead ? deathLaneRef.current : walkerRef.current;
     el?.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
@@ -94,7 +97,7 @@ export function CrossRoad() {
     }
     setBusy(true);
     const rolls = await play(def.lanes);
-    setHits(roadLaneHits(rolls, def.hit));
+    setHits(roadLaneHits(rolls, diff));
     setSteps(0);
     setJumpToken(0);
     setSplat(false);
@@ -178,8 +181,9 @@ export function CrossRoad() {
           <StatRow label="Hard hit" value={formatRoadHit(roadDifficulty("hard"))} />
           <StatRow label="Expert hit" value={formatRoadHit(roadDifficulty("expert"))} />
           <p>
-            Each lane is rolled from the provably-fair seed. Hit chance is the same on every lane of a difficulty.
-            Multipliers are the posted table for that difficulty — they are not derived from a flat RTP formula.
+            Each lane is rolled from the provably-fair seed. Easy is 1 in 20 until you reach 2×, then 1 in 8. Medium is 3
+            in 22 until the 6th tile, then 1 in 5.5. Hard and Expert keep a flat hit chance on every lane. Multipliers
+            are the posted table for that difficulty — they are not derived from a flat RTP formula.
           </p>
         </InfoButton>
       </div>
@@ -455,18 +459,18 @@ function Lane({
       )}
     >
       <div className="pointer-events-none absolute inset-y-3 left-1/2 w-0 border-l-2 border-dashed border-slate-500/35" />
-      <AnimatePresence>
-        {droppingCar && (
-          <motion.div
-            initial={{ bottom: "108%", opacity: 0.2 }}
-            animate={{ bottom: "2.35rem", opacity: 1 }}
-            transition={{ duration: JUMP_MS / 1000, ease: [0.18, 0.72, 0.2, 1] }}
-            className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
-          >
-            <HitCar />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {(droppingCar) && (
+        <motion.div
+          key="hit-car"
+          layout={false}
+          initial={{ y: -320, x: "-50%", opacity: 0.25 }}
+          animate={{ y: 0, x: "-50%", opacity: 1 }}
+          transition={{ duration: JUMP_MS / 1000, ease: [0.18, 0.72, 0.2, 1] }}
+          className="pointer-events-none absolute bottom-10 left-1/2 z-30"
+        >
+          <HitCar />
+        </motion.div>
+      )}
       {seedPeak && (
         <span className="absolute top-3 z-10 rounded-full bg-amber-300/90 px-1.5 py-0.5 text-[9px] font-extrabold uppercase tracking-wide text-amber-950">
           Seed max

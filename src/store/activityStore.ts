@@ -16,6 +16,8 @@ export const ACTIVITY_GAMES = [
   "keno",
   "crash",
   "road",
+  "lockfruit",
+  "gemrush",
 ] as const;
 
 export type ActivityGame = (typeof ACTIVITY_GAMES)[number];
@@ -32,6 +34,8 @@ export const ACTIVITY_GAME_LABELS: Record<ActivityGame, string> = {
   keno: "Keno",
   crash: "Crash",
   road: "Cross the Road",
+  lockfruit: "Lock Fruit",
+  gemrush: "Gem Rush",
 };
 
 export interface PlayRecord {
@@ -76,10 +80,12 @@ function mulberry(seed: number) {
 }
 
 function fakePlay(rnd: () => number, at: number, name: string, currency: PlayCurrency = "wl"): PlayRecord {
-  const game = ACTIVITY_GAMES[Math.floor(rnd() * ACTIVITY_GAMES.length)]!;
+  let game = ACTIVITY_GAMES[Math.floor(rnd() * ACTIVITY_GAMES.length)]!;
+  let ledger: PlayCurrency = currency;
+  if (game === "lockfruit" || game === "gemrush") ledger = "shards";
   const roll = rnd();
   let wagered: number;
-  if (currency === "shards") {
+  if (ledger === "shards") {
     if (roll > 0.9) wagered = Math.round(80 + rnd() * 400);
     else wagered = Math.round(4 + rnd() * 40);
   } else if (roll > 0.94) wagered = Math.round(100_000 + rnd() * 900_000);
@@ -95,7 +101,7 @@ function fakePlay(rnd: () => number, at: number, name: string, currency: PlayCur
     game,
     wagered,
     won,
-    currency,
+    currency: ledger,
   };
 }
 

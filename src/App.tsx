@@ -26,6 +26,8 @@ import { Dice } from "./pages/Dice";
 import { Crash } from "./pages/Crash";
 import { CrossRoad } from "./pages/CrossRoad";
 import { Keno } from "./pages/Keno";
+import { LockFruit } from "./pages/LockFruit";
+import { GemRush } from "./pages/GemRush";
 import { ChatRainController } from "./components/chat/ChatRainController";
 import { VaultEventsController } from "./components/layout/VaultEventsController";
 import { SupportWidget } from "./components/support/SupportWidget";
@@ -137,6 +139,8 @@ export default function App() {
               <Route path="/crash" element={<Crash />} />
               <Route path="/road" element={<CrossRoad />} />
               <Route path="/keno" element={<Keno />} />
+              <Route path="/lockfruit" element={<LockFruit />} />
+              <Route path="/gemrush" element={<GemRush />} />
             </Routes>
           </div>
           <LiveBetStrip />

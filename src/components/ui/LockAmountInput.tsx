@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import { displayToWorldLocks, inputStepFor, worldLocksToDisplay } from "../../lib/money";
 import { useSettingsStore } from "../../store/settingsStore";
 import { CurrencyIcon } from "./CurrencyIcon";
-import { usePlayCurrency } from "../../lib/playWallet";
+import { usePlayCurrency, type PlayCurrency } from "../../lib/playWallet";
 
 /** Number field for the active play wallet. Lock units convert; Shards are 1:1. */
 export function LockAmountInput({
@@ -14,6 +14,7 @@ export function LockAmountInput({
   className,
   inputClassName,
   showIcon = true,
+  currency,
 }: {
   valueWl: number;
   onChangeWl: (wl: number) => void;
@@ -24,10 +25,12 @@ export function LockAmountInput({
   className?: string;
   inputClassName?: string;
   showIcon?: boolean;
+  /** Force a ledger. Slots always stake Shards even if the header is on locks. */
+  currency?: PlayCurrency;
 }) {
   const unit = useSettingsStore((s) => s.lockUnit);
   const play = usePlayCurrency();
-  const shards = play === "shards";
+  const shards = (currency ?? play) === "shards";
   const display = shards ? valueWl : worldLocksToDisplay(valueWl, unit);
   const minDisplay = shards ? minWl : worldLocksToDisplay(minWl, unit);
 

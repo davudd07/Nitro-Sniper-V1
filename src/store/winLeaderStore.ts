@@ -71,6 +71,8 @@ export function winLeaderGameFromPath(pathname: string): WinLeaderGame | null {
   if (pathname === "/crash" || pathname.startsWith("/crash/")) return "crash";
   if (pathname === "/road" || pathname.startsWith("/road/")) return "road";
   if (pathname === "/keno" || pathname.startsWith("/keno/")) return "keno";
+  if (pathname === "/lockfruit" || pathname.startsWith("/lockfruit/")) return "lockfruit";
+  if (pathname === "/gemrush" || pathname.startsWith("/gemrush/")) return "gemrush";
   if (pathname.startsWith("/cases")) return "cases";
   if (pathname.startsWith("/battles")) return "battles";
   return null;
@@ -84,7 +86,7 @@ export function isBattlesLobbyPath(pathname: string): boolean {
 export function hidesGlobalWinLeader(pathname: string): boolean {
   if (isBattlesLobbyPath(pathname)) return true;
   const game = winLeaderGameFromPath(pathname);
-  return game === "mines" || game === "coinflip" || game === "jackpot" || game === "upgrader" || game === "dice" || game === "crash" || game === "road";
+  return game === "mines" || game === "coinflip" || game === "jackpot" || game === "upgrader" || game === "dice" || game === "crash" || game === "road" || game === "lockfruit" || game === "gemrush";
 }
 
 function isWinLeaderGame(value: string): value is WinLeaderGame {

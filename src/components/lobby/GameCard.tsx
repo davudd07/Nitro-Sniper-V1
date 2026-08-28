@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { clsx } from "clsx";
 import type { LobbyGame } from "../../data/lobbyGames";
+import { SlotLobbyTile } from "./SlotLobbyTile";
 
 export function GameCard({
   game,
@@ -15,15 +16,19 @@ export function GameCard({
 
   const body = (
     <>
-      <img
-        src={game.image}
-        alt={game.name}
-        draggable={false}
-        className={clsx(
-          "h-full w-full",
-          painted ? "object-contain" : "object-cover transition-transform duration-300 group-hover:scale-105",
-        )}
-      />
+      {game.cssTile ? (
+        <SlotLobbyTile kind={game.cssTile} />
+      ) : (
+        <img
+          src={game.image ?? ""}
+          alt={game.name}
+          draggable={false}
+          className={clsx(
+            "h-full w-full",
+            painted ? "object-contain" : "object-cover transition-transform duration-300 group-hover:scale-105",
+          )}
+        />
+      )}
       {!painted && (
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black via-black/70 to-transparent px-3 pb-3 pt-10">
           <p className="text-[15px] font-extrabold uppercase leading-tight tracking-wide text-white drop-shadow">{game.name}</p>
@@ -48,7 +53,7 @@ export function GameCard({
   const className = clsx(
     "lobby-tile-lift group relative block",
     painted
-      ? clsx("aspect-[6/5]", featured ? "w-full" : "w-[200px] shrink-0 sm:w-[228px]")
+      ? clsx("aspect-[6/5]", featured ? "w-full" : "w-[200px] shrink-0 sm:w-[228px]", game.cssTile && "overflow-hidden rounded-xl")
       : "aspect-[3/4] w-[158px] shrink-0 overflow-hidden rounded-xl border-2 border-white/10 shadow-[4px_4px_0_#050808] sm:w-[176px]",
   );
 

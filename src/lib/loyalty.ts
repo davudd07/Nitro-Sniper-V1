@@ -102,6 +102,8 @@ export const LOYALTY_GAMES: LoyaltyGameDef[] = [
   { id: "dice", label: "Dice", category: "originals", houseEdge: HOUSE_EDGE.dice },
   { id: "crash", label: "Crash", category: "originals", houseEdge: HOUSE_EDGE.crash },
   { id: "road", label: "Cross the Road", category: "originals", houseEdge: HOUSE_EDGE.road },
+  { id: "lockfruit", label: "Lock Fruit", category: "slots", houseEdge: HOUSE_EDGE.lockfruit },
+  { id: "gemrush", label: "Gem Rush", category: "slots", houseEdge: HOUSE_EDGE.gemrush },
   { id: "roulette", label: "Roulette", category: "live_casino", houseEdge: 0.027 },
   { id: "baccarat", label: "Baccarat", category: "live_casino", houseEdge: 0.0106 },
   { id: "slots", label: "Slots", category: "slots", houseEdge: 0.04 },

@@ -399,15 +399,11 @@ export function JackpotPage() {
                     ({botCount}/{JACKPOT_MAX_BOTS})
                   </span>
                 </button>
-                {countdownLeft != null ? (
-                  <p className="text-center text-xs text-slate-400">
-                    Spins in <span className="font-mono font-bold text-white">{countdownLeft}s</span>
-                  </p>
-                ) : (
+                {countdownLeft == null ? (
                   <p className="text-center text-[11px] text-slate-500">
                     Call a bot — countdown starts at 2+ players.
                   </p>
-                )}
+                ) : null}
               </div>
             )}
 
@@ -456,8 +452,7 @@ export function JackpotPage() {
             <WinLeaderStageMark game="jackpot" inline />
           </div>
 
-          <div className="flex flex-col items-stretch gap-5 xl:flex-row xl:items-start">
-            <div className="mx-auto w-full max-w-lg shrink-0 pt-2">
+          <div className="mx-auto w-full max-w-lg pt-2">
               <JackpotCircleWheel
                 tickets={tickets}
                 spinToken={pot.spinToken}
@@ -472,17 +467,16 @@ export function JackpotPage() {
                 onPointerChange={setPointer}
                 onFinished={handleFinished}
               />
+              <div className="mt-5">
+                <JackpotPlayerList
+                  entries={pot.entries}
+                  total={total}
+                  currency={ledger}
+                  activeId={listActiveId}
+                  winnerId={listWinnerId}
+                />
+              </div>
             </div>
-            <div className="min-w-0 flex-1 xl:pt-2">
-              <JackpotPlayerList
-                entries={pot.entries}
-                total={total}
-                currency={ledger}
-                activeId={listActiveId}
-                winnerId={listWinnerId}
-              />
-            </div>
-          </div>
         </div>
       </div>
     </div>

@@ -132,40 +132,41 @@ export function JackpotCircleWheel({
     <div className="relative mx-auto w-full max-w-md lg:max-w-lg">
       <div
         className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
-        style={{ top: -4 }}
+        style={{ top: -10 }}
         aria-hidden
       >
-        <svg width="30" height="26" viewBox="0 0 30 26">
+        <svg width="36" height="32" viewBox="0 0 36 32" className="drop-shadow-[0_3px_6px_rgba(0,0,0,0.65)]">
           <defs>
             <linearGradient id={`${pointerId}-ptr`} x1="0" x2="0" y1="0" y2="1">
-              <stop offset="0%" stopColor="#ecfeff" />
-              <stop offset="42%" stopColor="#67e8f9" />
+              <stop offset="0%" stopColor="#f8fafc" />
+              <stop offset="38%" stopColor="#a5f3fc" />
               <stop offset="100%" stopColor="#0e7490" />
             </linearGradient>
           </defs>
           <path
-            d="M15 24.5 L3.2 3.8 C9.5 7.2 15 8.4 26.8 3.8 Z"
+            d="M18 30 L2 4 L34 4 Z"
             fill={`url(#${pointerId}-ptr)`}
             stroke="#083344"
-            strokeWidth="1.15"
+            strokeWidth="1.4"
             strokeLinejoin="round"
           />
+          <path d="M18 24 L8 7 L28 7 Z" fill="#22d3ee" opacity="0.85" />
         </svg>
       </div>
 
       <div
         className={clsx(
-          "relative mx-auto aspect-square w-full rounded-full p-[7px]",
+          "relative mx-auto aspect-square w-full rounded-full p-[10px]",
           done && "jackpot-win-rim",
         )}
         style={{
           background:
-            "linear-gradient(155deg, #ecfeff 0%, #67e8f9 18%, #155e75 48%, #a5f3fc 72%, #083344 100%)",
+            "conic-gradient(from 210deg, #ecfeff, #67e8f9 14%, #155e75 32%, #a5f3fc 48%, #083344 66%, #22d3ee 82%, #ecfeff)",
           boxShadow: done
-            ? "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(251,191,36,0.38), inset 0 1px 0 rgba(255,255,255,0.45)"
+            ? "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(251,191,36,0.38), inset 0 1px 0 rgba(255,255,255,0.55)"
             : highlight && spinToken > 0
-              ? `0 10px 36px rgba(0,0,0,0.45), 0 0 26px ${highlight.ticket.color}55, inset 0 1px 0 rgba(255,255,255,0.45)`
-              : "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(34,211,238,0.16), inset 0 1px 0 rgba(255,255,255,0.45)",
+              ? `0 10px 36px rgba(0,0,0,0.45), 0 0 26px ${highlight.ticket.color}55, inset 0 1px 0 rgba(255,255,255,0.55)`
+              : "0 10px 36px rgba(0,0,0,0.45), 0 0 32px rgba(34,211,238,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
         }}
       >
         <div className="relative h-full w-full overflow-hidden rounded-full bg-[#0b1112] shadow-[inset_0_0_18px_rgba(0,0,0,0.55)]">
@@ -182,10 +183,25 @@ export function JackpotCircleWheel({
               }
             />
             {empty ? (
-              <div
-                className="jackpot-wait-spin absolute inset-[9%] rounded-full border-2 border-dashed border-cyan-400/25"
-                aria-hidden
-              />
+              <>
+                {Array.from({ length: 24 }, (_, i) => (
+                  <div
+                    key={`tick-${i}`}
+                    className="pointer-events-none absolute inset-0"
+                    style={{ transform: `rotate(${i * 15}deg)` }}
+                    aria-hidden
+                  >
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 rounded-full bg-cyan-300/25"
+                      style={{ top: "5%", height: i % 3 === 0 ? "8%" : "4.5%", width: i % 3 === 0 ? 2 : 1 }}
+                    />
+                  </div>
+                ))}
+                <div
+                  className="jackpot-wait-spin absolute inset-[11%] rounded-full border-2 border-dashed border-cyan-400/40"
+                  aria-hidden
+                />
+              </>
             ) : null}
             {highlight && !empty ? (
               <div

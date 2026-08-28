@@ -1,23 +1,14 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, Navigate, useParams } from "react-router-dom";
 import { clsx } from "clsx";
 import { ExternalLink } from "lucide-react";
-import {
-  providerLaunchUrl,
-  providerSlotById,
-  SLOT_RTP,
-  slotWalletMultiplier,
-  slotWalletPayout,
-  type SlotPlayMode,
-} from "../lib/slots";
-import { LockAmountInput } from "../components/ui/LockAmountInput";
-import { DemoBetBadge } from "../components/ui/DemoBetBadge";
+import { providerLaunchUrl, providerSlotById, type SlotPlayMode } from "../lib/slots";
+import { isPragmaticOrigin, ppCreditsToLedger, readPpRoundMsg } from "../lib/ppEvents";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { CashAmount } from "../components/ui/CurrencyIcon";
 import { useEconomyStore } from "../store/economyStore";
 import { useToastStore } from "../store/toastStore";
-import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatPercent, formatPlayCash } from "../lib/format";
 import { LOCK_META } from "../lib/money";
@@ -32,15 +23,15 @@ function formatMulti(n: number): string {
   return `${n}×`;
 }
 
+type PendingRound = { betWl: number; currency: PlayCurrency } | "skip";
+
 export function SlotPlayPage() {
   const { slotId } = useParams();
   const slot = slotId ? providerSlotById(slotId) : undefined;
   const [blocked, setBlocked] = useState(false);
   const [mode, setMode] = useState<SlotPlayMode>("wl");
-  const [bet, setBet] = useState(100);
-  const [busy, setBusy] = useState(false);
+  const [nextBet, setNextBet] = useState(0);
   const [last, setLast] = useState<{ multi: number; paid: number; stake: number; currency: PlayCurrency } | null>(null);
-  const busyRef = useRef(false);
 
   const shardBal = useEconomyStore((s) => s.funCoins);
   const lockBal = useEconomyStore((s) => s.balance);
@@ -49,7 +40,6 @@ export function SlotPlayPage() {
   const creditLedger = useEconomyStore((s) => s.creditLedger);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
-  const play = useFairnessStore((s) => s.play);
 
   const src = useMemo(() => (slot ? providerLaunchUrl(slot) : ""), [slot]);
   const showShards = shardBal > 0 || mode === "shards";
@@ -63,41 +53,85 @@ export function SlotPlayPage() {
     { id: "fun", label: "Fun" },
   ];
 
-  if (!slot) return <Navigate to="/slots" replace />;
+  const frameRef = useRef<HTMLIFrameElement>(null);
+  const modeRef = useRef(mode);
+  const currencyRef = useRef(currency);
+  const pendingRef = useRef<PendingRound | null>(null);
+  const lastSettleAt = useRef(0);
 
-  async function spinWallet() {
-    if (mode === "fun" || busyRef.current) return;
-    if (bet < 0) return;
-    if (!takeStakeFor(bet, HOUSE_EDGE.slots, currency)) {
-      if (bet > 0) push(stakeNeedMessage(bet, currency), "danger");
-      return;
+  useEffect(() => {
+    modeRef.current = mode;
+    currencyRef.current = currency;
+  }, [mode, currency]);
+
+  useEffect(() => {
+    function haltGame(origin: string) {
+      const w = frameRef.current?.contentWindow;
+      if (!w) return;
+      w.postMessage("stopAutoplay", origin);
+      w.postMessage("requestPause", origin);
     }
-    busyRef.current = true;
-    setBusy(true);
-    try {
-      const [float] = await play(1);
-      const multi = slotWalletMultiplier(float ?? 0);
-      const paid = slotWalletPayout(bet, multi);
-      if (paid > 0) creditLedger(paid, currency);
-      recordRound(bet, paid, "slots", currency);
-      setLast({ multi, paid, stake: bet, currency });
-      if (multi > 0) {
-        sound.win(multi >= 10 ? "big" : "small");
-        push(
-          bet > 0
-            ? `${formatMulti(multi)} · +${formatPlayCash(paid, currency)}`
-            : `Demo · ${formatMulti(multi)} (no stake).`,
-          "success",
-        );
-      } else {
-        sound.lose();
-        if (bet <= 0) push("Demo · miss.", "info");
+
+    function onMsg(ev: MessageEvent) {
+      if (!isPragmaticOrigin(ev.origin)) return;
+      const msg = readPpRoundMsg(ev.data);
+      const playCurrency = currencyRef.current;
+      const playingWallet = modeRef.current !== "fun";
+
+      if (msg.kind === "bet") {
+        setNextBet(ppCreditsToLedger(msg.bet, playCurrency));
+        return;
       }
-    } finally {
-      busyRef.current = false;
-      setBusy(false);
+
+      if (!playingWallet) return;
+
+      if (msg.kind === "start") {
+        const betWl = ppCreditsToLedger(msg.bet, playCurrency);
+        if (betWl <= 0) {
+          pendingRef.current = "skip";
+          return;
+        }
+        if (!takeStakeFor(betWl, HOUSE_EDGE.slots, playCurrency)) {
+          pendingRef.current = "skip";
+          haltGame(ev.origin);
+          push(stakeNeedMessage(betWl, playCurrency), "danger");
+          return;
+        }
+        pendingRef.current = { betWl, currency: playCurrency };
+        sound.click();
+        return;
+      }
+
+      if (msg.kind === "end") {
+        const pending = pendingRef.current;
+        pendingRef.current = null;
+        const winWl = ppCreditsToLedger(msg.win, playCurrency);
+        if (pending === "skip") return;
+        if (pending) {
+          if (winWl > 0) creditLedger(winWl, pending.currency);
+          recordRound(pending.betWl, winWl, "slots", pending.currency);
+          const multi = pending.betWl > 0 ? winWl / pending.betWl : 0;
+          setLast({ multi, paid: winWl, stake: pending.betWl, currency: pending.currency });
+          lastSettleAt.current = Date.now();
+          if (winWl > 0) sound.win(multi >= 10 ? "big" : "small");
+          else sound.lose();
+          return;
+        }
+        if (winWl > 0 && Date.now() - lastSettleAt.current > 1500) {
+          creditLedger(winWl, playCurrency);
+          recordRound(0, winWl, "slots", playCurrency);
+          setLast({ multi: winWl, paid: winWl, stake: 0, currency: playCurrency });
+          lastSettleAt.current = Date.now();
+          sound.win(winWl >= 10 ? "big" : "small");
+        }
+      }
     }
-  }
+
+    window.addEventListener("message", onMsg);
+    return () => window.removeEventListener("message", onMsg);
+  }, [creditLedger, recordRound, push]);
+
+  if (!slot) return <Navigate to="/slots" replace />;
 
   const resultLine = walletMode
     ? last
@@ -105,9 +139,9 @@ export function SlotPlayPage() {
         ? last.multi > 0
           ? `${formatMulti(last.multi)} · +${formatPlayCash(last.paid, last.currency)}`
           : "Miss"
-        : `Demo · ${formatMulti(last.multi)}`
-      : `Spin spends this ${walletLabel} stack.`
-    : "Studio credits. Switch back to stake your wallet.";
+        : `Bonus · +${formatPlayCash(last.paid, last.currency)}`
+      : "Spin in the game. This stack moves with the result."
+    : "Studio credits. Switch back to use your stack.";
 
   return (
     <div className="flex min-h-[70vh] flex-col gap-3">
@@ -121,21 +155,23 @@ export function SlotPlayPage() {
         <div className="flex flex-wrap items-center gap-2">
           {walletMode ? <WinLeaderStageMark game="slots" inline /> : null}
           <InfoButton title="Slots — your stack">
-            <StatRow label="Wallet RTP" value={formatPercent(SLOT_RTP)} />
-            <StatRow label="House edge" value={formatPercent(HOUSE_EDGE.slots)} />
+            <StatRow label="In-game $1.00" value={`100 ${LOCK_META.wl.ticker}`} />
+            <StatRow label="House edge (rakeback)" value={formatPercent(HOUSE_EDGE.slots)} />
             <p>
-              Spin spends your SeedBET {lockLabel} or Shards. The Fun tab is studio demo credits — those reels do not
-              debit this wallet.
+              Spin, win, and lose in the slot. SeedBET World Locks (or Shards) move with that result. Studio demo
+              credits stay in the reels.
             </p>
           </InfoButton>
-          <a
-            href={src}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-white/15 hover:bg-white/5"
-          >
-            <ExternalLink className="h-3.5 w-3.5" /> Open in new tab
-          </a>
+          {mode === "fun" ? (
+            <a
+              href={src}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-200 ring-1 ring-white/15 hover:bg-white/5"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Open in new tab
+            </a>
+          ) : null}
           <Link to="/slots" className="text-xs font-semibold text-slate-400 hover:text-white">
             All slots
           </Link>
@@ -149,13 +185,12 @@ export function SlotPlayPage() {
               <button
                 key={m.id}
                 type="button"
-                disabled={busy}
                 onClick={() => {
                   sound.click();
                   setMode(m.id);
                 }}
                 className={clsx(
-                  "rounded-md px-1 py-1.5 text-[10px] font-extrabold uppercase tracking-wide disabled:opacity-50",
+                  "rounded-md px-1 py-1.5 text-[10px] font-extrabold uppercase tracking-wide",
                   mode === m.id ? "bg-cyan-400/20 text-cyan-100" : "text-slate-400 hover:text-white",
                 )}
               >
@@ -172,53 +207,13 @@ export function SlotPlayPage() {
                   <CashAmount wl={wallet} currency={currency} iconClassName="h-5 w-5" />
                 </p>
               </div>
-              <label className="block">
-                <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                  Spin · {walletLabel}
-                </span>
-                <div className="flex items-center gap-2">
-                  <LockAmountInput
-                    valueWl={bet}
-                    onChangeWl={(wl) => setBet(Math.max(0, wl))}
-                    disabled={busy}
-                    currency={currency}
-                    className="min-w-0 flex-1"
-                    inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40 disabled:opacity-50"
-                  />
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setBet((b) => Math.max(0, Math.floor(b / 2)))}
-                    className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
-                  >
-                    ½
-                  </button>
-                  <button
-                    type="button"
-                    disabled={busy}
-                    onClick={() => setBet((b) => b * 2)}
-                    className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
-                  >
-                    2×
-                  </button>
-                </div>
-              </label>
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  sound.click();
-                  setBet(Math.max(0, Math.floor(wallet)));
-                }}
-                className="w-full rounded-lg px-2 py-1.5 text-[11px] font-semibold text-slate-400 ring-1 ring-white/10 hover:bg-white/5 disabled:opacity-50"
-              >
-                Max{" "}
-                <CashAmount wl={wallet} currency={currency} iconClassName="h-3 w-3" className="align-middle" />
-              </button>
-              <button type="button" onClick={() => void spinWallet()} disabled={busy} className="btn-cyan w-full py-3 disabled:opacity-50">
-                {busy ? "Spinning…" : bet > 0 ? "Spin" : "Demo spin"}
-              </button>
-              <DemoBetBadge active={bet <= 0} />
+              {nextBet > 0 ? (
+                <p className="text-[11px] text-slate-400">
+                  Next spin · <CashAmount wl={nextBet} currency={currency} iconClassName="h-3 w-3" />
+                </p>
+              ) : (
+                <p className="text-[11px] text-slate-500">Bet size comes from the slot.</p>
+              )}
             </>
           ) : (
             <p className="text-xs leading-relaxed text-slate-400">
@@ -227,14 +222,14 @@ export function SlotPlayPage() {
             </p>
           )}
 
-          <p className={clsx("text-center text-[11px]", last && last.multi > 0 ? "font-semibold text-cyan-200" : "text-slate-500")}>
+          <p className={clsx("text-center text-[11px]", last && last.paid > 0 ? "font-semibold text-cyan-200" : "text-slate-500")}>
             {resultLine}
           </p>
         </div>
 
         <div className="relative min-h-[560px] overflow-hidden rounded-xl border-2 border-cyan-400/25 bg-[#050808] shadow-[4px_4px_0_#050808]">
           {walletMode ? (
-            <div className="absolute left-3 top-3 z-10 rounded-lg border border-white/10 bg-black/75 px-3 py-2 shadow-[3px_3px_0_#050808] backdrop-blur-sm">
+            <div className="pointer-events-none absolute left-3 top-3 z-10 rounded-lg border border-white/10 bg-black/75 px-3 py-2 shadow-[3px_3px_0_#050808] backdrop-blur-sm">
               <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Your stack</p>
               <p className="mt-0.5 text-sm font-semibold text-white">
                 <CashAmount wl={wallet} currency={currency} iconClassName="h-4 w-4" />
@@ -252,6 +247,7 @@ export function SlotPlayPage() {
             </div>
           ) : (
             <iframe
+              ref={frameRef}
               title={slot.name}
               src={src}
               className="h-full min-h-[560px] w-full bg-black"

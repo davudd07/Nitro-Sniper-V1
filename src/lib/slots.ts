@@ -55,8 +55,8 @@ export function providerSlotThumb(symbol: string): string {
 
 /**
  * Pragmatic Play public fun/demo launcher.
- * Demo sessions keep their own credits and never call an operator wallet,
- * so SeedBET World Locks / Shards cannot be injected into the reels.
+ * Studio credits stay in the reels. SeedBET listens for round events on the parent
+ * and moves World Locks / Shards to match spin / win / lose — never PP’s demo balance.
  */
 export function pragmaticDemoUrl(symbol: string): string {
   const website =

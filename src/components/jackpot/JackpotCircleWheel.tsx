@@ -273,11 +273,24 @@ export function JackpotCircleWheel({
             className="pointer-events-none absolute inset-0 z-[5]"
             style={{
               background:
-                "conic-gradient(from 210deg, #ecfeff, #67e8f9 14%, #155e75 32%, #a5f3fc 48%, #083344 66%, #22d3ee 82%, #ecfeff)",
+                "conic-gradient(from 210deg, #ecfeff, #67e8f9 16%, #22d3ee 34%, #a5f3fc 50%, #38bdf8 68%, #22d3ee 84%, #ecfeff)",
               WebkitMaskImage:
-                "radial-gradient(farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px))",
+                "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 10px))",
               maskImage:
-                "radial-gradient(farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px))",
+                "radial-gradient(farthest-side, transparent calc(100% - 10px), #000 calc(100% - 10px))",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+            }}
+            aria-hidden
+          />
+          <div
+            className="pointer-events-none absolute inset-0 z-[6]"
+            style={{
+              background: "#a5f3fc",
+              WebkitMaskImage:
+                "radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px), #000 calc(100% - 10px), transparent calc(100% - 9px))",
+              maskImage:
+                "radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 11px), #000 calc(100% - 10px), transparent calc(100% - 9px))",
               WebkitMaskRepeat: "no-repeat",
               maskRepeat: "no-repeat",
             }}

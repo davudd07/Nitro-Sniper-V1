@@ -17,6 +17,7 @@ import {
   KENO_DRAWN,
   KENO_MAX_SPOTS,
   KENO_RISKS,
+  KENO_RISK_BLURB,
   KENO_RISK_LABEL,
   KENO_TOP_ODDS,
   drawKeno,
@@ -30,7 +31,7 @@ import {
 import { takeStake } from "../lib/stake";
 import { HOUSE_EDGE } from "../lib/rakeback";
 
-const RTP = 0.94;
+const RTP = 0.99;
 const BALLS = Array.from({ length: KENO_BALLS }, (_, i) => i + 1);
 
 type Mode = "manual" | "auto";
@@ -278,8 +279,8 @@ export function Keno() {
             <StatRow label="Field" value={`${KENO_BALLS} numbers`} />
             <StatRow label="Draw" value={`${KENO_DRAWN} unique balls`} />
             <p>
-              Risk changes the catch table. Low pays more often for less. High pays rarely for more. Unlisted catch
-              counts pay 0. Hitting every spot on a 10-spot medium card is {KENO_TOP_ODDS[10]}.
+              Risk switches the catch table. Unlisted catch counts pay 0. Hitting every spot on a 10-spot card is{" "}
+              {KENO_TOP_ODDS[10]}.
             </p>
           </InfoButton>
         </div>
@@ -384,6 +385,7 @@ export function Keno() {
               <span>Medium</span>
               <span>High</span>
             </div>
+            <p className="mt-2 text-[11px] leading-relaxed text-slate-500">{KENO_RISK_BLURB[risk]}</p>
           </div>
 
           {mode === "auto" && (
@@ -483,7 +485,9 @@ export function Keno() {
                         : "bg-white/[0.04] text-slate-200 ring-white/10",
                     )}
                   >
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">{row.catches} hit</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-500">
+                      {row.catches} hit{row.catches === 1 ? "" : "s"}
+                    </span>
                     <span className="font-mono text-sm font-bold">{row.multiplier}×</span>
                   </span>
                 ))}

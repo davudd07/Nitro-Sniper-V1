@@ -7,7 +7,7 @@ export const HOUSE_EDGE = {
   jackpot: 0.09,
   coinflip: 0.04,
   battles: 0.04,
-  keno: 0.06,
+  keno: 0.01,
   upgrader: 0.05,
   dice: 0.04,
   crash: 0.04,

@@ -346,7 +346,7 @@ export function JackpotPage() {
                           type="button"
                           onClick={() => {
                             sound.click();
-                            setBet(doubleBet(amount, wallet, def.min, def.max));
+                            setAmount(doubleBet(amount, wallet, 0, def.max));
                           }}
                           className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
                         >

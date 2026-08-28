@@ -155,41 +155,31 @@ export function JackpotCircleWheel({
       </div>
 
       <div
-        className={clsx(
-          "relative mx-auto aspect-square w-full rounded-full p-[10px]",
-          done && "jackpot-win-rim",
-        )}
+        className={clsx("relative mx-auto aspect-square w-full rounded-full", done && "jackpot-win-rim")}
         style={{
-          background:
-            "conic-gradient(from 210deg, #ecfeff, #67e8f9 14%, #155e75 32%, #a5f3fc 48%, #083344 66%, #22d3ee 82%, #ecfeff)",
           boxShadow: done
-            ? "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(251,191,36,0.38), inset 0 1px 0 rgba(255,255,255,0.55)"
+            ? "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(251,191,36,0.38)"
             : highlight && spinToken > 0
-              ? `0 10px 36px rgba(0,0,0,0.45), 0 0 26px ${highlight.ticket.color}55, inset 0 1px 0 rgba(255,255,255,0.55)`
-              : "0 10px 36px rgba(0,0,0,0.45), 0 0 32px rgba(34,211,238,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
+              ? `0 10px 36px rgba(0,0,0,0.45), 0 0 26px ${highlight.ticket.color}55`
+              : "0 10px 36px rgba(0,0,0,0.45), 0 0 32px rgba(34,211,238,0.22)",
         }}
       >
         <div
           className={clsx(
-            "relative h-full w-full overflow-hidden rounded-full",
-            empty && "bg-[#0b1112] shadow-[inset_0_0_18px_rgba(0,0,0,0.55)]",
+            "absolute inset-0 overflow-hidden rounded-full",
+            empty && "bg-[#0b1112]",
           )}
         >
           <div ref={wheelRef} className="absolute inset-0" style={{ willChange: "transform" }}>
             <div
-              className="absolute"
+              className="absolute inset-0"
               style={
                 empty
                   ? {
-                      inset: 0,
                       background:
                         "radial-gradient(circle at 50% 42%, rgba(34,211,238,0.10) 0%, rgba(12,18,20,0.92) 58%, #070a0a 100%)",
                     }
-                  : {
-                      // Bleed under the chrome so the pie meets the ring with no hairline gap.
-                      inset: "-4%",
-                      background: `conic-gradient(from 0deg, ${gradient})`,
-                    }
+                  : { background: `conic-gradient(from 0deg, ${gradient})` }
               }
             />
             {empty ? (
@@ -215,9 +205,8 @@ export function JackpotCircleWheel({
             ) : null}
             {highlight && !empty ? (
               <div
-                className="pointer-events-none absolute"
+                className="pointer-events-none absolute inset-0"
                 style={{
-                  inset: "-4%",
                   background: `conic-gradient(from ${highlight.start}deg, ${
                     done ? "rgba(251,191,36,0.32)" : "rgba(255,255,255,0.26)"
                   } 0deg ${highlight.sweep}deg, transparent ${highlight.sweep}deg 360deg)`,
@@ -247,7 +236,7 @@ export function JackpotCircleWheel({
               if (s.sweep < AVATAR_MIN_SWEEP) return null;
               const mid = s.start + s.sweep / 2;
               const rad = (mid * Math.PI) / 180;
-              const r = 38;
+              const r = 36;
               const left = 50 + r * Math.sin(rad);
               const top = 50 - r * Math.cos(rad);
               const size = s.sweep < 22 ? 22 : s.sweep < 40 ? 28 : 34;
@@ -283,23 +272,35 @@ export function JackpotCircleWheel({
           </div>
         </div>
 
+        <div
+          className="pointer-events-none absolute inset-0 rounded-full"
+          style={{
+            background:
+              "conic-gradient(from 210deg, #ecfeff, #67e8f9 14%, #155e75 32%, #a5f3fc 48%, #083344 66%, #22d3ee 82%, #ecfeff)",
+            WebkitMask:
+              "radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 10px))",
+            mask: "radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 10px))",
+          }}
+          aria-hidden
+        />
+
         {countdownProgress != null && countdown != null ? (
           <svg
-            className="pointer-events-none absolute inset-[23%] -rotate-90"
+            className="pointer-events-none absolute inset-[23%] z-20 -rotate-90"
             viewBox="0 0 100 100"
             aria-hidden
           >
-            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(239,68,68,0.22)" strokeWidth="3.2" />
+            <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(239,68,68,0.28)" strokeWidth="5" />
             <circle
               cx="50"
               cy="50"
-              r="46"
+              r="45"
               fill="none"
               stroke="#ef4444"
-              strokeWidth="3.2"
+              strokeWidth="5"
               strokeLinecap="round"
-              strokeDasharray={2 * Math.PI * 46}
-              strokeDashoffset={2 * Math.PI * 46 * (1 - countdownProgress)}
+              strokeDasharray={2 * Math.PI * 45}
+              strokeDashoffset={2 * Math.PI * 45 * (1 - countdownProgress)}
             />
           </svg>
         ) : null}

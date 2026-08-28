@@ -36,7 +36,7 @@ export function SlotPlayPage() {
   const { slotId } = useParams();
   const slot = slotId ? providerSlotById(slotId) : undefined;
   const [blocked, setBlocked] = useState(false);
-  const [mode, setMode] = useState<SlotPlayMode>("fun");
+  const [mode, setMode] = useState<SlotPlayMode>("wl");
   const [bet, setBet] = useState(100);
   const [busy, setBusy] = useState(false);
   const [last, setLast] = useState<{ multi: number; paid: number; stake: number; currency: PlayCurrency } | null>(null);
@@ -58,9 +58,9 @@ export function SlotPlayPage() {
   const wallet = currency === "shards" ? shardBal : lockBal;
   const walletLabel = currency === "shards" ? playCurrencyLabel("shards") : lockLabel;
   const modes: { id: SlotPlayMode; label: string }[] = [
-    { id: "fun", label: "Fun" },
     { id: "wl", label: LOCK_META[lockUnit].ticker },
     { id: "shards", label: "Shards" },
+    { id: "fun", label: "Fun" },
   ];
 
   if (!slot) return <Navigate to="/slots" replace />;
@@ -106,8 +106,8 @@ export function SlotPlayPage() {
           ? `${formatMulti(last.multi)} · +${formatPlayCash(last.paid, last.currency)}`
           : "Miss"
         : `Demo · ${formatMulti(last.multi)}`
-      : "Stake, then Bet. Studio reels stay on fun credits."
-    : "Studio credits. Nothing hits your wallet.";
+      : `Spin spends this ${walletLabel} stack.`
+    : "Studio credits. Switch back to stake your wallet.";
 
   return (
     <div className="flex min-h-[70vh] flex-col gap-3">
@@ -120,12 +120,12 @@ export function SlotPlayPage() {
         </div>
         <div className="flex flex-wrap items-center gap-2">
           {walletMode ? <WinLeaderStageMark game="slots" inline /> : null}
-          <InfoButton title="Slots — wallet vs fun">
+          <InfoButton title="Slots — your stack">
             <StatRow label="Wallet RTP" value={formatPercent(SLOT_RTP)} />
             <StatRow label="House edge" value={formatPercent(HOUSE_EDGE.slots)} />
             <p>
-              Fun play uses the studio’s demo credits. {lockLabel} and Shards stake your SeedBET wallet. Studio reels do
-              not report bets.
+              Spin spends your SeedBET {lockLabel} or Shards. The Fun tab is studio demo credits — those reels do not
+              debit this wallet.
             </p>
           </InfoButton>
           <a
@@ -166,9 +166,15 @@ export function SlotPlayPage() {
 
           {walletMode ? (
             <>
+              <div className="rounded-lg bg-black/35 px-3 py-2.5 ring-1 ring-white/10">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Your stack</p>
+                <p className="mt-1 text-lg font-semibold text-white">
+                  <CashAmount wl={wallet} currency={currency} iconClassName="h-5 w-5" />
+                </p>
+              </div>
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                  Bet · {walletLabel}
+                  Spin · {walletLabel}
                 </span>
                 <div className="flex items-center gap-2">
                   <LockAmountInput
@@ -210,14 +216,14 @@ export function SlotPlayPage() {
                 <CashAmount wl={wallet} currency={currency} iconClassName="h-3 w-3" className="align-middle" />
               </button>
               <button type="button" onClick={() => void spinWallet()} disabled={busy} className="btn-cyan w-full py-3 disabled:opacity-50">
-                {busy ? "Spinning…" : bet > 0 ? "Bet" : "Demo spin"}
+                {busy ? "Spinning…" : bet > 0 ? "Spin" : "Demo spin"}
               </button>
               <DemoBetBadge active={bet <= 0} />
             </>
           ) : (
             <p className="text-xs leading-relaxed text-slate-400">
               Studio credits. Switch to {lockLabel}
-              {showShards ? " or Shards" : ""} to stake your wallet.
+              {showShards ? " or Shards" : ""} to use your stack.
             </p>
           )}
 
@@ -227,6 +233,14 @@ export function SlotPlayPage() {
         </div>
 
         <div className="relative min-h-[560px] overflow-hidden rounded-xl border-2 border-cyan-400/25 bg-[#050808] shadow-[4px_4px_0_#050808]">
+          {walletMode ? (
+            <div className="absolute left-3 top-3 z-10 rounded-lg border border-white/10 bg-black/75 px-3 py-2 shadow-[3px_3px_0_#050808] backdrop-blur-sm">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Your stack</p>
+              <p className="mt-0.5 text-sm font-semibold text-white">
+                <CashAmount wl={wallet} currency={currency} iconClassName="h-4 w-4" />
+              </p>
+            </div>
+          ) : null}
           {blocked ? (
             <div className="grid h-full min-h-[560px] place-items-center p-6 text-center">
               <div>

@@ -9,7 +9,7 @@ export function SlotsLobby() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-white">Slots</h1>
         <p className="mt-1 max-w-xl text-sm text-slate-400">
-          Pragmatic Play. Fun play uses studio credits. Stake World Locks, or Shards if you have them.
+          Opens on your World Lock stack. Fun play uses studio credits. Shards if you have them.
         </p>
       </div>
 

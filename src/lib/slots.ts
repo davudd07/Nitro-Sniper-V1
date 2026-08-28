@@ -53,7 +53,11 @@ export function providerSlotThumb(symbol: string): string {
   return `https://common-static.ppgames.net/game_pic/square/200/${symbol}.png`;
 }
 
-/** Pragmatic Play’s public fun/demo launcher. Credits stay inside the game. */
+/**
+ * Pragmatic Play public fun/demo launcher.
+ * Demo sessions keep their own credits and never call an operator wallet,
+ * so SeedBET World Locks / Shards cannot be injected into the reels.
+ */
 export function pragmaticDemoUrl(symbol: string): string {
   const website =
     typeof window !== "undefined" ? window.location.origin : "https://demogamesfree.pragmaticplay.net";

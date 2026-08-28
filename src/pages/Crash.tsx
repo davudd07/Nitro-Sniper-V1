@@ -14,7 +14,8 @@ import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { useLoyaltyStore } from "../store/loyaltyStore";
 import { localWinName } from "../store/winLeaderStore";
-import { takeStake } from "../lib/stake";
+import { takeStake, doubleBet } from "../lib/stake";
+import { usePlayCurrency } from "../lib/playWallet";
 import { sound } from "../lib/sound";
 import { formatCash, formatPercent } from "../lib/format";
 import { houseEdgeForGame } from "../lib/loyalty";
@@ -88,6 +89,8 @@ export function Crash() {
 
   const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
+  const ledger = usePlayCurrency();
+  const wallet = useEconomyStore((s) => (ledger === "shards" ? s.funCoins : s.balance));
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
   const houseEdges = useLoyaltyStore((s) => s.config.houseEdges);
@@ -395,7 +398,7 @@ export function Crash() {
               disabled={betLocked}
               onClick={() => {
                 sound.click();
-                setBet((b) => b * 2);
+                setBet((b) => doubleBet(b, wallet));
               }}
               className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >

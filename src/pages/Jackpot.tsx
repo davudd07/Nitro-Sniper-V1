@@ -12,12 +12,15 @@ import {
   JACKPOT_HOUSE_EDGE,
   JACKPOT_MAX_BOTS,
   JACKPOT_POTS,
+  YOU_TICKET_MAX,
   clampJackpotBet,
+  jackpotPlayerCount,
   potIsUnbounded,
   potRangeLabel,
   potTotal,
   useJackpotStore,
-  youEntry,
+  youEntries,
+  youStake,
   type JackpotPotId,
 } from "../store/jackpotStore";
 import { useEconomyStore } from "../store/economyStore";
@@ -29,7 +32,7 @@ import { formatPercent, formatPlayCash } from "../lib/format";
 import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { sound } from "../lib/sound";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { requireAccount, takeStakeFor, stakeNeedMessage } from "../lib/stake";
+import { requireAccount, takeStakeFor, stakeNeedMessage, doubleBet } from "../lib/stake";
 import { usePlayCurrency } from "../lib/playWallet";
 import { useIdentityStore } from "../store/identityStore";
 
@@ -68,7 +71,10 @@ export function JackpotPage() {
   const avatarFor = useIdentityStore((s) => s.avatarFor);
 
   const total = potTotal(pot.entries);
-  const you = youEntry(pot.entries);
+  const yours = youEntries(pot.entries);
+  const youTotal = youStake(pot.entries);
+  const lastYou = yours[yours.length - 1];
+  const canAddTicket = pot.phase === "open" && yours.length < YOU_TICKET_MAX;
   const payout = Math.round(total * (1 - JACKPOT_HOUSE_EDGE));
   const winner = pot.winnerId ? pot.entries.find((e) => e.id === pot.winnerId) : undefined;
   const countdownLeft =
@@ -114,17 +120,31 @@ export function JackpotPage() {
       return;
     }
     if (!requireAccount()) return;
+    if (yours.length >= YOU_TICKET_MAX) {
+      push(`You can join this pot up to ${YOU_TICKET_MAX} times.`, "info");
+      return;
+    }
     if (!takeStakeFor(bet, HOUSE_EDGE.jackpot, ledger)) {
       push(stakeNeedMessage(bet, ledger), "danger");
       return;
     }
     if (!join(potId, bet)) {
       creditLedger(bet, ledger);
-      push("You already have a seat in this pot.", "info");
+      push(
+        yours.length >= YOU_TICKET_MAX
+          ? `You can join this pot up to ${YOU_TICKET_MAX} times.`
+          : "Couldn't join this pot.",
+        "info",
+      );
       return;
     }
     sound.chip();
-    push(`Joined ${def.label} jackpot with ${formatPlayCash(bet, ledger)}.`, "success");
+    push(
+      yours.length === 0
+        ? `Joined ${def.label} jackpot with ${formatPlayCash(bet, ledger)}.`
+        : `Added a ticket with ${formatPlayCash(bet, ledger)}.`,
+      "success",
+    );
   }
 
   const botCount = pot.entries.filter((e) => e.kind === "bot").length;
@@ -132,7 +152,7 @@ export function JackpotPage() {
   function handleCallBot() {
     sound.click();
     if (!callBot(potId)) {
-      const reason = !you
+      const reason = yours.length === 0
         ? "Join first, then call a bot at your bet size."
         : botCount >= JACKPOT_MAX_BOTS
           ? `You can call at most ${JACKPOT_MAX_BOTS} bots.`
@@ -140,13 +160,13 @@ export function JackpotPage() {
       push(reason, "warning");
       return;
     }
-    push(`Bot joined with ${formatPlayCash(you!.amount, ledger)}.`, "info");
+    push(`Bot joined with ${formatPlayCash(lastYou!.amount, ledger)}.`, "info");
   }
 
   async function handleSpin() {
     if (spinLock.current) return;
     const live = useJackpotStore.getState().tables[ledger][potId];
-    if (live.phase !== "open" || live.entries.length < 2) return;
+    if (live.phase !== "open" || jackpotPlayerCount(live.entries) < 2) return;
     spinLock.current = true;
     sound.click();
     const liveTotal = potTotal(live.entries);
@@ -191,7 +211,8 @@ export function JackpotPage() {
     const current = useJackpotStore.getState().tables[ledger][potId];
     if (current.phase !== "spinning") return;
     const roundWinner = current.entries.find((e) => e.id === current.winnerId);
-    const me = youEntry(current.entries);
+    const meStake = youStake(current.entries);
+    const mine = youEntries(current.entries);
     const liveTotal = potTotal(current.entries);
     const livePayout = Math.round(liveTotal * (1 - JACKPOT_HOUSE_EDGE));
     finishSpin(potId);
@@ -202,13 +223,13 @@ export function JackpotPage() {
         multiplier: livePayout / roundWinner.amount,
       });
     }
-    if (!roundWinner || !me) return;
+    if (!roundWinner || mine.length === 0) return;
     if (roundWinner.kind === "you") {
       creditLedger(livePayout, ledger);
-      recordRound(me.amount, livePayout, "jackpot", ledger);
+      recordRound(meStake, livePayout, "jackpot", ledger);
       push(`You won the jackpot! +${formatPlayCash(livePayout, ledger)} after 9% house edge.`, "success");
     } else {
-      recordRound(me.amount, 0, "jackpot", ledger);
+      recordRound(meStake, 0, "jackpot", ledger);
       push(`${roundWinner.name} took the pot. House kept ${formatPlayCash(liveTotal - livePayout, ledger)}.`, "info");
     }
   }
@@ -217,7 +238,7 @@ export function JackpotPage() {
   const sliderValue = Math.min(sliderMax, Math.max(def.min, amount));
   const sliderPct = sliderMax === def.min ? 1 : (sliderValue - def.min) / (sliderMax - def.min);
   const unit = ledger === "shards" ? "Shards" : "WL";
-  const youPct = you && total > 0 ? (you.amount / total) * 100 : 0;
+  const youPct = youTotal > 0 && total > 0 ? (youTotal / total) * 100 : 0;
   const listActiveId = pot.phase === "spinning" ? pointer?.playerId ?? null : null;
   const listWinnerId = pot.phase === "finished" ? pot.winnerId : null;
 
@@ -232,7 +253,7 @@ export function JackpotPage() {
                 <StatRow label="House edge" value={formatPercent(JACKPOT_HOUSE_EDGE)} />
                 <StatRow label="Winner payout" value="91% of the pot" />
                 <StatRow label="RTP" value={formatPercent(1 - JACKPOT_HOUSE_EDGE)} />
-                <p>Four pots. Unlimited starts at 50,000 with no ceiling. Bots match your bet. The wheel is weighted by each player’s share.</p>
+                <p>Four pots. Unlimited starts at 50,000 with no ceiling. Join up to 3 times — same color, separate tickets. Bots match your last bet. The wheel is weighted by each ticket’s share.</p>
               </InfoButton>
             </div>
 
@@ -276,133 +297,142 @@ export function JackpotPage() {
               })}
             </div>
 
-            {pot.phase === "open" && !you && (
+            {pot.phase === "open" && (
               <div className="space-y-3">
-                <label className="block">
-                  <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                    Your bet{unbounded ? " · no max" : ""}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    <LockAmountInput
-                      valueWl={amount}
-                      onChangeWl={setBet}
-                      minWl={def.min}
-                      maxWl={def.max}
-                      className="min-w-0 flex-1"
-                      inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.click();
-                        setBet(Math.floor(amount / 2));
-                      }}
-                      className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
-                    >
-                      ½
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.click();
-                        setBet(amount * 2);
-                      }}
-                      className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
-                    >
-                      2×
-                    </button>
+                {yours.length > 0 ? (
+                  <div className="rounded-lg bg-cyan-400/[0.08] px-3 py-3 ring-1 ring-cyan-400/25">
+                    <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">
+                      <Check className="h-3.5 w-3.5" /> You’re in · {yours.length}/{YOU_TICKET_MAX} tickets
+                    </p>
+                    <p className="mt-1.5 text-sm text-white">
+                      <CashAmount
+                        wl={youTotal}
+                        currency={ledger}
+                        className="font-semibold"
+                        iconClassName="h-4 w-4"
+                      />
+                      <span className="ml-1.5 font-mono text-xs text-slate-400">{youPct.toFixed(1)}%</span>
+                    </p>
                   </div>
-                </label>
-                <div className="relative h-8">
-                  <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-black/40 ring-1 ring-white/10">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-cyan-700 to-cyan-300"
-                      style={{ width: `${Math.max(4, sliderPct * 100)}%` }}
-                    />
-                  </div>
-                  <input
-                    type="range"
-                    min={def.min}
-                    max={sliderMax}
-                    value={sliderValue}
-                    onChange={(e) => setBet(Number(e.target.value))}
-                    className="jackpot-bet-slider absolute inset-0 w-full"
-                    aria-label="Bet amount"
-                  />
-                </div>
-                {unbounded && amount > UNLIMITED_SLIDER_MAX ? (
-                  <p className="text-[10px] text-slate-500">Slider caps at 10M — type any amount above that.</p>
                 ) : null}
-                <div className="flex flex-wrap gap-1.5">
-                  {jackpotPresets(potId).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => {
-                        sound.click();
-                        setBet(v);
-                      }}
-                      className={clsx(
-                        "flex-1 rounded-md py-1.5 text-[11px] font-semibold ring-1 transition-colors",
-                        amount === v
-                          ? "bg-cyan-400/15 text-cyan-100 ring-cyan-400/40"
-                          : "bg-bg-900 text-slate-300 ring-white/10 hover:bg-bg-700",
-                      )}
-                    >
-                      <CashAmount wl={v} currency={ledger} iconClassName="h-3 w-3" />
-                    </button>
-                  ))}
-                  {unbounded && wallet >= def.min ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        sound.click();
-                        setBet(wallet);
-                      }}
-                      className="rounded-md px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-amber-100 ring-1 ring-amber-300/35 hover:bg-amber-400/10"
-                    >
-                      Max
-                    </button>
-                  ) : null}
-                </div>
-                <button type="button" onClick={handleJoin} className="btn-cyan w-full py-3 text-sm">
-                  Join · <CashAmount wl={clampJackpotBet(amount, potId)} currency={ledger} iconClassName="h-4 w-4" />
-                </button>
-              </div>
-            )}
 
-            {pot.phase === "open" && you && (
-              <div className="space-y-3">
-                <div className="rounded-lg bg-cyan-400/[0.08] px-3 py-3 ring-1 ring-cyan-400/25">
-                  <p className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.16em] text-cyan-300">
-                    <Check className="h-3.5 w-3.5" /> You’re in
-                  </p>
-                  <p className="mt-1.5 text-sm text-white">
-                    <CashAmount
-                      wl={you.amount}
-                      currency={ledger}
-                      className="font-semibold"
-                      iconClassName="h-4 w-4"
-                    />
-                    <span className="ml-1.5 font-mono text-xs text-slate-400">{youPct.toFixed(1)}%</span>
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={handleCallBot}
-                  disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-bg-900 py-2.5 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-40"
-                >
-                  <Bot className="h-4 w-4 text-cyan-300" /> Call Bot ·{" "}
-                  <CashAmount wl={you.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium text-slate-400">
-                    ({botCount}/{JACKPOT_MAX_BOTS})
-                  </span>
-                </button>
-                {countdownLeft == null ? (
-                  <p className="text-center text-[11px] text-slate-500">
-                    Call a bot — countdown starts at 2+ players.
-                  </p>
+                {canAddTicket ? (
+                  <>
+                    <label className="block">
+                      <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                        {yours.length > 0 ? "Next ticket" : "Your bet"}
+                        {unbounded ? " · no max" : ""}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <LockAmountInput
+                          valueWl={amount}
+                          onChangeWl={setBet}
+                          minWl={def.min}
+                          maxWl={def.max}
+                          className="min-w-0 flex-1"
+                          inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sound.click();
+                            setBet(Math.floor(amount / 2));
+                          }}
+                          className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
+                        >
+                          ½
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sound.click();
+                            setBet(doubleBet(amount, wallet, def.min, def.max));
+                          }}
+                          className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
+                        >
+                          2×
+                        </button>
+                      </div>
+                    </label>
+                    <div className="relative h-8">
+                      <div className="absolute inset-x-0 top-1/2 h-2 -translate-y-1/2 overflow-hidden rounded-full bg-black/40 ring-1 ring-white/10">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-cyan-700 to-cyan-300"
+                          style={{ width: `${Math.max(4, sliderPct * 100)}%` }}
+                        />
+                      </div>
+                      <input
+                        type="range"
+                        min={def.min}
+                        max={sliderMax}
+                        value={sliderValue}
+                        onChange={(e) => setBet(Number(e.target.value))}
+                        className="jackpot-bet-slider absolute inset-0 w-full"
+                        aria-label="Bet amount"
+                      />
+                    </div>
+                    {unbounded && amount > UNLIMITED_SLIDER_MAX ? (
+                      <p className="text-[10px] text-slate-500">Slider caps at 10M — type any amount above that.</p>
+                    ) : null}
+                    <div className="flex flex-wrap gap-1.5">
+                      {jackpotPresets(potId).map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => {
+                            sound.click();
+                            setBet(v);
+                          }}
+                          className={clsx(
+                            "flex-1 rounded-md py-1.5 text-[11px] font-semibold ring-1 transition-colors",
+                            amount === v
+                              ? "bg-cyan-400/15 text-cyan-100 ring-cyan-400/40"
+                              : "bg-bg-900 text-slate-300 ring-white/10 hover:bg-bg-700",
+                          )}
+                        >
+                          <CashAmount wl={v} currency={ledger} iconClassName="h-3 w-3" />
+                        </button>
+                      ))}
+                      {unbounded && wallet >= def.min ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            sound.click();
+                            setBet(wallet);
+                          }}
+                          className="rounded-md px-2 py-1.5 text-[11px] font-extrabold uppercase tracking-wide text-amber-100 ring-1 ring-amber-300/35 hover:bg-amber-400/10"
+                        >
+                          Max
+                        </button>
+                      ) : null}
+                    </div>
+                    <button type="button" onClick={handleJoin} className="btn-cyan w-full py-3 text-sm">
+                      {yours.length > 0 ? "Add ticket" : "Join"} ·{" "}
+                      <CashAmount wl={clampJackpotBet(amount, potId)} currency={ledger} iconClassName="h-4 w-4" />
+                    </button>
+                  </>
+                ) : null}
+
+                {yours.length > 0 ? (
+                  <>
+                    <button
+                      type="button"
+                      onClick={handleCallBot}
+                      disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
+                      className="flex w-full items-center justify-center gap-1.5 rounded-lg bg-bg-900 py-2.5 text-sm font-semibold text-white ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-40"
+                    >
+                      <Bot className="h-4 w-4 text-cyan-300" /> Call Bot ·{" "}
+                      <CashAmount wl={lastYou!.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
+                      <span className="text-xs font-medium text-slate-400">
+                        ({botCount}/{JACKPOT_MAX_BOTS})
+                      </span>
+                    </button>
+                    {countdownLeft == null ? (
+                      <p className="text-center text-[11px] text-slate-500">
+                        Call a bot — countdown starts at 2+ players.
+                      </p>
+                    ) : null}
+                  </>
                 ) : null}
               </div>
             )}
@@ -445,7 +475,7 @@ export function JackpotPage() {
             <div>
               <p className="text-sm font-extrabold uppercase tracking-wide text-white">{def.label}</p>
               <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">
-                {pot.entries.length} {pot.entries.length === 1 ? "player" : "players"}
+                {pot.entries.length} {pot.entries.length === 1 ? "ticket" : "tickets"}
                 {total > 0 ? " · 91% payout" : ""}
               </p>
             </div>

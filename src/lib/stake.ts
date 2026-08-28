@@ -63,6 +63,35 @@ export function stakeNeedMessage(amount: number, currency: PlayCurrency = playCu
   return `You need ${amount.toLocaleString("en-US")} ${playCurrencyLabel(currency)} for that.`;
 }
 
+/** Clamp a bet so it never exceeds the player's wallet (or an optional pot max). */
+export function capBetToWallet(
+  amount: number,
+  wallet: number,
+  min = 0,
+  max = Number.POSITIVE_INFINITY,
+): number {
+  const n = Math.round(Number(amount));
+  const walletCap = Math.max(0, Math.round(Number.isFinite(wallet) ? wallet : 0));
+  const maxCap = Number.isFinite(max) ? max : Number.POSITIVE_INFINITY;
+  const floor = Number.isFinite(min) ? Math.max(0, min) : 0;
+  if (!Number.isFinite(n)) return Math.min(floor, walletCap);
+  const next = Math.min(Math.max(0, n), walletCap, maxCap);
+  if (next < floor && walletCap >= floor) return Math.min(floor, maxCap);
+  return next;
+}
+
+/** 2× a bet, stopping at the wallet if double would overshoot. */
+export function doubleBet(
+  current: number,
+  wallet: number,
+  min = 0,
+  max = Number.POSITIVE_INFINITY,
+): number {
+  const n = Math.round(Number(current));
+  const doubled = Number.isFinite(n) ? n * 2 : 0;
+  return capBetToWallet(doubled, wallet, min, max);
+}
+
 /** Blocks locked/banned accounts from spending, tipping, or claiming. */
 export function assertBalanceUsable(action = "use your balance"): boolean {
   if (!requireAccount()) return false;

@@ -23,6 +23,16 @@ export function JackpotPlayerList({
     () => [...entries].sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name)),
     [entries],
   );
+  const youTicketNo = useMemo(() => {
+    const map = new Map<string, number>();
+    let n = 0;
+    for (const e of entries) {
+      if (e.kind !== "you") continue;
+      n += 1;
+      map.set(e.id, n);
+    }
+    return { map, total: n };
+  }, [entries]);
 
   if (listed.length === 0) {
     return <p className="py-6 text-center text-sm text-slate-500">No players yet. Join to open this pot.</p>;
@@ -69,6 +79,11 @@ export function JackpotPlayerList({
                   {e.kind === "bot" ? (
                     <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide text-slate-500 ring-1 ring-white/10">
                       Bot
+                    </span>
+                  ) : null}
+                  {e.kind === "you" && youTicketNo.total > 1 ? (
+                    <span className="shrink-0 rounded px-1 py-px text-[9px] font-bold uppercase tracking-wide text-cyan-300/80 ring-1 ring-cyan-400/25">
+                      Ticket {youTicketNo.map.get(e.id)}
                     </span>
                   ) : null}
                 </div>

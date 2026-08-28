@@ -169,17 +169,27 @@ export function JackpotCircleWheel({
               : "0 10px 36px rgba(0,0,0,0.45), 0 0 32px rgba(34,211,238,0.22), inset 0 1px 0 rgba(255,255,255,0.55)",
         }}
       >
-        <div className="relative h-full w-full overflow-hidden rounded-full bg-[#0b1112] shadow-[inset_0_0_18px_rgba(0,0,0,0.55)]">
+        <div
+          className={clsx(
+            "relative h-full w-full overflow-hidden rounded-full",
+            empty && "bg-[#0b1112] shadow-[inset_0_0_18px_rgba(0,0,0,0.55)]",
+          )}
+        >
           <div ref={wheelRef} className="absolute inset-0" style={{ willChange: "transform" }}>
             <div
-              className="absolute inset-0 rounded-full"
+              className="absolute"
               style={
                 empty
                   ? {
+                      inset: 0,
                       background:
                         "radial-gradient(circle at 50% 42%, rgba(34,211,238,0.10) 0%, rgba(12,18,20,0.92) 58%, #070a0a 100%)",
                     }
-                  : { background: `conic-gradient(from 0deg, ${gradient})` }
+                  : {
+                      // Bleed under the chrome so the pie meets the ring with no hairline gap.
+                      inset: "-4%",
+                      background: `conic-gradient(from 0deg, ${gradient})`,
+                    }
               }
             />
             {empty ? (
@@ -205,8 +215,9 @@ export function JackpotCircleWheel({
             ) : null}
             {highlight && !empty ? (
               <div
-                className="pointer-events-none absolute inset-0 rounded-full"
+                className="pointer-events-none absolute"
                 style={{
+                  inset: "-4%",
                   background: `conic-gradient(from ${highlight.start}deg, ${
                     done ? "rgba(251,191,36,0.32)" : "rgba(255,255,255,0.26)"
                   } 0deg ${highlight.sweep}deg, transparent ${highlight.sweep}deg 360deg)`,
@@ -222,11 +233,11 @@ export function JackpotCircleWheel({
                     aria-hidden
                   >
                     <div
-                      className="absolute left-1/2 w-px -translate-x-1/2 bg-black/50"
+                      className="absolute left-1/2 -translate-x-1/2 bg-[#050808]"
                       style={{
-                        top: "2.2%",
-                        height: "22.5%",
-                        boxShadow: "1px 0 0 rgba(255,255,255,0.12)",
+                        top: 0,
+                        height: "26.5%",
+                        width: 2,
                       }}
                     />
                   </div>
@@ -278,13 +289,13 @@ export function JackpotCircleWheel({
             viewBox="0 0 100 100"
             aria-hidden
           >
-            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(34,211,238,0.12)" strokeWidth="3.2" />
+            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(239,68,68,0.22)" strokeWidth="3.2" />
             <circle
               cx="50"
               cy="50"
               r="46"
               fill="none"
-              stroke="#22d3ee"
+              stroke="#ef4444"
               strokeWidth="3.2"
               strokeLinecap="round"
               strokeDasharray={2 * Math.PI * 46}
@@ -313,7 +324,7 @@ export function JackpotCircleWheel({
               <>
                 <AnimatedPot value={potValue} label={potLabel} size="hub" currency={currency} />
                 {countdown != null ? (
-                  <p className="mt-0.5 font-mono text-2xl font-black tabular-nums text-white sm:text-3xl">
+                  <p className="mt-0.5 font-mono text-2xl font-black tabular-nums text-red-400 sm:text-3xl">
                     {countdown}
                   </p>
                 ) : spinToken > 0 && !done ? (
@@ -338,7 +349,19 @@ type Slice = { ticket: JackpotTicket; start: number; sweep: number; index: numbe
 
 function conicFromSlices(slices: Slice[]): string {
   if (slices.length === 0) return "";
-  return slices.map((s) => `${s.ticket.color} ${s.start}deg ${s.start + s.sweep}deg`).join(", ");
+  if (slices.length === 1) {
+    const only = slices[0];
+    return `${only.ticket.color} ${only.start}deg ${only.start + only.sweep}deg`;
+  }
+  // Dark notches at each boundary so two same-color tickets never visually merge.
+  const GAP = 1.15;
+  return slices
+    .map((s) => {
+      const end = s.start + s.sweep;
+      const innerEnd = end - Math.min(GAP, Math.max(0.35, s.sweep * 0.28));
+      return `${s.ticket.color} ${s.start}deg ${innerEnd}deg, #050808 ${innerEnd}deg ${end}deg`;
+    })
+    .join(", ");
 }
 
 function buildSlices(tickets: JackpotTicket[]): Slice[] {

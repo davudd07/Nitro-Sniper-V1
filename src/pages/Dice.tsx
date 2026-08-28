@@ -13,7 +13,8 @@ import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { considerWinLeader, localWinName } from "../store/winLeaderStore";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { takeStake } from "../lib/stake";
+import { takeStake, doubleBet } from "../lib/stake";
+import { usePlayCurrency } from "../lib/playWallet";
 import { useSettingsStore } from "../store/settingsStore";
 import {
   DICE_HOUSE_EDGE,
@@ -62,6 +63,8 @@ export function Dice() {
 
   const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
+  const ledger = usePlayCurrency();
+  const wallet = useEconomyStore((s) => (ledger === "shards" ? s.funCoins : s.balance));
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
   const showMarks = useSettingsStore((s) => s.diceRollMarks);
@@ -255,7 +258,7 @@ export function Dice() {
             <button
               type="button"
               disabled={locked}
-              onClick={() => setBet((b) => b * 2)}
+              onClick={() => setBet((b) => doubleBet(b, wallet))}
               className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >
               2×

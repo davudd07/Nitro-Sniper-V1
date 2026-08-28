@@ -10,7 +10,8 @@ import { formatCredits, formatCash, formatPercent } from "../lib/format";
 import { LockAmountInput } from "../components/ui/LockAmountInput";
 import { InfoButton, StatRow } from "../components/ui/InfoModal";
 import { HOUSE_EDGE } from "../lib/rakeback";
-import { takeStake } from "../lib/stake";
+import { takeStake, doubleBet } from "../lib/stake";
+import { usePlayCurrency } from "../lib/playWallet";
 import { WinLeaderStageMark } from "../components/layout/WinLeaderBadge";
 import { ProvablyFairPanel } from "../components/ui/ProvablyFairPanel";
 import {
@@ -192,6 +193,8 @@ export function CoinFlip() {
   phaseRef.current = phase;
 
   const balance = useEconomyStore((s) => s.balance);
+  const ledger = usePlayCurrency();
+  const wallet = useEconomyStore((s) => (ledger === "shards" ? s.funCoins : s.balance));
   const credit = useEconomyStore((s) => s.payout);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -433,7 +436,7 @@ export function CoinFlip() {
             <button
               type="button"
               disabled={phase === "flipping" || autoRunning || phase === "won"}
-              onClick={() => setBet((b) => b * 2)}
+              onClick={() => setBet((b) => doubleBet(b, wallet))}
               className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700 disabled:opacity-50"
             >
               2×

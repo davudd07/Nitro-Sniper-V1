@@ -87,7 +87,7 @@ function emptyPot(): JackpotPotState {
 
 function withCountdown(pot: JackpotPotState): JackpotPotState {
   if (pot.phase !== "open") return { ...pot, countdownEndsAt: null };
-  if (pot.entries.length < 2) return { ...pot, countdownEndsAt: null };
+  if (jackpotPlayerCount(pot.entries) < 2) return { ...pot, countdownEndsAt: null };
   if (pot.countdownEndsAt != null) return pot;
   return { ...pot, countdownEndsAt: Date.now() + JACKPOT_COUNTDOWN_MS };
 }
@@ -117,8 +117,24 @@ export function potTotal(entries: JackpotEntry[]): number {
   return entries.reduce((s, e) => s + e.amount, 0);
 }
 
+/** One player may hold this many separate tickets in a pot. */
+export const YOU_TICKET_MAX = 3;
+
+export function youEntries(entries: JackpotEntry[]): JackpotEntry[] {
+  return entries.filter((e) => e.kind === "you");
+}
+
 export function youEntry(entries: JackpotEntry[]): JackpotEntry | undefined {
-  return entries.find((e) => e.kind === "you");
+  return youEntries(entries)[0];
+}
+
+export function youStake(entries: JackpotEntry[]): number {
+  return youEntries(entries).reduce((s, e) => s + e.amount, 0);
+}
+
+/** Distinct people in the pot — extra "You" tickets still count as one player. */
+export function jackpotPlayerCount(entries: JackpotEntry[]): number {
+  return new Set(entries.map((e) => (e.kind === "you" ? "you" : e.id))).size;
 }
 
 export const useJackpotStore = create<JackpotStore>((set, get) => ({
@@ -127,7 +143,9 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
     const ledger = playCurrency();
     const pot = get().tables[ledger][potId];
     if (!pot || pot.phase !== "open") return false;
-    if (youEntry(pot.entries)) return false;
+    const yours = youEntries(pot.entries);
+    if (yours.length >= YOU_TICKET_MAX) return false;
+    if (pot.entries.length >= 10) return false;
     const def = JACKPOT_POTS.find((p) => p.id === potId)!;
     if (!Number.isFinite(amount) || amount < def.min) return false;
     if (Number.isFinite(def.max) && amount > def.max) return false;
@@ -136,7 +154,7 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
       name: "You",
       kind: "you",
       amount,
-      color: JACKPOT_COLORS[pot.entries.length % JACKPOT_COLORS.length],
+      color: yours[0]?.color ?? JACKPOT_COLORS[pot.entries.length % JACKPOT_COLORS.length],
     };
     set((s) => ({
       tables: patchPot(s.tables, ledger, potId, withCountdown({ ...pot, entries: [...pot.entries, entry] })),
@@ -147,7 +165,8 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
     const ledger = playCurrency();
     const pot = get().tables[ledger][potId];
     if (!pot || pot.phase !== "open") return false;
-    const you = youEntry(pot.entries);
+    const yours = youEntries(pot.entries);
+    const you = yours[yours.length - 1];
     if (!you) return false;
     if (pot.entries.length >= 10) return false;
     const bots = pot.entries.filter((e) => e.kind === "bot").length;
@@ -171,7 +190,7 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
   beginSpin: (potId, winnerId) => {
     const ledger = playCurrency();
     const pot = get().tables[ledger][potId];
-    if (!pot || pot.phase !== "open" || pot.entries.length < 2) return false;
+    if (!pot || pot.phase !== "open" || jackpotPlayerCount(pot.entries) < 2) return false;
     if (!pot.entries.some((e) => e.id === winnerId)) return false;
     set((s) => ({
       tables: patchPot(s.tables, ledger, potId, {

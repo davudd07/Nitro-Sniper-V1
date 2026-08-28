@@ -164,24 +164,22 @@ export function JackpotCircleWheel({
               : "0 10px 36px rgba(0,0,0,0.45), 0 0 32px rgba(34,211,238,0.22)",
         }}
       >
-        <div
-          className={clsx(
-            "absolute inset-0 overflow-hidden rounded-full",
-            empty && "bg-[#0b1112]",
-          )}
-        >
+        <div className={clsx("absolute inset-0 overflow-hidden rounded-full", empty && "bg-[#0b1112]")}>
           <div ref={wheelRef} className="absolute inset-0" style={{ willChange: "transform" }}>
-            <div
-              className="absolute inset-0"
-              style={
-                empty
-                  ? {
-                      background:
-                        "radial-gradient(circle at 50% 42%, rgba(34,211,238,0.10) 0%, rgba(12,18,20,0.92) 58%, #070a0a 100%)",
-                    }
-                  : { background: `conic-gradient(from 0deg, ${gradient})` }
-              }
-            />
+          <div
+            className="absolute inset-0"
+            style={
+              empty
+                ? {
+                    background:
+                      "radial-gradient(circle at 50% 42%, rgba(34,211,238,0.10) 0%, rgba(12,18,20,0.92) 58%, #070a0a 100%)",
+                  }
+                : {
+                    background: `conic-gradient(from 0deg, ${gradient})`,
+                    transform: "scale(1.08)",
+                  }
+            }
+          />
             {empty ? (
               <>
                 {Array.from({ length: 24 }, (_, i) => (
@@ -270,19 +268,22 @@ export function JackpotCircleWheel({
               );
             })}
           </div>
-        </div>
 
-        <div
-          className="pointer-events-none absolute inset-0 rounded-full"
-          style={{
-            background:
-              "conic-gradient(from 210deg, #ecfeff, #67e8f9 14%, #155e75 32%, #a5f3fc 48%, #083344 66%, #22d3ee 82%, #ecfeff)",
-            WebkitMask:
-              "radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 10px))",
-            mask: "radial-gradient(farthest-side, transparent calc(100% - 12px), #000 calc(100% - 10px))",
-          }}
-          aria-hidden
-        />
+          <div
+            className="pointer-events-none absolute inset-0 z-[5]"
+            style={{
+              background:
+                "conic-gradient(from 210deg, #ecfeff, #67e8f9 14%, #155e75 32%, #a5f3fc 48%, #083344 66%, #22d3ee 82%, #ecfeff)",
+              WebkitMaskImage:
+                "radial-gradient(farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px))",
+              maskImage:
+                "radial-gradient(farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px))",
+              WebkitMaskRepeat: "no-repeat",
+              maskRepeat: "no-repeat",
+            }}
+            aria-hidden
+          />
+        </div>
 
         {countdownProgress != null && countdown != null ? (
           <svg

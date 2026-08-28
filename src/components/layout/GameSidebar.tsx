@@ -12,7 +12,6 @@ import {
   TrendingUp,
   Bird,
   Hash,
-  Cherry,
   Sparkles,
   ChevronLeft,
   ChevronRight,
@@ -41,8 +40,7 @@ const GAMES = [
   { to: "/crash", label: "Crash", icon: TrendingUp },
   { to: "/road", label: "Cross the Road", icon: Bird },
   { to: "/keno", label: "Keno", icon: Hash },
-  { to: "/lockfruit", label: "Lock Fruit", icon: Cherry },
-  { to: "/gemrush", label: "Gem Rush", icon: Sparkles },
+  { to: "/slots", label: "Slots", icon: Sparkles },
 ];
 
 // Mirrored chat chevron: full square tab on the outside of the rail (`left-full`).

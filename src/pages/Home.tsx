@@ -11,12 +11,14 @@ import { GameCard } from "../components/lobby/GameCard";
 import { GameRow } from "../components/lobby/GameRow";
 import { HomeHero } from "../components/lobby/HomeHero";
 import { PromoRow } from "../components/lobby/PromoRow";
+import { ProviderSlotCard } from "../components/slots/ProviderSlotCard";
 import {
   LOBBY_GAMES,
   PAINTED_IDS,
   SOON_IDS,
   gameById,
 } from "../data/lobbyGames";
+import { PROVIDER_SLOTS } from "../lib/slots";
 import { listRecent } from "../lib/recentGames";
 import { useCatalogModerationStore } from "../store/catalogModerationStore";
 import { useAdminViewStore } from "../store/adminViewStore";
@@ -94,6 +96,12 @@ export function Home() {
               })}
             </div>
           </section>
+
+          <GameRow icon={<Sparkles className="h-4 w-4 text-fuchsia-300" />} title="Slots · Fun play">
+            {PROVIDER_SLOTS.map((slot) => (
+              <ProviderSlotCard key={slot.id} slot={slot} />
+            ))}
+          </GameRow>
 
           <GameRow icon={<Sparkles className="h-4 w-4 text-slate-400" />} title="Coming soon">
             {SOON_IDS.map((id) => {

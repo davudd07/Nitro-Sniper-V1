@@ -2,8 +2,6 @@ export type LobbyGame = {
   id: string;
   name: string;
   image?: string;
-  /** CSS-painted lobby art (no PNG). */
-  cssTile?: "lockfruit" | "gemrush";
   to?: string;
   comingSoon?: boolean;
   isNew?: boolean;
@@ -24,17 +22,16 @@ export const LOBBY_GAMES: LobbyGame[] = [
   { id: "upgrader", name: "Upgrader", image: "/lobby/upgrader.png", to: "/upgrader", painted: true, isNew: true, subtitle: "SeedBET Originals" },
   { id: "crash", name: "Crash", image: "/lobby/crash.png", to: "/crash", painted: true, isNew: true, subtitle: "SeedBET Originals" },
   { id: "keno", name: "Keno", image: "/lobby/keno.png", to: "/keno", painted: true, isNew: true, subtitle: "SeedBET Originals" },
-  { id: "lockfruit", name: "Lock Fruit", to: "/lockfruit", cssTile: "lockfruit", painted: true, isNew: true, subtitle: "Fun spins · Shards" },
-  { id: "gemrush", name: "Gem Rush", to: "/gemrush", cssTile: "gemrush", painted: true, isNew: true, subtitle: "Fun spins · Shards" },
+  { id: "slots", name: "Slots", image: "https://common-static.ppgames.net/game_pic/square/200/vs20olympgate.png", to: "/slots", isNew: true, subtitle: "Pragmatic Play · Fun play" },
   { id: "plinko", name: "Plinko", image: "/lobby/plinko.png", comingSoon: true, painted: true, subtitle: "Coming soon" },
   { id: "roulette", name: "Roulette", image: "/lobby/roulette.png", comingSoon: true, painted: true, subtitle: "Coming soon" },
   { id: "baccarat", name: "Baccarat", image: "/lobby/baccarat.png", comingSoon: true, painted: true, subtitle: "Coming soon" },
 ];
 
 /** Sprite-sheet tiles shown as the homepage grid (sheet order: 4 + 3). */
-export const PAINTED_IDS = ["battles", "cases", "mines", "jackpot", "road", "dice", "blackjack", "coinflip", "upgrader", "crash", "keno", "lockfruit", "gemrush"];
+export const PAINTED_IDS = ["battles", "cases", "mines", "jackpot", "road", "dice", "blackjack", "coinflip", "upgrader", "crash", "keno"];
 
-export const ORIGINAL_IDS = ["mines", "blackjack", "cases", "battles", "jackpot", "coinflip", "upgrader", "dice", "crash", "road", "keno", "lockfruit", "gemrush"];
+export const ORIGINAL_IDS = ["mines", "blackjack", "cases", "battles", "jackpot", "coinflip", "upgrader", "dice", "crash", "road", "keno"];
 export const POPULAR_IDS = ["crash", "road", "battles", "dice", "upgrader", "coinflip", "blackjack", "jackpot", "mines", "cases"];
 export const MORE_PLAYABLE_IDS = ["coinflip", "upgrader", "crash"];
 export const SOON_IDS = ["plinko", "roulette", "baccarat"];
@@ -51,8 +48,7 @@ export const PATH_TO_GAME: Record<string, string> = {
   "/crash": "crash",
   "/road": "road",
   "/keno": "keno",
-  "/lockfruit": "lockfruit",
-  "/gemrush": "gemrush",
+  "/slots": "slots",
 };
 
 export function gameById(id: string): LobbyGame | undefined {

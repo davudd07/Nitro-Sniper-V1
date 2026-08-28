@@ -321,8 +321,10 @@ export function JackpotCircleWheel({
 
         <div
           className={clsx(
-            "absolute z-10 grid place-items-center rounded-full bg-[#070c0d] ring-1 ring-cyan-100/15",
+            "absolute z-10 grid place-items-center rounded-full bg-[#070c0d] ring-1",
             done && "ring-amber-300/45",
+            !done && countdown != null && "ring-red-400/80",
+            !done && countdown == null && "ring-cyan-100/15",
           )}
           style={{ inset: HUB_INSET }}
         >

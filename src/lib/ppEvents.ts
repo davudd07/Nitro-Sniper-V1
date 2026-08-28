@@ -1,8 +1,8 @@
 import { roundWl } from "./money";
 import type { PlayCurrency } from "./playWallet";
 
-/** Public demo dollars → SeedBET ledger. $1.00 in the reels = 100 World Locks (or Shards). */
-export const PP_USD_TO_LEDGER = 100;
+/** In-game credit units settle 1-for-1 on the SeedBET ledger as World Locks (or Shards). */
+export const PP_CREDIT_TO_LEDGER = 1;
 
 const PP_HOST = /(^|\.)pragmaticplay\.net$|(^|\.)ppgames\.net$/i;
 
@@ -16,9 +16,11 @@ export function isPragmaticOrigin(origin: string): boolean {
 
 export function ppCreditsToLedger(credits: number, currency: PlayCurrency): number {
   if (!Number.isFinite(credits) || credits <= 0) return 0;
-  const n = credits * PP_USD_TO_LEDGER;
+  const n = credits * PP_CREDIT_TO_LEDGER;
   if (currency === "shards") return Math.max(0, Math.round(n));
-  return Math.max(0, roundWl(n));
+  const wl = roundWl(n);
+  if (wl <= 0) return 0;
+  return Math.max(1, Math.round(wl));
 }
 
 export type PpRoundMsg =

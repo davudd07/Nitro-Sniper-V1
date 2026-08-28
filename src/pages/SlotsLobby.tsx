@@ -9,7 +9,7 @@ export function SlotsLobby() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-white">Slots</h1>
         <p className="mt-1 max-w-xl text-sm text-slate-400">
-          Spin in the game. Your SeedBET stack moves with the result. Fun play leaves studio credits in the reels.
+          Spin in the game. Credit, bets, and wins are World Locks.
         </p>
       </div>
 

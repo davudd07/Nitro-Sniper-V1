@@ -64,7 +64,7 @@ export function pragmaticDemoUrl(symbol: string): string {
   const params = new URLSearchParams({
     gameSymbol: symbol,
     lang: "en",
-    cur: "USD",
+    cur: "WL",
     jurisdiction: "99",
     websiteUrl: website,
   });

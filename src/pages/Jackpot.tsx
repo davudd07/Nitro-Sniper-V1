@@ -11,6 +11,9 @@ import {
   JACKPOT_HOUSE_EDGE,
   JACKPOT_MAX_BOTS,
   JACKPOT_POTS,
+  clampJackpotBet,
+  potIsUnbounded,
+  potRangeLabel,
   potTotal,
   useJackpotStore,
   youEntry,
@@ -30,27 +33,23 @@ import { usePlayCurrency } from "../lib/playWallet";
 import { useIdentityStore } from "../store/identityStore";
 import { PlayerTag } from "../components/identity/PlayerTag";
 
-function potRangeLabel(id: JackpotPotId, shards: boolean): string {
-  const unit = shards ? "Shards" : "WL";
-  if (id === "small") return `5–1,000 ${unit}`;
-  if (id === "medium") return `1,000–10,000 ${unit}`;
-  if (id === "large") return `10,000–50,000 ${unit}`;
-  return `50,000–1,000,000 ${unit}`;
-}
+const UNLIMITED_SLIDER_MAX = 10_000_000;
 
 function jackpotPresets(id: JackpotPotId): number[] {
   if (id === "small") return [5, 50, 100, 250, 500, 1000];
   if (id === "medium") return [1000, 2500, 5000, 7500, 10_000];
   if (id === "large") return [10_000, 20_000, 35_000, 50_000];
-  return [50_000, 100_000, 250_000, 500_000, 1_000_000];
+  return [50_000, 100_000, 250_000, 1_000_000, 5_000_000, 10_000_000];
 }
 
 export function JackpotPage() {
   const ledger = usePlayCurrency();
   const [potId, setPotId] = useState<JackpotPotId>("small");
   const def = JACKPOT_POTS.find((p) => p.id === potId)!;
+  const unbounded = potIsUnbounded(potId);
   const [amount, setAmount] = useState<number>(def.min);
-  const pot = useJackpotStore((s) => s.tables[ledger][potId]);
+  const tables = useJackpotStore((s) => s.tables[ledger]);
+  const pot = tables[potId];
   const join = useJackpotStore((s) => s.join);
   const callBot = useJackpotStore((s) => s.callBot);
   const beginSpin = useJackpotStore((s) => s.beginSpin);
@@ -58,9 +57,11 @@ export function JackpotPage() {
   const resetPot = useJackpotStore((s) => s.resetPot);
   const creditLedger = useEconomyStore((s) => s.creditLedger);
   const recordRound = useEconomyStore((s) => s.recordRound);
+  const wallet = useEconomyStore((s) => (ledger === "shards" ? s.funCoins : s.balance));
   const push = useToastStore((s) => s.push);
   const play = useFairnessStore((s) => s.play);
   const [now, setNow] = useState(() => Date.now());
+  const [pointerId, setPointerId] = useState<string | null>(null);
   const spinLock = useRef(false);
   const lastBeep = useRef<number | null>(null);
   const avatars = useIdentityStore((s) => s.avatars);
@@ -81,21 +82,38 @@ export function JackpotPage() {
         color: e.color,
         weight: total > 0 ? e.amount / total : 0,
         avatar: avatarFor(e.kind === "you" ? "You" : e.name),
+        kind: e.kind === "you" ? "you" : e.kind === "bot" ? "bot" : "player",
       })),
     [pot.entries, total, avatars, avatarFor],
   );
+  const ranked = useMemo(
+    () => [...pot.entries].sort((a, b) => b.amount - a.amount || a.name.localeCompare(b.name)),
+    [pot.entries],
+  );
+
+  const sliderMax = unbounded ? UNLIMITED_SLIDER_MAX : def.max;
+  const sliderValue = Math.min(sliderMax, Math.max(def.min, amount));
+  const unit = ledger === "shards" ? "Shards" : "WL";
+
+  function setBet(next: number) {
+    setAmount(clampJackpotBet(next, potId));
+  }
 
   function switchPot(id: JackpotPotId) {
     sound.click();
     setPotId(id);
-    const next = JACKPOT_POTS.find((p) => p.id === id)!;
-    setAmount((v) => Math.min(next.max, Math.max(next.min, v)));
+    setAmount((v) => clampJackpotBet(v, id));
   }
 
   function handleJoin() {
-    const bet = Math.round(amount);
-    if (bet < def.min || bet > def.max) {
-      push(`Bet must be ${formatPlayCash(def.min, ledger)}–${formatPlayCash(def.max, ledger)} in this pot.`, "warning");
+    const bet = clampJackpotBet(amount, potId);
+    if (bet < def.min || (Number.isFinite(def.max) && bet > def.max)) {
+      push(
+        unbounded
+          ? `Bet at least ${formatPlayCash(def.min, ledger)} in this pot.`
+          : `Bet must be ${formatPlayCash(def.min, ledger)}–${formatPlayCash(def.max, ledger)} in this pot.`,
+        "warning",
+      );
       return;
     }
     if (!requireAccount()) return;
@@ -169,6 +187,7 @@ export function JackpotPage() {
 
   useEffect(() => {
     spinLock.current = false;
+    setPointerId(null);
   }, [pot.phase, potId]);
 
   function handleFinished() {
@@ -197,57 +216,212 @@ export function JackpotPage() {
     }
   }
 
+  const winner = pot.winnerId ? pot.entries.find((e) => e.id === pot.winnerId) : undefined;
+  const locked = pot.phase === "spinning";
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Jackpot</h1>
-          <p className="mt-1 max-w-xl text-sm text-slate-400">
-            Drop into a pot. Winner takes 91%.
-          </p>
-        </div>
-        <InfoButton title="Jackpot — RTP & House Edge">
-          <StatRow label="House edge" value={formatPercent(JACKPOT_HOUSE_EDGE)} />
-          <StatRow label="Winner payout" value="91% of the pot" />
-          <StatRow label="RTP" value={formatPercent(1 - JACKPOT_HOUSE_EDGE)} />
-          <p>Four independent pots. Bots match your exact bet. The circular wheel is weighted by each player’s share of the pot.</p>
-        </InfoButton>
-      </div>
+    <div className="space-y-5">
+      <div className="grid items-stretch gap-4 lg:grid-cols-[minmax(260px,28%)_minmax(0,1fr)]">
+        <div className="surface flex min-h-0 flex-col p-4 sm:p-5">
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <h1 className="text-lg font-semibold tracking-tight text-white">Jackpot</h1>
+            <InfoButton title="Jackpot — RTP & House Edge">
+              <StatRow label="House edge" value={formatPercent(JACKPOT_HOUSE_EDGE)} />
+              <StatRow label="Winner payout" value="91% of the pot" />
+              <StatRow label="RTP" value={formatPercent(1 - JACKPOT_HOUSE_EDGE)} />
+              <p>Four pots. Unlimited starts at 50,000 with no ceiling. Bots match your bet. The wheel is weighted by each player’s share.</p>
+            </InfoButton>
+          </div>
 
-      <div className="flex flex-wrap gap-2">
-        {JACKPOT_POTS.map((p) => (
-          <button
-            key={p.id}
-            type="button"
-            onClick={() => {
-              if (pot.phase === "spinning") return;
-              switchPot(p.id);
-            }}
-            disabled={pot.phase === "spinning" && p.id !== potId}
-            className={clsx(
-              "rounded-xl border px-4 py-2.5 text-left transition-colors",
-              potId === p.id ? "border-amber-400/50 bg-amber-400/10" : "border-white/10 bg-white/[0.03] hover:bg-white/5",
-              "disabled:cursor-not-allowed disabled:opacity-40",
-            )}
-          >
-            <p className="text-sm font-semibold text-white">{p.label}</p>
-            <p className="text-[11px] text-slate-400">{potRangeLabel(p.id, ledger === "shards")}</p>
-          </button>
-        ))}
-      </div>
+          <div className="mb-4 grid grid-cols-2 gap-1.5">
+            {JACKPOT_POTS.map((p) => {
+              const live = potTotal(tables[p.id].entries);
+              const on = potId === p.id;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => {
+                    if (locked) return;
+                    switchPot(p.id);
+                  }}
+                  disabled={locked && p.id !== potId}
+                  className={clsx(
+                    "rounded-lg px-2.5 py-2 text-left ring-1 transition-colors disabled:cursor-not-allowed disabled:opacity-40",
+                    on ? "bg-cyan-400/15 ring-cyan-300/55" : "bg-bg-900 ring-white/10 hover:bg-bg-700",
+                  )}
+                >
+                  <p className="text-xs font-extrabold uppercase tracking-wide text-white">{p.label}</p>
+                  <p className="mt-0.5 text-[10px] text-slate-400">{potRangeLabel(p.id, unit)}</p>
+                  {live > 0 ? (
+                    <p className="mt-1 font-mono text-[10px] text-cyan-200">
+                      <CashAmount wl={live} currency={ledger} iconClassName="h-2.5 w-2.5" />
+                    </p>
+                  ) : null}
+                </button>
+              );
+            })}
+          </div>
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="relative surface space-y-6 p-5 pb-11">
-          <WinLeaderStageMark game="jackpot" />
-          <div className="relative">
-            <AnimatedPot value={total} label={`${def.label} pot`} size="lg" currency={ledger} />
-            <p className="mt-1 text-center text-xs text-slate-500">Pays {formatPlayCash(payout, ledger)} after house edge</p>
-            {countdownLeft != null && pot.phase === "open" && (
-              <div className="absolute right-0 top-0 text-right">
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-fuchsia-300">Starts in</p>
-                <p className="font-mono text-5xl font-black text-white tabular-nums">{countdownLeft}</p>
+          {pot.phase === "open" && !you && (
+            <>
+              <label className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
+                Your bet{unbounded ? " · no max" : ""}
+              </label>
+              <div className="mb-3 flex items-center gap-2">
+                <LockAmountInput
+                  valueWl={amount}
+                  onChangeWl={setBet}
+                  minWl={def.min}
+                  maxWl={def.max}
+                  className="min-w-0 flex-1"
+                  inputClassName="w-full rounded-lg bg-bg-900 px-3 py-2.5 font-mono text-white outline-none ring-1 ring-white/10 focus:ring-cyan-400/40"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.click();
+                    setBet(Math.floor(amount / 2));
+                  }}
+                  className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
+                >
+                  ½
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    sound.click();
+                    setBet(amount * 2);
+                  }}
+                  className="rounded-lg bg-bg-900 px-2.5 py-2.5 text-xs font-extrabold text-slate-200 ring-1 ring-white/10 hover:bg-bg-700"
+                >
+                  2×
+                </button>
               </div>
-            )}
+              <input
+                type="range"
+                min={def.min}
+                max={sliderMax}
+                value={sliderValue}
+                onChange={(e) => setBet(Number(e.target.value))}
+                className="jackpot-bet-slider mb-3 w-full"
+              />
+              {unbounded && amount > UNLIMITED_SLIDER_MAX ? (
+                <p className="mb-2 text-[10px] text-slate-500">Slider caps at 10M — type any amount above that.</p>
+              ) : null}
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {jackpotPresets(potId).map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => {
+                      sound.click();
+                      setBet(v);
+                    }}
+                    className={clsx(
+                      "rounded-md px-2 py-1 text-[11px] font-semibold ring-1 hover:bg-white/5",
+                      amount === v ? "bg-cyan-400/15 text-cyan-100 ring-cyan-300/40" : "text-slate-300 ring-white/10",
+                    )}
+                  >
+                    <CashAmount wl={v} currency={ledger} iconClassName="h-3 w-3" />
+                  </button>
+                ))}
+                {unbounded && wallet >= def.min ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      sound.click();
+                      setBet(wallet);
+                    }}
+                    className="rounded-md px-2 py-1 text-[11px] font-extrabold uppercase tracking-wide text-amber-100 ring-1 ring-amber-300/35 hover:bg-amber-400/10"
+                  >
+                    Max
+                  </button>
+                ) : null}
+              </div>
+              <button type="button" onClick={handleJoin} className="btn-cyan w-full py-3 text-sm font-extrabold uppercase tracking-wide">
+                Join · <CashAmount wl={clampJackpotBet(amount, potId)} currency={ledger} iconClassName="h-4 w-4" />
+              </button>
+            </>
+          )}
+
+          {pot.phase === "open" && you && (
+            <div className="space-y-3">
+              <p className="text-sm text-slate-300">
+                You’re in for{" "}
+                <CashAmount
+                  wl={you.amount}
+                  currency={ledger}
+                  className="font-semibold text-white"
+                  iconClassName="h-3.5 w-3.5"
+                />
+                .
+              </p>
+              <button
+                type="button"
+                onClick={handleCallBot}
+                disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
+                className="flex w-full items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold text-white ring-1 ring-white/15 hover:bg-white/5 disabled:opacity-40"
+              >
+                <Bot className="h-4 w-4" /> Call Bot
+                <span className="text-xs font-medium text-slate-400">
+                  ({botCount}/{JACKPOT_MAX_BOTS})
+                </span>
+              </button>
+              <p className="text-center text-[11px] text-slate-500">
+                {countdownLeft != null
+                  ? `More players can still join. Spins in ${countdownLeft}s.`
+                  : "Call a bot (or wait). Countdown starts at 2+ players."}
+              </p>
+            </div>
+          )}
+
+          {pot.phase === "spinning" && (
+            <p className="py-4 text-center text-sm text-slate-300">
+              {pointerId ? (
+                <>
+                  Pointer on{" "}
+                  <span className="font-semibold text-white">
+                    {pot.entries.find((e) => e.id === pointerId)?.name ?? "…"}
+                  </span>
+                </>
+              ) : (
+                "Wheel is spinning…"
+              )}
+            </p>
+          )}
+
+          {pot.phase === "finished" && (
+            <div className="space-y-3">
+              {winner ? (
+                <p className="text-center text-sm text-slate-300">
+                  <span className="font-semibold text-amber-200">{winner.name}</span> took{" "}
+                  <CashAmount wl={payout} currency={ledger} className="font-semibold text-white" iconClassName="h-3.5 w-3.5" />
+                </p>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  sound.click();
+                  resetPot(potId);
+                }}
+                className="btn-cyan w-full py-3 text-sm font-extrabold uppercase tracking-wide"
+              >
+                New round
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="surface relative flex min-h-0 flex-col overflow-hidden p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+            <AnimatedPot value={total} label={`${def.label} pot`} size="lg" currency={ledger} />
+            <div className="text-right">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">Pays</p>
+              <p className="font-mono text-sm text-cyan-200">
+                <CashAmount wl={payout} currency={ledger} iconClassName="h-3.5 w-3.5" />
+              </p>
+            </div>
           </div>
 
           <JackpotCircleWheel
@@ -256,133 +430,64 @@ export function JackpotPage() {
             winnerId={pot.winnerId}
             shouldSpin={pot.phase === "spinning"}
             countdown={pot.phase === "open" ? countdownLeft : null}
+            countdownEndsAt={pot.phase === "open" ? pot.countdownEndsAt : null}
             onFinished={handleFinished}
+            onPointerChange={setPointerId}
           />
 
-          <div className="space-y-2 pr-24">
-            {pot.entries.length === 0 ? (
-              <p className="text-center text-sm text-slate-500">No players yet. Join to open this pot.</p>
+          <ul className="mt-5 space-y-1.5">
+            {ranked.length === 0 ? (
+              <li className="py-4 text-center text-xs text-slate-500">No players yet. Join to open this pot.</li>
             ) : (
-              pot.entries.map((e) => {
+              ranked.map((e) => {
                 const pct = total > 0 ? (e.amount / total) * 100 : 0;
+                const hot = pointerId === e.id || (pot.phase === "finished" && pot.winnerId === e.id);
+                const won = pot.phase === "finished" && pot.winnerId === e.id;
                 return (
-                  <div key={e.id} className="flex items-center gap-3 rounded-xl bg-black/25 px-3 py-2">
+                  <li
+                    key={e.id}
+                    className={clsx(
+                      "flex items-center gap-3 rounded-lg px-2.5 py-2 ring-1 transition-colors",
+                      won
+                        ? "bg-amber-400/10 ring-amber-300/35"
+                        : hot
+                          ? "bg-white/[0.06] ring-white/20"
+                          : e.kind === "you"
+                            ? "bg-cyan-400/8 ring-cyan-400/20"
+                            : "bg-black/20 ring-white/5",
+                    )}
+                  >
+                    <span className="h-8 w-1 shrink-0 rounded-full" style={{ background: e.color }} />
                     <PlayerTag
                       name={e.name}
                       you={e.kind === "you"}
                       color={e.color}
-                      size={28}
+                      size={24}
                       kind={e.kind === "you" ? "you" : e.kind === "bot" ? "bot" : "player"}
                       className="min-w-0 flex-1"
                       nameClassName="text-sm font-medium text-white"
                     />
                     {e.kind === "bot" ? <span className="shrink-0 text-[10px] uppercase text-slate-500">bot</span> : null}
-                    <p className="font-mono text-sm text-slate-300">
-                      <CashAmount wl={e.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
-                    </p>
-                    <p className="w-14 text-right font-mono text-xs text-amber-200">{pct.toFixed(1)}%</p>
-                  </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-mono text-sm text-slate-200">
+                        <CashAmount wl={e.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
+                      </p>
+                      <p className="font-mono text-[10px] text-slate-500">{pct.toFixed(1)}%</p>
+                    </div>
+                  </li>
                 );
               })
             )}
+          </ul>
+
+          <div className="mt-4 flex items-center justify-between gap-3 border-t border-white/8 pt-3">
+            <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-slate-500">SeedBET Originals</p>
+            <WinLeaderStageMark game="jackpot" inline />
           </div>
-        </div>
-
-        <div className="space-y-4">
-          <div className="surface space-y-4 p-4">
-            {pot.phase === "open" && !you && (
-              <>
-                <label className="block">
-                  <span className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your bet</span>
-                  <LockAmountInput
-                    valueWl={amount}
-                    onChangeWl={(wl) => setAmount(Math.min(def.max, Math.max(def.min, wl)))}
-                    minWl={def.min}
-                    className="mt-1.5"
-                    inputClassName="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-mono text-white outline-none focus:border-amber-400/50"
-                  />
-                </label>
-                <input
-                  type="range"
-                  min={def.min}
-                  max={def.max}
-                  value={Math.min(def.max, Math.max(def.min, amount))}
-                  onChange={(e) => setAmount(Number(e.target.value))}
-                  className="w-full accent-amber-400"
-                />
-                <div className="flex flex-wrap gap-2">
-                  {jackpotPresets(potId).map((v) => (
-                    <button
-                      key={v}
-                      type="button"
-                      onClick={() => {
-                        sound.click();
-                        setAmount(v);
-                      }}
-                      className="flex-1 rounded-lg border border-white/10 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/5"
-                    >
-                      <CashAmount wl={v} currency={ledger} iconClassName="h-3 w-3" />
-                    </button>
-                  ))}
-                </div>
-                <button type="button" onClick={handleJoin} className="btn-primary w-full py-2.5">
-                  Join · <CashAmount wl={Math.round(amount)} currency={ledger} iconClassName="h-4 w-4" />
-                </button>
-              </>
-            )}
-
-            {pot.phase === "open" && you && (
-              <>
-                <p className="text-sm text-slate-300">
-                  You’re in for{" "}
-                  <CashAmount wl={you.amount} currency={ledger} className="font-semibold text-white" iconClassName="h-3.5 w-3.5" />.
-                  Call up to {JACKPOT_MAX_BOTS} bots — they’ll match that exact bet.
-                </p>
-                <button
-                  type="button"
-                  onClick={handleCallBot}
-                  disabled={pot.entries.length >= 10 || botCount >= JACKPOT_MAX_BOTS}
-                  className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-white/15 py-2.5 text-sm font-semibold text-white hover:bg-white/5 disabled:opacity-40"
-                >
-                  <Bot className="h-4 w-4" /> Call Bot · <CashAmount wl={you.amount} currency={ledger} iconClassName="h-3.5 w-3.5" />
-                  <span className="text-xs font-medium text-slate-400">
-                    ({botCount}/{JACKPOT_MAX_BOTS})
-                  </span>
-                </button>
-                {countdownLeft != null ? (
-                  <p className="text-center text-sm text-slate-300">
-                    Wheel spins in{" "}
-                    <span className="font-mono font-bold text-white">{countdownLeft}s</span>
-                    . More players can still join.
-                  </p>
-                ) : (
-                  <p className="text-center text-[11px] text-slate-500">
-                    Call a bot (or wait for a second player). A 45s countdown starts at 2+ players.
-                  </p>
-                )}
-              </>
-            )}
-
-            {pot.phase === "spinning" && (
-              <p className="py-6 text-center text-sm font-medium text-amber-200">Wheel is spinning…</p>
-            )}
-
-            {pot.phase === "finished" && (
-              <button
-                type="button"
-                onClick={() => {
-                  sound.click();
-                  resetPot(potId);
-                }}
-                className="btn-primary w-full py-2.5"
-              >
-                New round
-              </button>
-            )}
-          </div>
-          <ProvablyFairPanel />
         </div>
       </div>
+
+      <ProvablyFairPanel />
     </div>
   );
 }

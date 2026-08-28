@@ -10,6 +10,7 @@ export function LockAmountInput({
   onChangeWl,
   disabled,
   minWl = 0,
+  maxWl = 1_000_000_000,
   className,
   inputClassName,
   showIcon = true,
@@ -18,6 +19,8 @@ export function LockAmountInput({
   onChangeWl: (wl: number) => void;
   disabled?: boolean;
   minWl?: number;
+  /** Omit or pass Infinity for no ceiling besides JS’s safe integer. */
+  maxWl?: number;
   className?: string;
   inputClassName?: string;
   showIcon?: boolean;
@@ -43,7 +46,8 @@ export function LockAmountInput({
             return;
           }
           const next = shards ? Math.round(n) : displayToWorldLocks(n, unit);
-          onChangeWl(Number.isFinite(next) && next >= 0 ? Math.min(next, 1_000_000_000) : 0);
+          const cap = Number.isFinite(maxWl) ? maxWl : Number.MAX_SAFE_INTEGER;
+          onChangeWl(Number.isFinite(next) && next >= 0 ? Math.min(next, cap) : 0);
         }}
         className={inputClassName}
       />

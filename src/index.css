@@ -419,6 +419,35 @@ body {
   cursor: grab;
 }
 
+.jackpot-bet-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 6px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, #134e4a, #22d3ee);
+  outline: none;
+}
+.jackpot-bet-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  border: 2px solid #ecfeff;
+  background: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+  cursor: grab;
+}
+.jackpot-bet-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 2px solid #ecfeff;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 8px rgba(34, 211, 238, 0.45);
+  cursor: grab;
+}
+
 .lobby-tile-lift {
   transition: transform 300ms ease, filter 300ms ease;
 }

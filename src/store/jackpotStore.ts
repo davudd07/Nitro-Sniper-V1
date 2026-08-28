@@ -23,10 +23,31 @@ export const JACKPOT_POTS = [
   { id: "small", label: "Small", min: 5, max: 1000, blurb: "5–1,000 WL" },
   { id: "medium", label: "Medium", min: 1000, max: 10_000, blurb: "1,000–10,000 WL" },
   { id: "large", label: "Large", min: 10_000, max: 50_000, blurb: "10,000–50,000 WL" },
-  { id: "unlimited", label: "Unlimited", min: 50_000, max: 1_000_000, blurb: "50,000–1,000,000 WL" },
+  { id: "unlimited", label: "Unlimited", min: 50_000, max: Number.POSITIVE_INFINITY, blurb: "50,000+ WL" },
 ] as const;
 
 export type JackpotPotId = (typeof JACKPOT_POTS)[number]["id"];
+
+export function potIsUnbounded(id: JackpotPotId): boolean {
+  const def = JACKPOT_POTS.find((p) => p.id === id);
+  return def != null && !Number.isFinite(def.max);
+}
+
+export function potRangeLabel(id: JackpotPotId, unit: string): string {
+  if (id === "small") return `5–1,000 ${unit}`;
+  if (id === "medium") return `1,000–10,000 ${unit}`;
+  if (id === "large") return `10,000–50,000 ${unit}`;
+  return `50,000+ ${unit}`;
+}
+
+export function clampJackpotBet(amount: number, potId: JackpotPotId): number {
+  const def = JACKPOT_POTS.find((p) => p.id === potId);
+  if (!def) return 0;
+  const n = Math.round(amount);
+  if (!Number.isFinite(n) || n < def.min) return def.min;
+  if (Number.isFinite(def.max) && n > def.max) return def.max;
+  return n;
+}
 
 export interface JackpotEntry {
   id: string;
@@ -108,7 +129,8 @@ export const useJackpotStore = create<JackpotStore>((set, get) => ({
     if (!pot || pot.phase !== "open") return false;
     if (youEntry(pot.entries)) return false;
     const def = JACKPOT_POTS.find((p) => p.id === potId)!;
-    if (amount < def.min || amount > def.max) return false;
+    if (!Number.isFinite(amount) || amount < def.min) return false;
+    if (Number.isFinite(def.max) && amount > def.max) return false;
     const entry: JackpotEntry = {
       id: shortId("jp"),
       name: "You",

@@ -21,7 +21,7 @@ export function ProviderSlotCard({ slot }: { slot: ProviderSlot }) {
         <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.16em] text-white/55">{slot.provider}</p>
       </div>
       <span className="absolute left-2 top-2 rounded-full bg-fuchsia-500 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-white shadow">
-        Fun
+        Play
       </span>
     </Link>
   );

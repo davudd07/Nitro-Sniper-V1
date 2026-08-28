@@ -12,6 +12,7 @@ export const HOUSE_EDGE = {
   dice: 0.04,
   crash: 0.04,
   road: 0.04,
+  slots: 0.04,
   /** Player-to-player and rain tips count as a World Lock wager. */
   tips: 0.04,
 } as const;

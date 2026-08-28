@@ -25,7 +25,7 @@ export function LockAmountInput({
   className?: string;
   inputClassName?: string;
   showIcon?: boolean;
-  /** Force a ledger. Slots always stake Shards even if the header is on locks. */
+  /** Force a ledger instead of the header wallet. */
   currency?: PlayCurrency;
 }) {
   const unit = useSettingsStore((s) => s.lockUnit);

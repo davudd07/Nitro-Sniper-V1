@@ -16,6 +16,7 @@ export const ACTIVITY_GAMES = [
   "keno",
   "crash",
   "road",
+  "slots",
 ] as const;
 
 export type ActivityGame = (typeof ACTIVITY_GAMES)[number];
@@ -32,6 +33,7 @@ export const ACTIVITY_GAME_LABELS: Record<ActivityGame, string> = {
   keno: "Keno",
   crash: "Crash",
   road: "Cross the Road",
+  slots: "Slots",
 };
 
 export interface PlayRecord {

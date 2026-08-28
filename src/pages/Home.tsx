@@ -97,7 +97,7 @@ export function Home() {
             </div>
           </section>
 
-          <GameRow icon={<Sparkles className="h-4 w-4 text-fuchsia-300" />} title="Slots · Fun play">
+          <GameRow icon={<Sparkles className="h-4 w-4 text-fuchsia-300" />} title="Slots">
             {PROVIDER_SLOTS.map((slot) => (
               <ProviderSlotCard key={slot.id} slot={slot} />
             ))}

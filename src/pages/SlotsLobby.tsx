@@ -9,7 +9,7 @@ export function SlotsLobby() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-white">Slots</h1>
         <p className="mt-1 max-w-xl text-sm text-slate-400">
-          Pragmatic Play fun demos. Credits stay in the game — nothing hits your World Lock or Shard wallet.
+          Pragmatic Play. Fun play uses studio credits. Stake World Locks, or Shards if you have them.
         </p>
       </div>
 

@@ -422,6 +422,59 @@ body {
 .jackpot-bet-slider {
   -webkit-appearance: none;
   appearance: none;
+  background: transparent;
+  height: 32px;
+  outline: none;
+  cursor: grab;
+}
+.jackpot-bet-slider::-webkit-slider-runnable-track {
+  height: 8px;
+  background: transparent;
+}
+.jackpot-bet-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  margin-top: -5px;
+  border-radius: 999px;
+  border: 2px solid #ecfeff;
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+}
+.jackpot-bet-slider:active {
+  cursor: grabbing;
+}
+.jackpot-bet-slider::-moz-range-track {
+  height: 8px;
+  background: transparent;
+  border: none;
+}
+.jackpot-bet-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #ecfeff;
+  border-radius: 999px;
+  background: #22d3ee;
+  box-shadow: 0 0 10px rgba(34, 211, 238, 0.55);
+}
+
+@keyframes jackpot-wait-spin {
+  to { transform: rotate(360deg); }
+}
+.jackpot-wait-spin {
+  animation: jackpot-wait-spin 18s linear infinite;
+}
+.jackpot-win-rim {
+  box-shadow:
+    0 10px 36px rgba(0, 0, 0, 0.45),
+    0 0 28px rgba(251, 191, 36, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.jackpot-bet-slider {
+  -webkit-appearance: none;
+  appearance: none;
   height: 6px;
   border-radius: 999px;
   background: linear-gradient(90deg, #134e4a, #22d3ee);

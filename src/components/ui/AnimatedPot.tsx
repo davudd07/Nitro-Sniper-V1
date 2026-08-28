@@ -14,7 +14,7 @@ export function AnimatedPot({
 }: {
   value: number;
   label?: string;
-  size?: "md" | "lg";
+  size?: "md" | "lg" | "hub";
   currency?: PlayCurrency;
 }) {
   const [shown, setShown] = useState(value);
@@ -46,10 +46,19 @@ export function AnimatedPot({
     };
   }, [value]);
 
+  const hub = size === "hub";
+
   return (
     <div className="text-center">
-      <p className="flex items-center justify-center gap-1 text-[10px] font-bold uppercase tracking-[0.22em] text-amber-300">
-        <Coins className={size === "lg" ? "h-4 w-4" : "h-3.5 w-3.5"} /> {label}
+      <p
+        className={clsx(
+          "flex items-center justify-center gap-1 font-bold uppercase",
+          hub
+            ? "text-[9px] tracking-[0.16em] text-cyan-300/80"
+            : "text-[10px] tracking-[0.22em] text-amber-300",
+        )}
+      >
+        <Coins className={size === "lg" ? "h-4 w-4" : hub ? "h-3 w-3" : "h-3.5 w-3.5"} /> {label}
       </p>
       <motion.div
         key={pulse}
@@ -57,14 +66,18 @@ export function AnimatedPot({
         animate={{ scale: 1 }}
         transition={{ type: "spring", stiffness: 520, damping: 22 }}
         className={clsx(
-          "inline-flex origin-center items-center justify-center font-black tracking-tight text-white drop-shadow-[0_0_16px_rgba(251,191,36,0.35)]",
-          size === "lg" ? "text-4xl sm:text-5xl" : "text-2xl sm:text-3xl",
+          "inline-flex origin-center items-center justify-center font-black tracking-tight text-white",
+          hub
+            ? "text-xl drop-shadow-[0_0_10px_rgba(251,191,36,0.22)] sm:text-2xl"
+            : size === "lg"
+              ? "text-4xl drop-shadow-[0_0_16px_rgba(251,191,36,0.35)] sm:text-5xl"
+              : "text-2xl drop-shadow-[0_0_16px_rgba(251,191,36,0.35)] sm:text-3xl",
         )}
       >
         <CashAmount
           wl={shown}
           currency={currency}
-          iconClassName={size === "lg" ? "h-8 w-8 sm:h-10 sm:w-10" : "h-6 w-6"}
+          iconClassName={size === "lg" ? "h-8 w-8 sm:h-10 sm:w-10" : hub ? "h-5 w-5" : "h-6 w-6"}
         />
       </motion.div>
     </div>

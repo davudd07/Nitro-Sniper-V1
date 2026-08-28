@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { clsx } from "clsx";
 import { longBrake } from "../../lib/easing";
 import { sound } from "../../lib/sound";
-import { JACKPOT_COUNTDOWN_MS } from "../../store/jackpotStore";
 import type { JackpotTicket } from "../battles/JackpotWheel";
 import { PlayerAvatar } from "../identity/PlayerAvatar";
+import { AnimatedPot } from "../ui/AnimatedPot";
+import type { PlayCurrency } from "../../lib/playWallet";
 
 const DURATION_MS = 12000;
 const EXTRA_SPINS = 12;
-const HUB_INSET = "22%";
+const AVATAR_MIN_SWEEP = 16;
+const HUB_INSET = "26%";
 
 export function JackpotCircleWheel({
   tickets,
@@ -16,37 +18,44 @@ export function JackpotCircleWheel({
   winnerId,
   shouldSpin = true,
   countdown = null,
-  countdownEndsAt = null,
-  onFinished,
+  countdownProgress = null,
+  potValue,
+  potLabel,
+  currency,
+  pointerName = null,
   onPointerChange,
+  onFinished,
 }: {
   tickets: JackpotTicket[];
   spinToken: number;
   winnerId: string | null;
   shouldSpin?: boolean;
   countdown?: number | null;
-  countdownEndsAt?: number | null;
+  /** Remaining countdown 0–1, for the hub ring. */
+  countdownProgress?: number | null;
+  potValue: number;
+  potLabel: string;
+  currency?: PlayCurrency;
+  pointerName?: string | null;
+  onPointerChange?: (info: { playerId: string; name: string } | null) => void;
   onFinished?: () => void;
-  onPointerChange?: (playerId: string | null) => void;
 }) {
   const [done, setDone] = useState(false);
-  const [hotIndex, setHotIndex] = useState(-1);
-  const [ring, setRing] = useState(1);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastSliceRef = useRef(-1);
   const wheelRef = useRef<HTMLDivElement>(null);
   const onPointerRef = useRef(onPointerChange);
   onPointerRef.current = onPointerChange;
+  const pointerId = useId().replace(/:/g, "");
 
   const slices = buildSlices(tickets);
-  const spinning = spinToken > 0 && shouldSpin && !done;
-  const hot = hotIndex >= 0 ? slices[hotIndex] : undefined;
-  const hotColor = hot?.ticket.color ?? "#22d3ee";
+  const empty = slices.length === 0;
 
   useEffect(() => {
     if (spinToken === 0) {
       setDone(false);
-      setHotIndex(-1);
+      setActiveIndex(null);
       lastSliceRef.current = -1;
       onPointerRef.current?.(null);
       if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
@@ -58,14 +67,21 @@ export function JackpotCircleWheel({
 
     const winner = slices.find((s) => s.ticket.playerId === winnerId);
     if (!winner) return;
-    const winnerSlice = winner;
 
-    const jitter = (Math.random() - 0.5) * winnerSlice.sweep * 0.55;
-    const winnerMid = winnerSlice.start + winnerSlice.sweep / 2;
+    const jitter = (Math.random() - 0.5) * winner.sweep * 0.55;
+    const winnerMid = winner.start + winner.sweep / 2;
+    // Arrow sits at 0deg (top). Rotate clockwise so winnerMid lands under it.
     const target = EXTRA_SPINS * 360 + (360 - winnerMid) + jitter;
 
     const start = performance.now();
     if (wheelRef.current) wheelRef.current.style.transform = "rotate(0deg)";
+
+    const opening = sliceAtTop(slices, 0);
+    if (opening) {
+      lastSliceRef.current = opening.index;
+      setActiveIndex(opening.index);
+      onPointerRef.current?.({ playerId: opening.ticket.playerId, name: opening.ticket.name });
+    }
 
     function frame(now: number) {
       const t = Math.min(1, (now - start) / DURATION_MS);
@@ -76,8 +92,8 @@ export function JackpotCircleWheel({
       const atTop = sliceAtTop(slices, deg);
       if (atTop && atTop.index !== lastSliceRef.current) {
         lastSliceRef.current = atTop.index;
-        setHotIndex(atTop.index);
-        onPointerRef.current?.(atTop.ticket.playerId);
+        setActiveIndex(atTop.index);
+        onPointerRef.current?.({ playerId: atTop.ticket.playerId, name: atTop.ticket.name });
         if (t < 1) sound.jackpotSpin();
       }
 
@@ -85,9 +101,12 @@ export function JackpotCircleWheel({
         rafRef.current = requestAnimationFrame(frame);
       } else {
         if (wheelRef.current) wheelRef.current.style.transform = `rotate(${target}deg)`;
+        const landed = slices.find((s) => s.ticket.playerId === winnerId) ?? atTop;
+        if (landed) {
+          setActiveIndex(landed.index);
+          onPointerRef.current?.({ playerId: landed.ticket.playerId, name: landed.ticket.name });
+        }
         setDone(true);
-        setHotIndex(winnerSlice.index);
-        onPointerRef.current?.(winnerSlice.ticket.playerId);
         sound.jackpotWin();
         onFinished?.();
       }
@@ -100,141 +119,196 @@ export function JackpotCircleWheel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [spinToken]);
 
-  useEffect(() => {
-    if (countdownEndsAt == null) {
-      setRing(1);
-      return;
-    }
-    const id = window.setInterval(() => {
-      const left = countdownEndsAt - Date.now();
-      setRing(Math.max(0, Math.min(1, left / JACKPOT_COUNTDOWN_MS)));
-    }, 80);
-    return () => window.clearInterval(id);
-  }, [countdownEndsAt]);
-
   const gradient = conicFromSlices(slices);
-  const winnerName = done && winnerId ? tickets.find((t) => t.playerId === winnerId)?.name : null;
-  const pointerName = spinning && hot ? hot.ticket.name : null;
-  const circumference = 2 * Math.PI * 46;
+  const winnerTicket = done && winnerId ? tickets.find((t) => t.playerId === winnerId) : null;
+  const winnerName = winnerTicket?.name ?? null;
+  const highlight = done
+    ? slices.find((s) => s.ticket.playerId === winnerId)
+    : activeIndex != null
+      ? slices[activeIndex]
+      : null;
 
   return (
-    <div className="relative mx-auto w-full max-w-[22rem] sm:max-w-md">
-      <div className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2" style={{ top: -6 }} aria-hidden>
-        <svg width="22" height="16" viewBox="0 0 22 16" className="drop-shadow-[0_2px_6px_rgba(0,0,0,0.65)]">
-          <polygon points="11,16 0,0 22,0" fill="#ecfeff" />
-          <polygon points="11,13 4,2 18,2" fill="#22d3ee" />
+    <div className="relative mx-auto w-full max-w-md lg:max-w-lg">
+      <div
+        className="pointer-events-none absolute left-1/2 z-30 -translate-x-1/2"
+        style={{ top: -4 }}
+        aria-hidden
+      >
+        <svg width="30" height="26" viewBox="0 0 30 26">
+          <defs>
+            <linearGradient id={`${pointerId}-ptr`} x1="0" x2="0" y1="0" y2="1">
+              <stop offset="0%" stopColor="#ecfeff" />
+              <stop offset="42%" stopColor="#67e8f9" />
+              <stop offset="100%" stopColor="#0e7490" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M15 24.5 L3.2 3.8 C9.5 7.2 15 8.4 26.8 3.8 Z"
+            fill={`url(#${pointerId}-ptr)`}
+            stroke="#083344"
+            strokeWidth="1.15"
+            strokeLinejoin="round"
+          />
         </svg>
       </div>
 
-      <div className="relative mx-auto aspect-square w-full">
-        {countdownEndsAt != null && countdown != null && countdown > 0 ? (
-          <svg className="pointer-events-none absolute inset-[-8px] z-20 -rotate-90" viewBox="0 0 100 100" aria-hidden>
-            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(34,211,238,0.12)" strokeWidth="2.5" />
+      <div
+        className={clsx(
+          "relative mx-auto aspect-square w-full rounded-full p-[7px]",
+          done && "jackpot-win-rim",
+        )}
+        style={{
+          background:
+            "linear-gradient(155deg, #ecfeff 0%, #67e8f9 18%, #155e75 48%, #a5f3fc 72%, #083344 100%)",
+          boxShadow: done
+            ? "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(251,191,36,0.38), inset 0 1px 0 rgba(255,255,255,0.45)"
+            : highlight && spinToken > 0
+              ? `0 10px 36px rgba(0,0,0,0.45), 0 0 26px ${highlight.ticket.color}55, inset 0 1px 0 rgba(255,255,255,0.45)`
+              : "0 10px 36px rgba(0,0,0,0.45), 0 0 28px rgba(34,211,238,0.16), inset 0 1px 0 rgba(255,255,255,0.45)",
+        }}
+      >
+        <div className="relative h-full w-full overflow-hidden rounded-full bg-[#0b1112] shadow-[inset_0_0_18px_rgba(0,0,0,0.55)]">
+          <div ref={wheelRef} className="absolute inset-0" style={{ willChange: "transform" }}>
+            <div
+              className="absolute inset-0 rounded-full"
+              style={
+                empty
+                  ? {
+                      background:
+                        "radial-gradient(circle at 50% 42%, rgba(34,211,238,0.10) 0%, rgba(12,18,20,0.92) 58%, #070a0a 100%)",
+                    }
+                  : { background: `conic-gradient(from 0deg, ${gradient})` }
+              }
+            />
+            {empty ? (
+              <div
+                className="jackpot-wait-spin absolute inset-[9%] rounded-full border-2 border-dashed border-cyan-400/25"
+                aria-hidden
+              />
+            ) : null}
+            {highlight && !empty ? (
+              <div
+                className="pointer-events-none absolute inset-0 rounded-full"
+                style={{
+                  background: `conic-gradient(from ${highlight.start}deg, ${
+                    done ? "rgba(251,191,36,0.32)" : "rgba(255,255,255,0.26)"
+                  } 0deg ${highlight.sweep}deg, transparent ${highlight.sweep}deg 360deg)`,
+                }}
+              />
+            ) : null}
+            {slices.length >= 2
+              ? slices.map((s) => (
+                  <div
+                    key={`sep-${s.ticket.playerId}-${s.index}`}
+                    className="pointer-events-none absolute inset-0"
+                    style={{ transform: `rotate(${s.start}deg)` }}
+                    aria-hidden
+                  >
+                    <div
+                      className="absolute left-1/2 w-px -translate-x-1/2 bg-black/50"
+                      style={{
+                        top: "2.2%",
+                        height: "22.5%",
+                        boxShadow: "1px 0 0 rgba(255,255,255,0.12)",
+                      }}
+                    />
+                  </div>
+                ))
+              : null}
+            {slices.map((s) => {
+              if (s.sweep < AVATAR_MIN_SWEEP) return null;
+              const mid = s.start + s.sweep / 2;
+              const rad = (mid * Math.PI) / 180;
+              const r = 38;
+              const left = 50 + r * Math.sin(rad);
+              const top = 50 - r * Math.cos(rad);
+              const size = s.sweep < 22 ? 22 : s.sweep < 40 ? 28 : 34;
+              const kind = s.ticket.kind ?? (s.ticket.name === "You" ? "you" : "player");
+              return (
+                <div
+                  key={`${s.ticket.playerId}-${s.index}`}
+                  className="pointer-events-none absolute z-10"
+                  style={{
+                    left: `${left}%`,
+                    top: `${top}%`,
+                    transform: "translate(-50%, -50%)",
+                  }}
+                >
+                  <span
+                    className="inline-block"
+                    style={{
+                      transform: `scale(${highlight?.index === s.index && spinToken > 0 && !done ? 1.12 : 1})`,
+                      filter: highlight?.index === s.index && spinToken > 0 ? "brightness(1.15)" : undefined,
+                    }}
+                  >
+                    <PlayerAvatar
+                      src={s.ticket.avatar}
+                      name={s.ticket.name}
+                      color={s.ticket.color}
+                      size={size}
+                      kind={kind}
+                    />
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {countdownProgress != null && countdown != null ? (
+          <svg
+            className="pointer-events-none absolute inset-[23%] -rotate-90"
+            viewBox="0 0 100 100"
+            aria-hidden
+          >
+            <circle cx="50" cy="50" r="46" fill="none" stroke="rgba(34,211,238,0.12)" strokeWidth="3.2" />
             <circle
               cx="50"
               cy="50"
               r="46"
               fill="none"
               stroke="#22d3ee"
-              strokeWidth="2.5"
+              strokeWidth="3.2"
               strokeLinecap="round"
-              strokeDasharray={circumference}
-              strokeDashoffset={circumference * (1 - ring)}
-              className="transition-[stroke-dashoffset] duration-75 ease-linear"
+              strokeDasharray={2 * Math.PI * 46}
+              strokeDashoffset={2 * Math.PI * 46 * (1 - countdownProgress)}
             />
           </svg>
         ) : null}
 
         <div
           className={clsx(
-            "absolute inset-0 rounded-full",
-            done ? "ring-[3px] ring-amber-300/70" : "ring-[3px] ring-cyan-300/25",
-          )}
-          style={
-            spinning
-              ? { boxShadow: `0 0 0 1px ${hotColor}55, 0 0 28px ${hotColor}33` }
-              : done
-                ? { boxShadow: "0 0 36px rgba(251,191,36,0.28)" }
-                : { boxShadow: "0 0 28px rgba(0,0,0,0.45)" }
-          }
-        />
-
-        <div ref={wheelRef} className="absolute inset-[5px] rounded-full" style={{ willChange: "transform" }}>
-          <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background: slices.length ? `conic-gradient(from 0deg, ${gradient})` : "#152020",
-              boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.35)",
-            }}
-          />
-          {slices.map((s) => (
-            <div
-              key={`sep-${s.index}`}
-              className="pointer-events-none absolute inset-0"
-              style={{ transform: `rotate(${s.start}deg)` }}
-            >
-              <div className="absolute left-1/2 top-0 h-1/2 w-px -translate-x-1/2 bg-black/55" />
-            </div>
-          ))}
-          {slices.map((s) => {
-            if (s.sweep < 10) return null;
-            const mid = s.start + s.sweep / 2;
-            const rad = (mid * Math.PI) / 180;
-            const r = 39;
-            const left = 50 + r * Math.sin(rad);
-            const top = 50 - r * Math.cos(rad);
-            const size = s.sweep < 16 ? 20 : s.sweep < 28 ? 26 : 32;
-            const lit = spinning && s.index === hotIndex;
-            return (
-              <div
-                key={`${s.ticket.playerId}-${s.index}`}
-                className="pointer-events-none absolute z-10"
-                style={{
-                  left: `${left}%`,
-                  top: `${top}%`,
-                  transform: `translate(-50%, -50%) scale(${lit ? 1.12 : 1})`,
-                  filter: lit ? "brightness(1.2)" : undefined,
-                }}
-              >
-                <PlayerAvatar
-                  src={s.ticket.avatar}
-                  name={s.ticket.name}
-                  color={s.ticket.color}
-                  size={size}
-                  kind={s.ticket.name === "You" ? "you" : "player"}
-                />
-              </div>
-            );
-          })}
-        </div>
-
-        <div
-          className={clsx(
-            "absolute z-10 grid place-items-center rounded-full bg-bg-950 ring-1",
-            done ? "ring-amber-300/40" : "ring-white/10",
+            "absolute z-10 grid place-items-center rounded-full bg-[#070c0d] ring-1 ring-cyan-100/15",
+            done && "ring-amber-300/45",
           )}
           style={{ inset: HUB_INSET }}
         >
-          <div className="px-3 text-center">
+          <div className="flex max-w-[92%] flex-col items-center px-2 text-center" aria-live="polite">
             {winnerName ? (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300">Winner</p>
-                <p className="mt-1 truncate text-sm font-semibold text-white">{winnerName}</p>
-              </>
-            ) : pointerName ? (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Pointer</p>
-                <p className="mt-1 truncate text-sm font-semibold text-white">{pointerName}</p>
-              </>
-            ) : countdown != null ? (
-              <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Starts in</p>
-                <p className="mt-0.5 font-mono text-4xl font-black tabular-nums text-white">{countdown}</p>
+                <p className="text-[9px] font-bold uppercase tracking-[0.2em] text-amber-300">Winner</p>
+                <p className="mt-0.5 max-w-full truncate text-sm font-semibold text-white">{winnerName}</p>
+                <div className="mt-1">
+                  <AnimatedPot value={potValue} label={potLabel} size="hub" currency={currency} />
+                </div>
               </>
             ) : (
               <>
-                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-500">Jackpot</p>
-                <p className="mt-1 text-xs text-slate-400">{slices.length === 0 ? "Waiting" : "Need 1 more"}</p>
+                <AnimatedPot value={potValue} label={potLabel} size="hub" currency={currency} />
+                {countdown != null ? (
+                  <p className="mt-0.5 font-mono text-2xl font-black tabular-nums text-white sm:text-3xl">
+                    {countdown}
+                  </p>
+                ) : spinToken > 0 && !done ? (
+                  <p className="mt-0.5 max-w-full truncate text-xs font-medium text-cyan-200">
+                    {pointerName ?? "Spinning"}
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    {empty ? "Waiting" : "Open"}
+                  </p>
+                )}
               </>
             )}
           </div>
@@ -263,9 +337,9 @@ function buildSlices(tickets: JackpotTicket[]): Slice[] {
 
 function sliceAtTop(slices: Slice[], rotationDeg: number): Slice | null {
   if (slices.length === 0) return null;
-  const atTop = (((360 - (rotationDeg % 360)) + 360) % 360);
+  const atTop = ((360 - (rotationDeg % 360)) + 360) % 360;
   for (const slice of slices) {
     if (atTop >= slice.start && atTop < slice.start + slice.sweep) return slice;
   }
-  return slices[slices.length - 1] ?? null;
+  return slices[slices.length - 1];
 }

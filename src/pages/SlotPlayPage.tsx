@@ -20,15 +20,11 @@ import { useToastStore } from "../store/toastStore";
 import { useFairnessStore } from "../store/fairnessStore";
 import { sound } from "../lib/sound";
 import { formatPercent, formatPlayCash } from "../lib/format";
+import { LOCK_META } from "../lib/money";
 import { HOUSE_EDGE } from "../lib/rakeback";
 import { playCurrencyLabel, type PlayCurrency } from "../lib/playWallet";
 import { stakeNeedMessage, takeStakeFor } from "../lib/stake";
-
-const MODES: { id: SlotPlayMode; label: string }[] = [
-  { id: "fun", label: "Fun" },
-  { id: "wl", label: "World Locks" },
-  { id: "shards", label: "Shards" },
-];
+import { useSettingsStore } from "../store/settingsStore";
 
 function formatMulti(n: number): string {
   if (!(n > 0)) return "0×";
@@ -48,6 +44,8 @@ export function SlotPlayPage() {
 
   const shardBal = useEconomyStore((s) => s.funCoins);
   const lockBal = useEconomyStore((s) => s.balance);
+  const lockUnit = useSettingsStore((s) => s.lockUnit);
+  const lockLabel = LOCK_META[lockUnit].shortName;
   const creditLedger = useEconomyStore((s) => s.creditLedger);
   const recordRound = useEconomyStore((s) => s.recordRound);
   const push = useToastStore((s) => s.push);
@@ -58,6 +56,12 @@ export function SlotPlayPage() {
   const walletMode = mode !== "fun";
   const currency: PlayCurrency = mode === "shards" ? "shards" : "wl";
   const wallet = currency === "shards" ? shardBal : lockBal;
+  const walletLabel = currency === "shards" ? playCurrencyLabel("shards") : lockLabel;
+  const modes: { id: SlotPlayMode; label: string }[] = [
+    { id: "fun", label: "Fun" },
+    { id: "wl", label: LOCK_META[lockUnit].ticker },
+    { id: "shards", label: "Shards" },
+  ];
 
   if (!slot) return <Navigate to="/slots" replace />;
 
@@ -110,7 +114,7 @@ export function SlotPlayPage() {
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-fuchsia-300">
-            {mode === "fun" ? "Fun play" : playCurrencyLabel(currency)} · {slot.provider}
+            {mode === "fun" ? "Fun play" : walletLabel} · {slot.provider}
           </p>
           <h1 className="text-xl font-semibold tracking-tight text-white">{slot.name}</h1>
         </div>
@@ -119,7 +123,10 @@ export function SlotPlayPage() {
           <InfoButton title="Slots — wallet vs fun">
             <StatRow label="Wallet RTP" value={formatPercent(SLOT_RTP)} />
             <StatRow label="House edge" value={formatPercent(HOUSE_EDGE.slots)} />
-            <p>Fun play uses the studio’s demo credits. World Locks and Shards stake your SeedBET wallet. Studio reels do not report bets.</p>
+            <p>
+              Fun play uses the studio’s demo credits. {lockLabel} and Shards stake your SeedBET wallet. Studio reels do
+              not report bets.
+            </p>
           </InfoButton>
           <a
             href={src}
@@ -138,7 +145,7 @@ export function SlotPlayPage() {
       <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
         <div className="surface h-fit space-y-3 p-4">
           <div className={clsx("grid gap-1 rounded-lg bg-black/35 p-1", showShards ? "grid-cols-3" : "grid-cols-2")}>
-            {MODES.filter((m) => m.id !== "shards" || showShards).map((m) => (
+            {modes.filter((m) => m.id !== "shards" || showShards).map((m) => (
               <button
                 key={m.id}
                 type="button"
@@ -161,7 +168,7 @@ export function SlotPlayPage() {
             <>
               <label className="block">
                 <span className="mb-1.5 block text-[11px] font-medium uppercase tracking-wide text-slate-500">
-                  Bet · {playCurrencyLabel(currency)}
+                  Bet · {walletLabel}
                 </span>
                 <div className="flex items-center gap-2">
                   <LockAmountInput
@@ -209,7 +216,8 @@ export function SlotPlayPage() {
             </>
           ) : (
             <p className="text-xs leading-relaxed text-slate-400">
-              Studio credits. Switch to World Locks{showShards ? " or Shards" : ""} to stake your wallet.
+              Studio credits. Switch to {lockLabel}
+              {showShards ? " or Shards" : ""} to stake your wallet.
             </p>
           )}
 

@@ -11,6 +11,7 @@ import { PlayerAvatar } from "../identity/PlayerAvatar";
 import { RoleBadge } from "../identity/RoleBadge";
 import { useIdentityStore } from "../../store/identityStore";
 import { CurrencySwitcher } from "./CurrencySwitcher";
+import { WalletMenu } from "./WalletMenu";
 import { BrandMark } from "./BrandMark";
 import { sound } from "../../lib/sound";
 
@@ -38,7 +39,10 @@ export function NavBar({ wide = false }: { wide?: boolean }) {
           </Link>
         </div>
 
-        <CurrencySwitcher />
+        <div className="flex items-start gap-2">
+          <CurrencySwitcher />
+          <WalletMenu />
+        </div>
 
         <div className="flex items-center justify-end gap-2">
           <Link

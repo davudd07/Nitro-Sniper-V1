@@ -597,51 +597,6 @@ body {
   animation: wildcard-land-shake 0.28s ease-out both;
 }
 
-.slot-window {
-  position: relative;
-  overflow: hidden;
-  border-radius: 0.6rem;
-  border: 2px solid rgba(74, 241, 241, 0.35);
-  background: #070c0c;
-  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.55), 4px 4px 0 #050808;
-}
-.slot-window::before,
-.slot-window::after {
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  right: 0;
-  z-index: 3;
-  height: 18%;
-}
-.slot-window::before {
-  top: 0;
-  background: linear-gradient(180deg, rgba(7, 12, 12, 0.92), transparent);
-}
-.slot-window::after {
-  bottom: 0;
-  background: linear-gradient(0deg, rgba(7, 12, 12, 0.92), transparent);
-}
-.slot-payline {
-  pointer-events: none;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 50%;
-  z-index: 4;
-  height: 0;
-  border-top: 2px dashed rgba(103, 232, 249, 0.45);
-  box-shadow: 0 0 12px rgba(34, 211, 238, 0.25);
-}
-.slot-reel-col {
-  overflow: hidden;
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-}
-.slot-reel-col:last-child {
-  border-right: none;
-}
-
 .lobby-slot-tile {
   position: relative;
   overflow: hidden;

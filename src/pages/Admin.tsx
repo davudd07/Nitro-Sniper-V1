@@ -643,7 +643,7 @@ function AdminDesk({ onLogout }: { onLogout: () => void }) {
                     return (
                       <li key={row.id} className="flex items-center justify-between gap-2 rounded-md bg-black/25 px-2 py-1.5">
                         <span className="min-w-0">
-                          <span className="font-semibold text-white">{ACTIVITY_GAME_LABELS[row.game]}</span>
+                          <span className="font-semibold text-white">{ACTIVITY_GAME_LABELS[row.game] ?? row.game}</span>
                           <span className="ml-2 font-mono text-slate-500">{new Date(row.at).toLocaleString()}</span>
                         </span>
                         <span className="shrink-0 font-mono">

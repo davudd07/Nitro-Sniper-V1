@@ -26,8 +26,6 @@ import { Dice } from "./pages/Dice";
 import { Crash } from "./pages/Crash";
 import { CrossRoad } from "./pages/CrossRoad";
 import { Keno } from "./pages/Keno";
-import { SlotsLobby } from "./pages/SlotsLobby";
-import { SlotPlayPage } from "./pages/SlotPlayPage";
 import { ChatRainController } from "./components/chat/ChatRainController";
 import { VaultEventsController } from "./components/layout/VaultEventsController";
 import { SupportWidget } from "./components/support/SupportWidget";
@@ -60,7 +58,6 @@ export default function App() {
   const location = useLocation();
   void lockUnit;
   const isBattleRoom = /^\/battles\/(?!create$)[^/]+$/.test(location.pathname);
-  const isSlotPlay = /^\/slots\/[^/]+$/.test(location.pathname);
 
   useEffect(() => {
     if (maybeTopUp()) {
@@ -73,7 +70,6 @@ export default function App() {
     const path = location.pathname;
     if (path.startsWith("/battles")) trackRecent("battles");
     else if (path.startsWith("/cases")) trackRecent("cases");
-    else if (path.startsWith("/slots")) trackRecent("slots");
     else {
       const id = PATH_TO_GAME[path];
       if (id) trackRecent(id);
@@ -109,7 +105,7 @@ export default function App() {
     <div className="flex h-full min-h-0 overflow-hidden">
       <GameSidebar />
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        <NavBar wide={isBattleRoom || isSlotPlay} />
+        <NavBar wide={isBattleRoom} />
         <AdminViewBar />
         <WinLeaderStrip />
         <BanNotice />
@@ -117,7 +113,7 @@ export default function App() {
           <div
             className={clsx(
               "mx-auto w-full min-h-full px-3 py-6 sm:px-4",
-              isBattleRoom || isSlotPlay ? "max-w-none" : "max-w-7xl",
+              isBattleRoom ? "max-w-none" : "max-w-7xl",
             )}
           >
             <Routes>
@@ -141,10 +137,10 @@ export default function App() {
               <Route path="/crash" element={<Crash />} />
               <Route path="/road" element={<CrossRoad />} />
               <Route path="/keno" element={<Keno />} />
-              <Route path="/slots" element={<SlotsLobby />} />
-              <Route path="/slots/:slotId" element={<SlotPlayPage />} />
-              <Route path="/lockfruit" element={<Navigate to="/slots" replace />} />
-              <Route path="/gemrush" element={<Navigate to="/slots" replace />} />
+              <Route path="/slots" element={<Navigate to="/" replace />} />
+              <Route path="/slots/:slotId" element={<Navigate to="/" replace />} />
+              <Route path="/lockfruit" element={<Navigate to="/" replace />} />
+              <Route path="/gemrush" element={<Navigate to="/" replace />} />
             </Routes>
           </div>
           <LiveBetStrip />

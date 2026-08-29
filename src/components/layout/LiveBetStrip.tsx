@@ -114,7 +114,7 @@ export function LiveBetStrip() {
                         {adminView && <ChatModMenu name={isLocalPlayerName(p.name) ? "You" : p.name} />}
                       </span>
                     </td>
-                    <td className="hidden px-2 py-1.5 text-slate-400 sm:table-cell">{ACTIVITY_GAME_LABELS[p.game]}</td>
+                    <td className="hidden px-2 py-1.5 text-slate-400 sm:table-cell">{ACTIVITY_GAME_LABELS[p.game] ?? p.game}</td>
                     <td className="px-2 py-1.5">
                       <CashAmount wl={p.wagered} currency={battlePlayCurrency(p)} iconClassName="h-3.5 w-3.5" />
                     </td>

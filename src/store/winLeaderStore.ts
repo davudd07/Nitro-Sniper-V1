@@ -38,7 +38,6 @@ function seedRecords(): Partial<Record<WinLeaderGame, WinLeaderRecord>> {
     keno: { name: "NeonWisp", multiplier: 70, at: SEED_AT },
     crash: { name: "OrbitJester", multiplier: 47.2, at: SEED_AT },
     road: { name: "TidalGleam", multiplier: 18.6, at: SEED_AT },
-    slots: { name: "SpinKite", multiplier: 80, at: SEED_AT },
   };
 }
 
@@ -72,7 +71,6 @@ export function winLeaderGameFromPath(pathname: string): WinLeaderGame | null {
   if (pathname === "/crash" || pathname.startsWith("/crash/")) return "crash";
   if (pathname === "/road" || pathname.startsWith("/road/")) return "road";
   if (pathname === "/keno" || pathname.startsWith("/keno/")) return "keno";
-  if (pathname.startsWith("/slots/")) return "slots";
   if (pathname.startsWith("/cases")) return "cases";
   if (pathname.startsWith("/battles")) return "battles";
   return null;
@@ -85,7 +83,6 @@ export function isBattlesLobbyPath(pathname: string): boolean {
 /** Games that render a local trophy on the play stage instead of the under-header strip. */
 export function hidesGlobalWinLeader(pathname: string): boolean {
   if (isBattlesLobbyPath(pathname)) return true;
-  if (pathname === "/slots" || pathname.startsWith("/slots/")) return true;
   const game = winLeaderGameFromPath(pathname);
   return game === "mines" || game === "coinflip" || game === "jackpot" || game === "upgrader" || game === "dice" || game === "crash" || game === "road";
 }

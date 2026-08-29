@@ -1,0 +1,376 @@
+import { useMemo, useState } from "react";
+import { Link, useSearchParams } from "react-router-dom";
+import { Heart, Plus, Wallet } from "lucide-react";
+import { clsx } from "clsx";
+import type { Case } from "../data/cases";
+import { getCase, listOfficialCases } from "../data/cases";
+import { CaseThumb } from "../components/cases/CaseThumb";
+import { RiskBadge } from "../components/cases/RiskBadge";
+import { CatalogSwitch, type CaseCatalogKind } from "../components/cases/CatalogSwitch";
+import { CaseSearchInput } from "../components/cases/CaseSearchInput";
+import { CommunityEarningsModal } from "../components/cases/CommunityEarningsModal";
+import { InfoButton, StatRow } from "../components/ui/InfoModal";
+import { formatPercent, formatXp } from "../lib/format";
+import { CashAmount } from "../components/ui/CurrencyIcon";
+import { formatTicketRange } from "../lib/caseTickets";
+import { matchesCaseName } from "../lib/caseSearch";
+import { RARITIES } from "../data/rarities";
+import { useAdminViewStore } from "../store/adminViewStore";
+import { useCatalogModerationStore } from "../store/catalogModerationStore";
+import { useAuthStore } from "../store/authStore";
+import {
+  listHydratedCommunityCases,
+  useCommunityCaseStore,
+  useCommunityCasesHydrated,
+} from "../store/communityCaseStore";
+import { useLoyaltyStore } from "../store/loyaltyStore";
+import {
+  COMMUNITY_COMMISSION_OF_EDGE,
+  COMMUNITY_MAX_CASES_PER_PERSON,
+  canCreateCommunityCase,
+  communityCasesOwnedCount,
+  communityCommissionPerOpen,
+  communityCreateRequirement,
+} from "../lib/communityCases";
+import { sound } from "../lib/sound";
+import { CaseCreatorLine } from "../components/cases/CaseCreatorLine";
+import { AdminCaseActions } from "../components/admin/AdminCaseActions";
+import { GoldSpinAdminButton } from "../components/admin/GoldSpinAdminButton";
+import { useGoldSpinStore } from "../store/goldSpinStore";
+
+type CommunitySubNav = "all" | "mine" | "favorites";
+type PriceSort = "low" | "high";
+
+export function Cases() {
+  const adminView = useAdminViewStore((s) => s.active);
+  const hiddenOfficialIds = useCatalogModerationStore((s) => s.hiddenOfficialIds);
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [catalog, setCatalog] = useState<CaseCatalogKind>(
+    searchParams.get("catalog") === "community" ? "community" : "official",
+  );
+  const [subNav, setSubNav] = useState<CommunitySubNav>(
+    searchParams.get("nav") === "mine" ? "mine" : searchParams.get("nav") === "favorites" ? "favorites" : "all",
+  );
+  const [query, setQuery] = useState("");
+  const [sort, setSort] = useState<PriceSort>("low");
+  const [earningsOpen, setEarningsOpen] = useState(false);
+  const hydrated = useCommunityCasesHydrated();
+  const records = useCommunityCaseStore((s) => s.cases);
+  const favoriteIds = useCommunityCaseStore((s) => s.favoriteIds);
+  const toggleFavorite = useCommunityCaseStore((s) => s.toggleFavorite);
+  const session = useAuthStore((s) => s.session);
+  const xpByUser = useLoyaltyStore((s) => s.xpByUser);
+  const tiers = useLoyaltyStore((s) => s.config.tiers);
+  const lifetimeXp = useMemo(() => useLoyaltyStore.getState().lifetimeXp(), [xpByUser, session]);
+  const req = communityCreateRequirement(tiers);
+  const unlocked = canCreateCommunityCase(lifetimeXp, tiers);
+  const ownedCount = communityCasesOwnedCount(records, session);
+  const atLimit = ownedCount >= COMMUNITY_MAX_CASES_PER_PERSON;
+
+  const communityCases = useMemo(() => listHydratedCommunityCases(), [records, hydrated]);
+  const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
+
+  const shownCommunity = useMemo(() => {
+    let list = communityCases.filter((c) => matchesCaseName(c.name, query));
+    if (subNav === "mine") list = list.filter((c) => c.creatorId === session);
+    if (subNav === "favorites") list = list.filter((c) => favoriteSet.has(c.id));
+    return [...list].sort((a, b) => (sort === "high" ? b.price - a.price : a.price - b.price));
+  }, [communityCases, query, sort, subNav, session, favoriteSet]);
+
+  const shownOfficial = useMemo(
+    () =>
+      listOfficialCases()
+        .filter((c) => matchesCaseName(c.name, query))
+        .sort((a, b) => a.price - b.price),
+    [query, hiddenOfficialIds, adminView, goldRev],
+  );
+
+  function setCatalogKind(next: CaseCatalogKind) {
+    setCatalog(next);
+    const nextParams = new URLSearchParams(searchParams);
+    if (next === "community") nextParams.set("catalog", "community");
+    else nextParams.delete("catalog");
+    setSearchParams(nextParams, { replace: true });
+  }
+
+  return (
+    <div>
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Cases</h1>
+          <p className="mt-1 text-sm text-slate-400">
+            {catalog === "official"
+              ? "Nine original cases spanning low, medium, and high risk — all with fully transparent, price-derived odds."
+              : "Player-made cases using website item prices. Price matches official house-edge economics; creators earn 5% of the edge take."}
+          </p>
+        </div>
+        <CatalogSwitch value={catalog} onChange={setCatalogKind} />
+      </div>
+
+      {catalog === "community" ? (
+        <div>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex rounded-lg border-2 border-[#3a5c5c] bg-black/40 p-0.5">
+              {(
+                [
+                  ["all", "All Cases"],
+                  ["mine", "My Cases"],
+                  ["favorites", "Favorites"],
+                ] as const
+              ).map(([id, label]) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => {
+                    sound.click();
+                    setSubNav(id);
+                  }}
+                  className={clsx(
+                    "rounded-md px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide transition-colors",
+                    subNav === id ? "bg-emerald-600 text-white" : "text-slate-400 hover:text-white",
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  sound.click();
+                  setEarningsOpen(true);
+                }}
+                className="inline-flex items-center gap-1.5 rounded-lg border-2 border-[#3a5c5c] bg-black/40 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide text-cyan-100 hover:bg-cyan-400/15"
+              >
+                <Wallet className="h-3.5 w-3.5" /> My earnings
+              </button>
+              <Link
+                to={atLimit ? "/cases?catalog=community&nav=mine" : "/cases/create"}
+                onClick={() => sound.click()}
+                className={clsx(
+                  "inline-flex items-center gap-1.5 rounded-lg border-2 px-3 py-1.5 text-xs font-extrabold uppercase tracking-wide",
+                  unlocked && !atLimit
+                    ? "border-emerald-400/50 bg-emerald-500/15 text-emerald-100 hover:bg-emerald-500/25"
+                    : "border-white/15 text-slate-400 hover:border-white/30 hover:text-white",
+                )}
+              >
+                <Plus className="h-3.5 w-3.5" /> {atLimit ? `${ownedCount}/${COMMUNITY_MAX_CASES_PER_PERSON} cases` : "Create Case"}
+              </Link>
+            </div>
+          </div>
+
+          {!unlocked && (
+            <p className="mb-3 text-xs text-slate-400">
+              Level {req.rank} ({req.tier.name} VIP, {formatXp(req.minXp)} XP) required to publish. You have{" "}
+              {formatXp(lifetimeXp)} XP.
+            </p>
+          )}
+          {unlocked && atLimit && (
+            <p className="mb-3 text-xs text-amber-200/90">
+              You have {ownedCount}/{COMMUNITY_MAX_CASES_PER_PERSON} community cases. Delete one from its page to publish another.
+            </p>
+          )}
+
+          <div className="mb-5 flex flex-wrap items-center gap-2">
+            <CaseSearchInput value={query} onChange={setQuery} />
+            <select
+              value={sort}
+              onChange={(e) => setSort(e.target.value as PriceSort)}
+              className="rounded-lg border-2 border-[#3a5c5c] bg-black/40 px-3 py-2 text-xs font-extrabold uppercase tracking-wide text-white"
+            >
+              <option value="low">Price: Low to High</option>
+              <option value="high">Price: High to Low</option>
+            </select>
+          </div>
+
+          {shownCommunity.length === 0 ? (
+            <div className="surface px-5 py-10 text-center">
+              <p className="text-sm text-slate-400">
+                {subNav === "mine"
+                  ? "You have not published a community case yet."
+                  : subNav === "favorites"
+                    ? "No favorite community cases yet."
+                    : query.trim()
+                      ? "No community cases match that search."
+                      : "No community cases yet."}
+              </p>
+              {subNav !== "favorites" && !atLimit && (
+                <Link to="/cases/create" onClick={() => sound.click()} className="btn-primary mt-4 inline-flex px-4 py-2 text-sm">
+                  Create Case
+                </Link>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {shownCommunity.map((c) => (
+                <CommunityCaseCard
+                  key={c.id}
+                  c={c}
+                  favorited={favoriteSet.has(c.id)}
+                  onToggleFavorite={() => {
+                    sound.click();
+                    toggleFavorite(c.id);
+                  }}
+                />
+              ))}
+            </div>
+          )}
+
+          <CommunityEarningsModal open={earningsOpen} onClose={() => setEarningsOpen(false)} />
+        </div>
+      ) : (
+        <div>
+          <div className="mb-5">
+            <CaseSearchInput value={query} onChange={setQuery} />
+          </div>
+          {shownOfficial.length === 0 ? (
+            <div className="surface px-5 py-10 text-center">
+              <p className="text-sm text-slate-400">No official cases match that search.</p>
+            </div>
+          ) : (
+            <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+              {shownOfficial.map((c) => (
+                <OfficialCaseCard key={c.id} c={c} adminView={adminView} />
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CommunityCaseCard({
+  c,
+  favorited,
+  onToggleFavorite,
+}: {
+  c: Case;
+  favorited: boolean;
+  onToggleFavorite: () => void;
+}) {
+  const perOpen = communityCommissionPerOpen(c.price, c.houseEdge);
+  const adminView = useAdminViewStore((s) => s.active);
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const live = getCase(c.id) ?? c;
+  void goldRev;
+  return (
+    <div className="surface group overflow-hidden">
+      <Link to={`/cases/${c.id}`}>
+        <CaseThumb c={c} className="h-36" />
+      </Link>
+      <div className="flex items-start justify-between gap-2 p-3">
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-white">{c.name}</p>
+          <p className="font-bold text-emerald-200">
+            <CashAmount wl={c.price} className="text-sm" />
+          </p>
+          <CaseCreatorLine c={c} className="mt-0.5 truncate text-[11px] text-slate-500" />
+          <div className="mt-2 flex flex-wrap items-center gap-1">
+            <AdminCaseActions c={c} />
+            <InfoButton title={`${live.name} — Odds & House Edge`}>
+              <StatRow label="Price" value={<CashAmount wl={live.price} />} />
+              <StatRow label="Return to player (RTP)" value={formatPercent(live.rtp)} />
+              <StatRow label="House edge" value={formatPercent(live.houseEdge)} />
+              <CaseOddsEditor c={live} adminView={adminView} />
+            </InfoButton>
+          </div>
+        </div>
+        <button
+          type="button"
+          title={favorited ? "Remove favorite" : "Favorite"}
+          onClick={onToggleFavorite}
+          className="rounded-lg p-1.5 text-slate-400 hover:bg-white/10 hover:text-white"
+        >
+          <Heart className={clsx("h-4 w-4", favorited && "fill-emerald-400 text-emerald-300")} />
+        </button>
+      </div>
+      <p className="sr-only">
+        Creator commission <CashAmount wl={perOpen} iconClassName="h-3 w-3" /> per paid open ({formatPercent(COMMUNITY_COMMISSION_OF_EDGE)} of
+        house edge)
+      </p>
+    </div>
+  );
+}
+
+function CaseOddsEditor({ c, adminView }: { c: Case; adminView: boolean }) {
+  return (
+    <div className="pt-2">
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Full odds table</p>
+      {adminView && (
+        <p className="mb-1.5 text-[10px] font-medium text-amber-200/80">
+          Admin view: Add gold / Remove gold is saved in this browser forever.
+        </p>
+      )}
+      <div className="max-h-56 space-y-1 overflow-y-auto scrollbar-thin pr-1">
+        {[...c.odds]
+          .sort((a, b) => b.probability - a.probability)
+          .map((o) => (
+            <div
+              key={o.item.id}
+              className={clsx(
+                "flex items-center justify-between gap-2 rounded px-2 py-1 text-xs",
+                adminView && o.goldTier ? "bg-amber-400/15 ring-1 ring-amber-300/70" : "bg-black/20",
+                adminView && !o.goldTier && "opacity-55",
+              )}
+            >
+              <span className="min-w-0 truncate" style={{ color: RARITIES[o.item.rarity].text }}>
+                {o.item.name}
+              </span>
+              <span className="flex shrink-0 items-center gap-1.5 text-slate-400">
+                <CashAmount wl={o.item.value} iconClassName="h-3 w-3" /> · {(o.probability * 100).toFixed(o.probability < 0.001 ? 4 : 2)}%
+                <span className="font-mono text-slate-500">#{formatTicketRange(o.ticketStart, o.ticketEnd)}</span>
+                {adminView ? (
+                  <GoldSpinAdminButton caseId={c.id} item={o.item} goldTier={o.goldTier} />
+                ) : (
+                  o.goldTier && " · ✨ gold"
+                )}
+              </span>
+            </div>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+function OfficialCaseCard({ c, adminView }: { c: Case; adminView: boolean }) {
+  const hidden = useCatalogModerationStore((s) => s.hiddenOfficialIds.includes(c.id));
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const live = getCase(c.id) ?? c;
+  void goldRev;
+  return (
+    <div className={clsx("surface group overflow-hidden", hidden && "ring-1 ring-amber-400/40")}>
+      <Link to={`/cases/${c.id}`}>
+        <CaseThumb c={c} className="h-36" />
+      </Link>
+      <div className="p-4">
+        <div className="mb-1 flex items-center justify-between gap-2">
+          <p className="truncate font-semibold text-white">
+            {c.name}
+            {hidden ? <span className="ml-1.5 text-[10px] font-bold uppercase tracking-wide text-amber-300">Hidden</span> : null}
+          </p>
+          <div className="flex shrink-0 items-center gap-1">
+            <AdminCaseActions c={c} />
+            <InfoButton title={`${live.name} — Odds & House Edge`}>
+            <StatRow label="Price" value={<CashAmount wl={live.price} />} />
+            <StatRow label="Return to player (RTP)" value={formatPercent(live.rtp)} />
+            <StatRow label="House edge" value={formatPercent(live.houseEdge)} />
+            <p className="pt-1">{live.blurb}</p>
+            <CaseOddsEditor c={live} adminView={adminView} />
+          </InfoButton>
+          </div>
+        </div>
+        <RiskBadge risk={c.risk} className="mb-2" />
+        <CaseCreatorLine c={c} className="mb-2 text-[11px] text-slate-500" />
+        <p className="mb-3 text-xs text-slate-500">{c.blurb}</p>
+        <Link to={`/cases/${c.id}`} className="btn-primary block w-full py-2 text-center text-sm">
+          <span className="inline-flex items-center justify-center gap-1">
+            Open · <CashAmount wl={c.price} iconClassName="h-4 w-4" />
+          </span>
+        </Link>
+      </div>
+    </div>
+  );
+}

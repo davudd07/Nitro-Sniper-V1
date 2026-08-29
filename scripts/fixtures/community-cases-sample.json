@@ -1,0 +1,14 @@
+{
+  "cases": [
+    {
+      "id": "sample-maxxx-bait",
+      "name": "MAXXX or Leafboard",
+      "price": 260417,
+      "ev": 250000,
+      "entries": [
+        { "itemId": "leafboard", "chancePct": 50 },
+        { "itemId": "maxxx_win", "chancePct": 50 }
+      ]
+    }
+  ]
+}

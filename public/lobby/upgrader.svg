@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 528 704" role="img" aria-label="Upgrader">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#163326"/>
+      <stop offset="55%" stop-color="#0c1612"/>
+      <stop offset="100%" stop-color="#07100c"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="38%" r="45%">
+      <stop offset="0%" stop-color="#84cc16" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#84cc16" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="528" height="704" fill="url(#bg)"/>
+  <rect width="528" height="704" fill="url(#glow)"/>
+  <g transform="translate(264 290)">
+    <circle r="148" fill="#101810" stroke="#3d5a3a" stroke-width="8"/>
+    <path d="M0 -132 A132 132 0 0 1 78 106 L0 0 Z" fill="#84cc16"/>
+    <path d="M78 106 A132 132 0 1 1 0 -132 L0 0 Z" fill="#1f2933"/>
+    <circle r="72" fill="#0c1410" stroke="#14532d" stroke-width="4"/>
+    <polygon points="0,-168 -14,-142 14,-142" fill="#d9f99d"/>
+    <text x="0" y="8" text-anchor="middle" fill="#d9f99d" font-family="Outfit, sans-serif" font-size="28" font-weight="700">48%</text>
+  </g>
+  <text x="264" y="520" text-anchor="middle" fill="#ecfccb" font-family="Outfit, sans-serif" font-size="42" font-weight="700" letter-spacing="4">UPGRADER</text>
+  <text x="264" y="556" text-anchor="middle" fill="#86efac" font-family="Outfit, sans-serif" font-size="16" letter-spacing="6">STAKE · SPIN · RISE</text>
+</svg>

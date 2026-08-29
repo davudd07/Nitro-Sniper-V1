@@ -1,0 +1,99 @@
+import { createPortal } from "react-dom";
+import { X } from "lucide-react";
+import { getCase } from "../../data/cases";
+import { CaseThumb } from "./CaseThumb";
+import { RiskBadge } from "./RiskBadge";
+import { ItemCard } from "../ui/ItemCard";
+import { formatPercent } from "../../lib/format";
+import { CashAmount } from "../ui/CurrencyIcon";
+import { sound } from "../../lib/sound";
+import { COMMUNITY_COMMISSION_OF_EDGE, communityCommissionPerOpen } from "../../lib/communityCases";
+import { CaseCreatorLine } from "./CaseCreatorLine";
+import { useAdminViewStore } from "../../store/adminViewStore";
+import { useGoldSpinStore } from "../../store/goldSpinStore";
+import { GoldSpinAdminButton } from "../admin/GoldSpinAdminButton";
+
+export function CasePreviewModal({
+  caseId,
+  onClose,
+}: {
+  caseId: string | null;
+  onClose: () => void;
+}) {
+  const goldRev = useGoldSpinStore((s) => s.revision);
+  const adminView = useAdminViewStore((s) => s.active);
+  void goldRev;
+  if (!caseId) return null;
+  const c = getCase(caseId);
+  if (!c) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/70 p-4" onClick={onClose}>
+      <div
+        className="surface max-h-[88vh] w-full max-w-lg overflow-y-auto bg-bg-900 p-5 scrollbar-thin"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-start justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-3">
+            <CaseThumb c={c} size="list" className="h-16 w-16 shrink-0 rounded-xl" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h3 className="truncate text-lg font-semibold text-white">{c.name}</h3>
+                <RiskBadge risk={c.risk} />
+              </div>
+              <p className="flex flex-wrap items-center gap-1 text-sm text-slate-400">
+                <CashAmount wl={c.price} iconClassName="h-3.5 w-3.5" /> · {formatPercent(c.rtp, 0)} RTP
+                {c.community ? (
+                  <>
+                    {" "}
+                    · <CashAmount wl={communityCommissionPerOpen(c.price, c.houseEdge)} iconClassName="h-3 w-3" /> creator
+                    ({formatPercent(c.commissionRate ?? COMMUNITY_COMMISSION_OF_EDGE)} of edge)
+                  </>
+                ) : (
+                  ""
+                )}
+              </p>
+              <CaseCreatorLine c={c} className="mt-0.5 text-[11px] text-slate-500" />
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              sound.click();
+              onClose();
+            }}
+            className="rounded-lg p-1 text-slate-400 hover:bg-white/10"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+        <p className="mb-4 text-sm text-slate-400">{c.blurb}</p>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">What’s inside</p>
+        <p className="mb-2 text-[10px] font-medium text-amber-200/80">
+          {adminView
+            ? "Admin view: Add gold / Remove gold is saved in this browser forever."
+            : "Gold-spin pool highlighted — same items that can trigger a gold reel on solo opens"}
+        </p>
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+          {[...c.odds]
+            .sort((a, b) => b.item.value - a.item.value)
+            .map((o) => (
+              <div key={o.item.id} className="flex flex-col gap-1">
+                <ItemCard
+                  item={o.item}
+                  probability={o.probability}
+                  size="sm"
+                  highlightGold={o.goldTier}
+                  className={!o.goldTier ? "opacity-55" : undefined}
+                />
+                {adminView ? (
+                  <GoldSpinAdminButton caseId={c.id} item={o.item} goldTier={o.goldTier} />
+                ) : null}
+              </div>
+            ))}
+        </div>
+      </div>
+    </div>,
+    document.body,
+  );
+}
